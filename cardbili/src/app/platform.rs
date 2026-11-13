@@ -5,7 +5,7 @@ use slint::platform::software_renderer::{MinimalSoftwareWindow, RepaintBufferTyp
 use slint::platform::{Platform, WindowAdapter};
 use slint::PhysicalSize;
 #[cfg(not(feature = "desktop"))]
-use std::fs::OpenOptions;
+use std::fs::{File, OpenOptions};
 use std::rc::Rc;
 
 const FB_BYTES: usize = (WIDTH as usize) * (HEIGHT as usize) * 2;
@@ -71,6 +71,8 @@ pub(super) struct Display {
     buffer: Vec<slint::platform::software_renderer::Rgb565Pixel>,
     #[cfg(not(feature = "desktop"))]
     fbmap: memmap2::MmapMut,
+    #[cfg(not(feature = "desktop"))]
+    fb_file: File,
     #[cfg(feature = "desktop")]
     win: minifb::Window,
     #[cfg(feature = "desktop")]
@@ -184,6 +186,8 @@ impl Display {
             buffer,
             #[cfg(not(feature = "desktop"))]
             fbmap,
+            #[cfg(not(feature = "desktop"))]
+            fb_file: file,
             #[cfg(feature = "desktop")]
             win,
             #[cfg(feature = "desktop")]
@@ -301,6 +305,11 @@ impl Display {
                     std::slice::from_raw_parts(self.buffer.as_ptr() as *const u8, FB_BYTES)
                 };
                 self.fbmap[..FB_BYTES].copy_from_slice(out);
+                // 完整帧写入后立即提交，等待本次显示传输结束
+                if let Err(error) = self.fb_file.sync_data() {
+                    eprintln!("提交显示帧失败: {error}");
+                    return false;
+                }
             }
             #[cfg(feature = "desktop")]
             {
