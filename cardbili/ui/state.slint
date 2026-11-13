@@ -74,18 +74,18 @@ export global Player {
 export global Danmaku {
     in-out property <bool> enabled: true;
     in-out property <[DmRow]> rows: [];
-    // 外部字体可用时显示描边位图
-    in-out property <bool> baked: false;
 }
 
 // 应用设置
 export global Preferences {
+    in-out property <bool> record-history: true;
     in-out property <int> danmaku-opacity: 90;
     in-out property <int> menu-position: 0;
 }
 
 // 详情
 export global Detail {
+    in-out property <length> title-shift: 0px;
     in-out property <bool> loading: false;
     in-out property <string> error: "";
     in-out property <string> title: "";

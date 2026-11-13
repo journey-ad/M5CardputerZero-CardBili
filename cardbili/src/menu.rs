@@ -51,7 +51,7 @@ impl Action {
     }
 }
 
-// 五个槽位依次对应实体 4–8 键，侧栏占用的槽位留空
+// 五个槽位依次对应实体 4–8 键，首页菜单使用全部槽位
 pub fn actions(
     page: i32,
     tab: usize,
@@ -63,8 +63,8 @@ pub fn actions(
 ) -> [Option<Action>; 5] {
     use Action::*;
     let mut slots = [None; 5];
-    let first = usize::from(position == 1);
-    let last = if position == 2 { 3 } else { 4 };
+    let first = usize::from(page != 0 && position == 1);
+    let last = if page != 0 && position == 2 { 3 } else { 4 };
     if help {
         slots[last] = Some(Back);
         return slots;
@@ -77,10 +77,11 @@ pub fn actions(
                     slots[first + 1] = Some(Login);
                 }
             }
-            slots[last - 1] = Some(Help);
-            if tab >= 3 || mine_detail >= 0 {
-                slots[last] = Some(Back);
+            if tab < 3 || mine_detail >= 0 {
+                slots[2] = Some(Play);
+                slots[3] = Some(Detail);
             }
+            slots[4] = Some(if mine_detail >= 0 { Back } else { Help });
         }
         1 => {
             return [
@@ -100,6 +101,10 @@ pub fn actions(
             slots[last] = Some(Back);
         }
         4 => slots[last] = Some(Back),
+        7 => {
+            slots[first] = Some(if retry { Retry } else { Works });
+            slots[last] = Some(Back);
+        }
         6 => {
             if retry {
                 slots[first] = Some(Retry);

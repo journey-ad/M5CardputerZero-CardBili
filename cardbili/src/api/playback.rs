@@ -13,13 +13,7 @@ pub fn liked(bvid: &str, cookies: &str) -> Result<bool, String> {
 }
 
 pub fn react(bvid: &str, cookies: &str, action: VideoAction) -> Result<ReactionResult, String> {
-    let csrf = cookies
-        .split(';')
-        .find_map(|part| {
-            let (name, value) = part.trim().split_once('=')?;
-            (name == "bili_jct" && !value.is_empty()).then_some(value)
-        })
-        .ok_or("登录信息已失效，请重新登录")?;
+    let csrf = csrf(cookies)?;
     let mut params = vec![("bvid".into(), bvid.into()), ("csrf".into(), csrf.into())];
     let endpoint = match action {
         VideoAction::Like(liked) => {
@@ -116,4 +110,36 @@ pub fn comments(aid: i64, page: u32, cookies: Option<&str>) -> Result<CommentPag
         .map(|count| u64::from(page) * 20 < count)
         .unwrap_or(items.len() == 20);
     Ok(CommentPage { items, has_more })
+}
+
+fn csrf(cookies: &str) -> Result<&str, String> {
+    cookies
+        .split(';')
+        .find_map(|part| {
+            let (name, value) = part.trim().split_once('=')?;
+            (name == "bili_jct" && !value.is_empty()).then_some(value)
+        })
+        .ok_or_else(|| "登录信息已失效，请重新登录".into())
+}
+
+pub fn heartbeat(bvid: &str, cid: i64, progress: i64, cookies: &str) -> Result<(), String> {
+    let params = vec![
+        ("bvid".into(), bvid.into()),
+        ("cid".into(), cid.to_string()),
+        ("type".into(), "3".into()),
+        ("played_time".into(), progress.to_string()),
+        ("csrf".into(), csrf(cookies)?.into()),
+    ];
+    let value = net::post_form_json_timeout(
+        "https://api.bilibili.com/x/click-interface/web/heartbeat",
+        cookies,
+        &format!("https://www.bilibili.com/video/{bvid}"),
+        &params,
+        4,
+    )?;
+    if value["code"].as_i64() != Some(0) {
+        return Err(api_err("观看历史", &value));
+    }
+    cache::invalidate_api(super::HISTORY_URL, cookies);
+    Ok(())
 }

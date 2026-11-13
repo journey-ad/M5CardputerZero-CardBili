@@ -9,6 +9,11 @@ impl App {
 
         // --- 详情页滚动尺寸 ---
         if self.page == 3 && !self.ui.get_detail_loading() {
+            self.ui.set_detail_title_shift(yoyo_shift(
+                self.ui.get_detail_title_text_width() as f64,
+                self.ui.get_detail_title_width() as f64,
+                self.marq_t,
+            ));
             let m = (self.ui.get_detail_content_h() as f64
                 - self.ui.get_detail_viewport_h() as f64)
                 .max(0.0);
@@ -42,19 +47,7 @@ impl App {
         } else {
             true
         };
-        let actions = menu::actions(
-            self.page,
-            self.tab,
-            self.mine_detail,
-            self.help,
-            self.cookies.is_some(),
-            self.settings.menu_position,
-            if self.page == 6 {
-                !self.comment_page.error.is_empty()
-            } else {
-                !self.uploader.error.is_empty()
-            },
-        );
+        let actions = self.menu_actions();
         if self.menu_view != Some(actions) {
             self.ui.set_menu_labels(ModelRc::new(VecModel::from(
                 actions
@@ -76,6 +69,7 @@ impl App {
         self.ui.set_danmaku_enabled(self.settings.danmaku_enabled);
         self.ui.set_danmaku_opacity(self.settings.danmaku_opacity);
         self.ui.set_menu_position(self.settings.menu_position);
+        self.ui.set_record_history(self.settings.record_history);
         self.ui.set_about_scroll(self.about_scroll as f32);
         self.ui.set_help(self.help);
         self.ui.set_mine_detail(self.mine_detail >= 0);
@@ -83,5 +77,33 @@ impl App {
         self.sync_account();
         self.sync_playback();
         self.sync_comments();
+        self.sync_following();
+    }
+}
+
+impl App {
+    pub(super) fn menu_actions(&self) -> [Option<menu::Action>; 5] {
+        let retry = match self.page {
+            6 => !self.comment_page.error.is_empty(),
+            7 => !self.following.error.is_empty(),
+            _ => !self.uploader.error.is_empty(),
+        };
+        let mut actions = menu::actions(
+            self.page,
+            self.tab,
+            self.mine_detail,
+            self.help,
+            self.cookies.is_some(),
+            self.settings.menu_position,
+            retry,
+        );
+        if self.page == 3 && self.detail_from_uploader {
+            for action in &mut actions {
+                if *action == Some(menu::Action::Works) {
+                    *action = Some(menu::Action::Play);
+                }
+            }
+        }
+        actions
     }
 }

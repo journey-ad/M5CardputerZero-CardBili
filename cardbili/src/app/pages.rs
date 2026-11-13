@@ -2,12 +2,18 @@ use super::*;
 
 impl App {
     pub(super) fn page_key(&mut self, k: &str) {
-        if self.page == 6 {
+        if self.page == 7 {
+            self.following_key(k);
+        } else if self.page == 6 {
             self.comments_key(k);
         } else if self.page == 2 {
             match k {
                 "ESC" | "BACKSPACE" => {
-                    if self.login_uploader.take().is_some() || self.login_return {
+                    if self.login_uploader.take().is_some()
+                        || self.login_return
+                        || self.login_following
+                    {
+                        self.login_following = false;
                         self.login_return = false;
                         self.go_back = true;
                     } else {
@@ -24,20 +30,6 @@ impl App {
             }
         } else if self.page == 3 {
             match k {
-                "UP" | "f" | "w" => {
-                    self.detail_hold = Some((-22.0, Instant::now()));
-                    self.detail_repeat = Instant::now();
-                    self.detail_scroll = (self.detail_scroll - 22.0).max(0.0);
-                    self.ui.set_detail_scroll(self.detail_scroll as f32);
-                    sync_thumb(&self.ui, self.detail_scroll, self.detail_maxv);
-                }
-                "DOWN" | "x" | "s" => {
-                    self.detail_hold = Some((22.0, Instant::now()));
-                    self.detail_repeat = Instant::now();
-                    self.detail_scroll = (self.detail_scroll + 22.0).min(self.detail_maxv);
-                    self.ui.set_detail_scroll(self.detail_scroll as f32);
-                    sync_thumb(&self.ui, self.detail_scroll, self.detail_maxv);
-                }
                 "ENTER" | "SPACE" => {
                     if !self.detail_bvid.is_empty() {
                         self.status = "正在加载视频…".into();
@@ -71,10 +63,6 @@ impl App {
             }
         } else if self.page == 5 {
             match k {
-                "UP" | "f" | "w" => self.sel = (self.sel - 1).max(0),
-                "DOWN" | "x" | "s" => {
-                    self.sel = (self.sel + 1).min((self.uploader.items.len() as i32 - 1).max(0))
-                }
                 "ENTER" => {
                     self.requested_play = self
                         .uploader

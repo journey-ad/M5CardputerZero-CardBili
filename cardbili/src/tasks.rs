@@ -7,16 +7,16 @@ use std::time::Duration;
 use crate::{api, net, util, Msg};
 
 pub fn load_list(tab: usize, cookies: Option<String>, mid: String, tx: Sender<Msg>, force: bool) {
+    if tab == 2 {
+        load_dynamic(0, String::new(), cookies, tx, force);
+        return;
+    }
     thread::spawn(move || {
         let fetch =
             |cookies: &Option<String>, mid: &String| -> Result<Vec<crate::model::Item>, String> {
                 match tab {
                     0 => api::rcmd(cookies.as_deref(), 1),
                     1 => api::popular(cookies.as_deref(), 1),
-                    2 => match cookies.as_deref() {
-                        Some(c) => api::dynamic(c),
-                        None => Err("未登录，请先登录".into()),
-                    },
                     3 => match cookies.as_deref() {
                         Some(c) => api::history(c),
                         None => Err("未登录，请先登录".into()),
@@ -240,5 +240,29 @@ pub fn start_login(request: u64, tx: Sender<Msg>) {
             }
             thread::sleep(Duration::from_secs(2));
         }
+    });
+}
+
+pub fn load_dynamic(
+    request: u64,
+    offset: String,
+    cookies: Option<String>,
+    tx: Sender<Msg>,
+    force: bool,
+) {
+    thread::spawn(move || {
+        crate::cache::set_force(force);
+        let result = cookies
+            .as_deref()
+            .ok_or_else(|| "未登录，请先登录".to_string())
+            .and_then(|cookies| api::dynamic(cookies, &offset));
+        let _ = tx.send(Msg::Dynamic(request, offset, result));
+    });
+}
+
+pub fn load_following(mid: String, page: u32, cookies: String, request: u64, tx: Sender<Msg>) {
+    thread::spawn(move || {
+        let result = api::followings(&mid, page, &cookies);
+        let _ = tx.send(Msg::Following(request, page, result));
     });
 }

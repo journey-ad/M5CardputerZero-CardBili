@@ -1,6 +1,8 @@
 use super::*;
 
 pub(super) struct App {
+    pub(super) volume_queue: mpsc::SyncSender<i32>,
+    pub(super) history: history::History,
     pub(super) controls: playback::Controls,
     pub(super) comment_page: comments::Comments,
     pub(super) comments_request: u64,
@@ -40,10 +42,12 @@ pub(super) struct App {
     pub(super) frames_in_seg: u64,
     pub(super) gen: u64,
     pub(super) danmaku: Option<danmaku::Engine>,
-    pub(super) dm_cache: DmCache,
+    pub(super) danmaku_view: DanmakuView,
     pub(super) status: String,
     pub(super) status_detail: String,
     pub(super) loading: bool,
+    pub(super) detail_from_uploader: bool,
+    pub(super) scroll_tap: Option<(f64, Instant)>,
     pub(super) detail_bvid: String,
     pub(super) detail_request: u64,
     pub(super) detail_display: Option<DetailDisplay>,
@@ -54,6 +58,12 @@ pub(super) struct App {
     pub(super) requested_login: bool,
     pub(super) login_request: u64,
     pub(super) login_uploader: Option<model::Owner>,
+    pub(super) dynamic_offset: String,
+    pub(super) dynamic_request: u64,
+    pub(super) following: following::FollowingState,
+    pub(super) following_request: u64,
+    pub(super) requested_following: bool,
+    pub(super) login_following: bool,
     pub(super) uploader: UploaderState,
     pub(super) uploader_request: u64,
     pub(super) uploader_dirty: bool,
@@ -97,7 +107,7 @@ impl App {
         let stats_queue = tasks::spawn_stats_worker(tx.clone());
         let stats_requested = HashSet::new();
         let stats_cache = HashMap::new();
-        ui.set_version(env!("CARGO_PKG_VERSION").into());
+        ui.set_version(format!("V{}", env!("CARGO_PKG_VERSION")).into());
         ui.set_about_text("作者  journey-ad\n\n项目地址\ngithub.com/journey-ad/CardBili\n\n字体\nFusion Pixel Font\ngithub.com/TakWolf/fusion-pixel-font\n\n接口参考\nPiliPlus\ngithub.com/bggRGjQaUbCoE/PiliPlus\n\n图标\nPixelarticons\ngithub.com/halfmage/pixelarticons".into());
 
         let ph = util::make_placeholder();
@@ -137,7 +147,7 @@ impl App {
         let frames_in_seg: u64 = 0;
         let gen: u64 = 1;
         let danmaku: Option<danmaku::Engine> = None;
-        let dm_cache = DmCache::new();
+        let danmaku_view = DanmakuView::new(&ui);
         let mut status = String::from("加载中…");
         let mut status_detail = String::new();
         let loading = tab < 3;
@@ -218,6 +228,8 @@ impl App {
         let settings_changed = false;
         let go_back = false;
         Self {
+            volume_queue: player::volume::worker(tx.clone()),
+            history: history::History::new(settings.record_history),
             controls: playback::Controls::default(),
             comment_page: comments::Comments::default(),
             comments_request: 0,
@@ -257,10 +269,12 @@ impl App {
             frames_in_seg,
             gen,
             danmaku,
-            dm_cache,
+            danmaku_view,
             status,
             status_detail,
             loading,
+            detail_from_uploader: false,
+            scroll_tap: None,
             detail_bvid,
             detail_request,
             detail_display,
@@ -271,6 +285,12 @@ impl App {
             requested_login,
             login_request,
             login_uploader,
+            dynamic_offset: String::new(),
+            dynamic_request: 0,
+            following: following::FollowingState::default(),
+            following_request: 0,
+            requested_following: false,
+            login_following: false,
             uploader,
             uploader_request,
             uploader_dirty,

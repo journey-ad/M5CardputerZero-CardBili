@@ -2,6 +2,8 @@ mod account;
 mod comments;
 mod components;
 mod detail;
+mod following;
+mod history;
 mod home;
 mod input;
 mod messages;
@@ -9,6 +11,7 @@ mod navigation;
 mod pages;
 mod platform;
 mod playback;
+mod scroll;
 mod state;
 mod view;
 
@@ -60,7 +63,9 @@ pub fn run() {
         }
         thread::sleep(Duration::from_millis(16));
     }
+    app.report_history(true, false);
     if let Some(mut player) = app.player.take() {
         player.stop();
     }
+    app.history.flush();
 }

@@ -111,6 +111,7 @@ impl Display {
 
         let window = MinimalSoftwareWindow::new(RepaintBufferType::ReusedBuffer);
         window.set_size(PhysicalSize::new(WIDTH, HEIGHT));
+        crate::fonts::register(window.as_ref());
         slint::platform::set_platform(Box::new(AppPlatform {
             window: window.clone(),
         }))

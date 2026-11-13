@@ -115,16 +115,11 @@ impl App {
         self.settings_changed = true;
         if self.settings.danmaku_enabled {
             if let (Some(player), Some(engine)) = (&self.player, &self.danmaku) {
-                render_danmaku(
-                    &self.ui,
-                    engine,
-                    player.position(self.frames_in_seg),
-                    &mut self.dm_cache,
-                );
+                self.danmaku_view
+                    .update(engine, player.position(self.frames_in_seg));
             }
         } else {
-            self.ui
-                .set_dm_rows(ModelRc::new(VecModel::from(Vec::<crate::DmRow>::new())));
+            self.danmaku_view.hide();
         }
     }
 }

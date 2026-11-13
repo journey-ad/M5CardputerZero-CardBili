@@ -10,8 +10,8 @@ export component AboutPage inherits Rectangle {
             Rectangle {
                 height: 104px;
                 Image { x: (parent.width - self.width) / 2; y: 8px; width: 48px; height: 48px; source: @image-url("../../assets/app-icon.png"); image-fit: contain; }
-                Text { x: 0px; y: 62px; width: parent.width; height: 20px; text: "CardBili"; color: #7fb0ff; font-size: 16px; horizontal-alignment: center; }
-                Text { x: 0px; y: 86px; width: parent.width; height: 16px; text: "v" + Meta.version; color: #9aa6ba; font-size: 12px; horizontal-alignment: center; }
+                Text { x: 0px; y: 62px; width: parent.width; height: 20px; text: "CardBili"; color: #7fb0ff; font-family: "Fusion Pixel 16px Prop zh-Hans"; font-size: 16px; horizontal-alignment: center; }
+                Text { x: 0px; y: 86px; width: parent.width; height: 16px; text: Meta.version; color: #9aa6ba; font-size: 12px; horizontal-alignment: center; }
             }
             Text {
                 text: Meta.about-text; color: #cfd8e6;

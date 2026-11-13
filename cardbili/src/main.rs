@@ -2,6 +2,7 @@ mod api;
 mod app;
 mod cache;
 mod danmaku;
+mod fonts;
 mod menu;
 mod model;
 mod net;
@@ -16,10 +17,13 @@ pub enum Msg {
     Liked(u64, Result<bool, String>),
     Reaction(u64, Result<model::ReactionResult, String>),
     Comments(u64, u32, Result<model::CommentPage, String>),
-    Frame(u64, Vec<u8>),
+    Frame(u64),
+    Volume(Result<i32, String>),
     SegEnd(u64),
     ListLoaded(usize, Vec<model::Item>),
     ListMore(usize, Vec<model::Item>),
+    Dynamic(u64, String, Result<model::DynamicPage, String>),
+    Following(u64, u32, Result<model::FollowingPage, String>),
     Err(usize, String),
     PlayReady(u64, Result<model::PlayInfo, String>),
     Danmaku(u64, Vec<danmaku::Dm>),

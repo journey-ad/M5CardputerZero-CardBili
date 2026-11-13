@@ -21,12 +21,8 @@ impl App {
                         .as_ref()
                         .filter(|_| self.settings.danmaku_enabled),
                 ) {
-                    render_danmaku(
-                        &self.ui,
-                        eng,
-                        p.position(self.frames_in_seg),
-                        &mut self.dm_cache,
-                    );
+                    self.danmaku_view
+                        .update(eng, p.position(self.frames_in_seg));
                 }
             }
         }

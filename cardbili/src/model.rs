@@ -123,3 +123,19 @@ pub struct CommentPage {
     pub items: Vec<Comment>,
     pub has_more: bool,
 }
+
+pub struct DynamicPage {
+    pub items: Vec<Item>,
+    pub offset: String,
+    pub has_more: bool,
+}
+
+pub struct Following {
+    pub owner: Owner,
+    pub signature: String,
+}
+
+pub struct FollowingPage {
+    pub items: Vec<Following>,
+    pub has_more: bool,
+}

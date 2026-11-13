@@ -1,5 +1,13 @@
 use super::super::*;
 
+pub(in crate::app) fn video_columns(view: i32) -> usize {
+    match view {
+        0 => 1,
+        2 => 2,
+        _ => 3,
+    }
+}
+
 pub(in crate::app) fn video_row(
     item: &model::Item,
     stats: &HashMap<String, model::VideoStats>,

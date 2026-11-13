@@ -229,3 +229,9 @@ pub fn cover(pic: &str) -> Option<(u32, u32, Vec<u8>)> {
     enforce_limit(&img_dir(), IMG_MAX);
     Some((w, h, raw))
 }
+
+pub fn invalidate_api(url: &str, cookies: &str) {
+    let tag = format!("u:{}", crate::util::parse_mid(cookies));
+    let path = api_dir().join(format!("{}.json", key_of(&format!("{url}\n{tag}"))));
+    let _ = fs::remove_file(path);
+}

@@ -28,19 +28,74 @@ impl App {
                     }
                 }
             }
+            Msg::Following(request, page, result) => self.following_loaded(request, page, result),
+            Msg::Dynamic(request, offset, result) => {
+                if request != self.dynamic_request || offset != self.dynamic_offset {
+                    return;
+                }
+                self.loading_more[2] = false;
+                match result {
+                    Ok(page) => {
+                        if offset.is_empty() {
+                            self.handle_message(Msg::ListLoaded(2, page.items));
+                        } else {
+                            self.handle_message(Msg::ListMore(2, page.items));
+                        }
+                        self.dynamic_offset = page.offset;
+                        self.has_more[2] = page.has_more;
+                        if self.lists[2].is_empty() && page.has_more {
+                            self.loading_more[2] = true;
+                            tasks::load_dynamic(
+                                self.dynamic_request,
+                                self.dynamic_offset.clone(),
+                                self.cookies.clone(),
+                                self.tx.clone(),
+                                false,
+                            );
+                        }
+                    }
+                    Err(error) => {
+                        self.has_more[2] = false;
+                        self.handle_message(Msg::Err(2, error));
+                    }
+                }
+            }
             Msg::Comments(request, page, result) => self.comments_loaded(request, page, result),
-            Msg::Frame(g, b) => {
+            Msg::Volume(result) => {
+                if self.page == 1 {
+                    match result {
+                        Ok(volume) => self.toast(&format!("系统音量 {volume}%")),
+                        Err(error) => {
+                            eprintln!("系统音量调整失败: {error}");
+                            self.toast("系统音量调整失败");
+                        }
+                    }
+                }
+            }
+            Msg::Frame(g) => {
                 if self.page == 1 {
                     if let Some(p) = self.player.as_mut() {
                         if g == p.gen {
-                            p.frame_ready();
-                            self.frames_in_seg += 1;
-                            self.latest = Some((g, b));
+                            if let Some((index, pixels)) = p.take_frame() {
+                                if !p.paused || self.frames_in_seg == 0 {
+                                    p.frame_ready();
+                                    self.frames_in_seg = index;
+                                    self.latest = Some((g, pixels));
+                                }
+                            }
                         }
                     }
                 }
             }
             Msg::SegEnd(g) => {
+                if self.player.as_ref().is_some_and(|p| p.gen == g)
+                    && self.current_play.as_ref().is_some_and(|info| {
+                        self.player.as_ref().unwrap().position(self.frames_in_seg)
+                            >= info.duration - 1.0
+                    })
+                {
+                    self.report_history(true, true);
+                }
                 if let Some(p) = self.player.as_mut() {
                     if g == p.gen {
                         if p.advance() {
@@ -67,7 +122,7 @@ impl App {
                 self.has_more[t] = true;
                 self.loading_more[t] = false;
                 let len = items.len();
-                if t < 3 {
+                if t < 5 {
                     if same_ids {
                         self.covers[t].resize_with(len, || None);
                     } else {
@@ -100,12 +155,6 @@ impl App {
                         format!("{} 条", len)
                     };
                     self.status_detail.clear();
-                    self.ui.set_bar(if len == 0 {
-                        String::new().into()
-                    } else {
-                        format!("已获取到 {} 条数据", len).into()
-                    });
-                    self.ui.set_bar_sticky(false);
                     if let Ok(v) = std::env::var("BILI_SEL") {
                         if let Ok(v) = v.parse::<i32>() {
                             self.sel = v;
@@ -144,9 +193,6 @@ impl App {
                         if t == self.tab && self.page == 0 {
                             self.status = format!("{} 条", self.lists[t].len());
                             self.status_detail.clear();
-                            self.ui
-                                .set_bar(format!("已获取到 {} 条数据", self.lists[t].len()).into());
-                            self.ui.set_bar_sticky(false);
                         }
                     }
                 }
@@ -204,13 +250,14 @@ impl App {
             Msg::Danmaku(g, list) => {
                 if g == self.gen {
                     let eng = danmaku::Engine::new(list);
+                    self.danmaku_view.clear();
                     let t = self
                         .player
                         .as_ref()
                         .map(|p| p.position(self.frames_in_seg))
                         .unwrap_or(0.0);
                     if self.settings.danmaku_enabled {
-                        render_danmaku(&self.ui, &eng, t, &mut self.dm_cache);
+                        self.danmaku_view.update(&eng, t);
                     }
                     self.danmaku = Some(eng);
                 }
@@ -246,6 +293,11 @@ impl App {
                     self.ui.set_qr_status("登录成功".into());
                     self.acct_loaded = false;
                     self.acct = None;
+                    if self.login_following {
+                        self.login_following = false;
+                        self.requested_following = true;
+                        return;
+                    }
                     if let Some(owner) = self.login_uploader.take() {
                         self.login_return = false;
                         self.requested_uploader = Some(owner);
@@ -266,13 +318,7 @@ impl App {
                         self.loading = true;
                         self.status = "已登录，刷新中…".into();
                         self.status_detail.clear();
-                        tasks::load_list(
-                            self.tab,
-                            self.cookies.clone(),
-                            self.mid.clone(),
-                            self.tx.clone(),
-                            false,
-                        );
+                        self.load_home_list(self.tab, false);
                     }
                 }
             }
@@ -293,6 +339,18 @@ impl App {
                             self.home_dirty = true;
                         }
                     }
+                } else if t == 5 {
+                    if let Some(index) = self
+                        .uploader
+                        .items
+                        .iter()
+                        .position(|item| item.bvid == bvid)
+                    {
+                        if let Some(cover) = self.uploader.covers.get_mut(index) {
+                            *cover = Some(util::raw_to_image(w, h, &raw));
+                            self.uploader_dirty = true;
+                        }
+                    }
                 }
             }
             Msg::Detail(request, data, w, h, raw) => {
@@ -307,6 +365,7 @@ impl App {
                         Some(util::raw_to_image(w, h, &raw))
                     },
                 };
+                self.marq_t = 0.0;
                 show_detail(&self.ui, &display);
                 self.detail_display = Some(display);
             }
@@ -325,6 +384,7 @@ impl App {
                     Ok(videos) => {
                         if loaded_page == 1 {
                             self.uploader.items.clear();
+                            self.uploader.covers.clear();
                         }
                         let mut known: HashSet<String> = self
                             .uploader
@@ -338,6 +398,14 @@ impl App {
                                 .items
                                 .into_iter()
                                 .filter(|item| known.insert(item.bvid.clone())),
+                        );
+                        self.uploader
+                            .covers
+                            .resize_with(self.uploader.items.len(), || None);
+                        tasks::spawn_covers(
+                            5,
+                            self.uploader.items[previous_len..].to_vec(),
+                            self.tx.clone(),
                         );
                         self.uploader.page = loaded_page;
                         self.uploader.has_more =

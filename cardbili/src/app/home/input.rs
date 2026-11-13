@@ -14,6 +14,11 @@ impl App {
             }
             return;
         }
+        if k == "b" && !self.help {
+            self.settings.menu_position = (self.settings.menu_position + 1) % 3;
+            self.settings_changed = true;
+            return;
+        }
         if k == "TAB" && !self.help {
             self.tab = (self.tab + 1) % 5;
             self.ui.set_bar("".into());
@@ -34,13 +39,7 @@ impl App {
                     self.loading = true;
                     self.status = "加载中…".into();
                     self.status_detail.clear();
-                    tasks::load_list(
-                        self.tab,
-                        self.cookies.clone(),
-                        self.mid.clone(),
-                        self.tx.clone(),
-                        false,
-                    );
+                    self.load_home_list(self.tab, false);
                 }
                 if self.loaded[self.tab] && !self.covers_started[self.tab] {
                     self.covers_started[self.tab] = true;
@@ -65,7 +64,7 @@ impl App {
         } else if self.tab == 4 {
             match k {
                 "UP" | "f" | "w" => self.sel = (self.sel - 1).max(0),
-                "DOWN" | "x" | "s" => self.sel = (self.sel + 1).min(4),
+                "DOWN" | "x" | "s" => self.sel = (self.sel + 1).min(5),
                 "LEFT" | "z" | "RIGHT" | "c" => {
                     let step = if matches!(k, "LEFT" | "z") { -1 } else { 1 };
                     if self.sel == 0 {
@@ -81,9 +80,13 @@ impl App {
                         self.settings.menu_position =
                             (self.settings.menu_position + step).rem_euclid(3);
                         self.settings_changed = true;
+                    } else if self.sel == 4 {
+                        self.settings.record_history = !self.settings.record_history;
+                        self.history.set_enabled(self.settings.record_history);
+                        self.settings_changed = true;
                     }
                 }
-                "ENTER" if self.sel == 4 => {
+                "ENTER" if self.sel == 5 => {
                     self.about_scroll = 0.0;
                     self.page = 4;
                 }
@@ -100,25 +103,23 @@ impl App {
                         self.sel = (self.sel - 1).max(0);
                     }
                     "DOWN" | "x" | "s" | "RIGHT" | "c" => {
-                        if self.sel < 1 {
+                        if self.sel < 2 {
                             self.sel += 1;
                         }
                     }
                     "ENTER" => {
-                        self.mine_detail = if self.sel == 0 { 3 } else { 4 };
+                        if self.sel == 0 {
+                            self.requested_following = true;
+                            return;
+                        }
+                        self.mine_detail = if self.sel == 1 { 3 } else { 4 };
                         self.sel = 0;
                         let src = self.mine_detail as usize;
                         self.loaded[src] = false;
                         self.loading = true;
                         self.status = "加载中…".into();
                         self.status_detail.clear();
-                        tasks::load_list(
-                            src,
-                            self.cookies.clone(),
-                            self.mid.clone(),
-                            self.tx.clone(),
-                            false,
-                        );
+                        self.load_home_list(src, false);
                     }
                     "r" => {
                         self.acct_loaded = false;
@@ -132,16 +133,7 @@ impl App {
                 }
             } else {
                 let src = self.mine_detail as usize;
-                let n = self.lists[src].len() as i32;
                 match k {
-                    "UP" | "f" | "w" | "LEFT" | "z" => {
-                        self.sel = (self.sel - 1).max(0);
-                    }
-                    "DOWN" | "x" | "s" | "RIGHT" | "c" => {
-                        if self.sel + 1 < n {
-                            self.sel += 1;
-                        }
-                    }
                     "ENTER" => {
                         if let Some(it) = self.lists[src].get(self.sel as usize) {
                             if !it.bvid.is_empty() {
@@ -166,13 +158,7 @@ impl App {
                         self.loading = true;
                         self.status = "刷新中…".into();
                         self.status_detail.clear();
-                        tasks::load_list(
-                            src,
-                            self.cookies.clone(),
-                            self.mid.clone(),
-                            self.tx.clone(),
-                            true,
-                        );
+                        self.load_home_list(src, true);
                     }
                     "ESC" | "BACKSPACE" => {
                         self.mine_detail = -1;
@@ -182,37 +168,7 @@ impl App {
                 }
             }
         } else {
-            let n = self.lists[self.tab].len() as i32;
-            let cols: i32 = if self.view == 2 {
-                2
-            } else if self.view == 1 {
-                3
-            } else {
-                1
-            };
             match k {
-                "v" => {
-                    self.view = (self.view + 1) % 3;
-                    self.settings_changed = true;
-                }
-                "UP" | "f" | "w" => {
-                    let st = if self.view > 0 { cols } else { 1 };
-                    self.sel = (self.sel - st).max(0);
-                }
-                "DOWN" | "x" | "s" => {
-                    let st = if self.view > 0 { cols } else { 1 };
-                    if self.sel + st < n {
-                        self.sel += st;
-                    }
-                }
-                "LEFT" | "z" => {
-                    self.sel = (self.sel - 1).max(0);
-                }
-                "RIGHT" | "c" => {
-                    if self.sel + 1 < n {
-                        self.sel += 1;
-                    }
-                }
                 "ENTER" => {
                     if let Some(it) = self.lists[self.tab].get(self.sel as usize) {
                         if !it.bvid.is_empty() {
@@ -237,19 +193,37 @@ impl App {
                     self.loading = true;
                     self.status = "刷新中…".into();
                     self.status_detail.clear();
-                    tasks::load_list(
-                        self.tab,
-                        self.cookies.clone(),
-                        self.mid.clone(),
-                        self.tx.clone(),
-                        true,
-                    );
+                    self.load_home_list(self.tab, true);
                 }
                 "ESC_HOLD" => {
                     self.quit = true;
                 }
                 _ => {}
             }
+        }
+    }
+}
+
+impl App {
+    pub(in crate::app) fn load_home_list(&mut self, source: usize, force: bool) {
+        if source == 2 {
+            self.dynamic_request += 1;
+            self.dynamic_offset.clear();
+            tasks::load_dynamic(
+                self.dynamic_request,
+                String::new(),
+                self.cookies.clone(),
+                self.tx.clone(),
+                force,
+            );
+        } else {
+            tasks::load_list(
+                source,
+                self.cookies.clone(),
+                self.mid.clone(),
+                self.tx.clone(),
+                force,
+            );
         }
     }
 }

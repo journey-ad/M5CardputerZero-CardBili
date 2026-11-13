@@ -1,7 +1,4 @@
 // 主窗口通过双向绑定向 Rust 暴露全局状态
-import "../fonts/fusion8.ttf";
-import "../fonts/fusion10.ttf";
-import "../fonts/fusion12.ttf";
 import { Cmt, DmRow, VideoRow } from "common.slint";
 import { Nav, ListModel, Status, Account, Player, Danmaku, Detail, Login, Meta, Preferences, Uploader, Menu, Comments } from "state.slint";
 import { BottomBar } from "components/bottom_bar.slint";
@@ -11,6 +8,7 @@ import { LoginPage } from "pages/login.slint";
 import { DetailPage } from "pages/detail.slint";
 import { UploaderPage } from "pages/uploader.slint";
 import { CommentsPage } from "pages/comments.slint";
+import { FollowingPage } from "pages/following.slint";
 import { AboutPage } from "pages/about.slint";
 
 export component AppWindow inherits Window {
@@ -33,6 +31,7 @@ export component AppWindow inherits Window {
     in-out property <string> comment-error <=> Comments.error;
     in-out property <length> comment-scroll <=> Comments.scroll;
     out property <length> comment-content-h: comments-page.content-height;
+    out property <length> comment-viewport-h: comments-page.viewport-height;
     in-out property <[string]> menu-labels <=> Menu.labels;
 
     in-out property <int> cols <=> ListModel.cols;
@@ -72,6 +71,10 @@ export component AppWindow inherits Window {
     in-out property <float> progress <=> Player.progress;
     in-out property <string> time-text <=> Player.time-text;
     in-out property <bool> paused <=> Player.paused;
+    in-out property <[Cmt]> following-rows;
+    in-out property <int> following-selected;
+    in-out property <bool> following-loading;
+    in-out property <string> following-error;
     callback player-key <=> Player.key;
     in-out property <bool> liked <=> Player.liked;
     in-out property <bool> reaction-busy <=> Player.reaction-busy;
@@ -82,7 +85,6 @@ export component AppWindow inherits Window {
     in-out property <bool> danmaku-enabled <=> Danmaku.enabled;
     in-out property <bool> controls-visible <=> Player.controls-visible;
     in-out property <[DmRow]> dm-rows <=> Danmaku.rows;
-    in-out property <bool> dm-baked <=> Danmaku.baked;
 
     in-out property <image> qr <=> Login.qr;
     in-out property <bool> has-qr <=> Login.has-qr;
@@ -90,6 +92,7 @@ export component AppWindow inherits Window {
 
     in-out property <int> danmaku-opacity <=> Preferences.danmaku-opacity;
     in-out property <int> menu-position <=> Preferences.menu-position;
+    in-out property <bool> record-history <=> Preferences.record-history;
     in-out property <string> uploader-name <=> Uploader.name;
     in-out property <bool> uploader-loading <=> Uploader.loading;
     in-out property <string> uploader-error <=> Uploader.error;
@@ -98,6 +101,9 @@ export component AppWindow inherits Window {
     in-out property <string> version <=> Meta.version;
 
     in-out property <string> detail-title <=> Detail.title;
+    in-out property <length> detail-title-shift <=> Detail.title-shift;
+    out property <length> detail-title-width: detail-page.title-width;
+    out property <length> detail-title-text-width: detail-page.title-text-width;
     in-out property <string> detail-bvid <=> Detail.bvid;
     in-out property <[string]> detail-metrics <=> Detail.metrics;
     in-out property <string> detail-desc <=> Detail.desc;
@@ -124,8 +130,13 @@ export component AppWindow inherits Window {
     about-page := AboutPage { visible: page == 4; }
     if page == 5: UploaderPage {}
     comments-page := CommentsPage { visible: page == 6; }
+    if page == 7: FollowingPage {
+        rows: root.following-rows; selected: root.following-selected;
+        loading: root.following-loading; error: root.following-error;
+    }
     if page != 1: BottomBar {
+        x: 0px;
         y: parent.height - self.height;
-        width: parent.width - (Preferences.menu-position == 0 ? 0px : 56px);
+        width: parent.width;
     }
 }

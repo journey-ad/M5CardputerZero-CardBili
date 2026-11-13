@@ -72,13 +72,28 @@ pub fn post_form_json(
     referer: &str,
     params: &[(String, String)],
 ) -> Result<serde_json::Value, String> {
+    post_form_json_timeout(url, cookies, referer, params, 25)
+}
+
+pub fn post_form_json_timeout(
+    url: &str,
+    cookies: &str,
+    referer: &str,
+    params: &[(String, String)],
+    timeout: u32,
+) -> Result<serde_json::Value, String> {
     let headers = RequestHeaders {
         user_agent: UA,
         referer,
         origin: "https://www.bilibili.com",
     };
     let mut args = curl_args(url, Some(cookies), &headers);
-    args.extend(["--data".into(), query_string(params)]);
+    args.extend([
+        "--max-time".into(),
+        timeout.to_string(),
+        "--data".into(),
+        query_string(params),
+    ]);
     let body = curl_text(args)?;
     serde_json::from_str(&body).map_err(|error| format!("数据解析失败\n{error}"))
 }

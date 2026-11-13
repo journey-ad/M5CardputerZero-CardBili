@@ -1,10 +1,12 @@
-import { Nav, Preferences, Danmaku } from "../state.slint";
+import { Nav, Preferences, Danmaku, Meta } from "../state.slint";
 import { Icon, Icons } from "icons.slint";
 
 export component SettingsPanel inherits Rectangle {
-    for label[index] in ["列表风格", "弹幕开关", "弹幕不透明度", "界面布局", "关于"]: Rectangle {
+    clip: true;
+    property <int> first: max(0, Nav.sel - floor((root.height - 4px) / 24px) + 1);
+    for label[index] in ["列表风格", "弹幕开关", "弹幕不透明度", "界面布局", "记录历史", "关于"]: Rectangle {
         x: 6px;
-        y: 4px + index * 24px;
+        y: 4px + (index - root.first) * 24px;
         width: parent.width - 12px;
         height: 22px;
         background: index == Nav.sel ? #1f2b45 : #0f1623;
@@ -19,7 +21,7 @@ export component SettingsPanel inherits Rectangle {
             font-size: 12px;
             vertical-alignment: center;
         }
-        if index < 4: Rectangle {
+        if index < 5: Rectangle {
             x: parent.width - 130px;
             width: 120px;
             height: parent.height;
@@ -36,6 +38,7 @@ export component SettingsPanel inherits Rectangle {
                     Danmaku.enabled ? "开启" : "关闭",
                     Preferences.danmaku-opacity + "%",
                     ["顶部", "左侧", "右侧"][Preferences.menu-position],
+                    Preferences.record-history ? "开启" : "关闭",
                 ][index];
                 color: index == Nav.sel ? #7fb0ff : #9aa6ba;
                 font-size: 12px;
@@ -49,7 +52,12 @@ export component SettingsPanel inherits Rectangle {
                 opacity: index == 2 && Preferences.danmaku-opacity == 100 ? 0.3 : 1;
             }
         }
-        if index == 4: Icon {
+        if index == 5: Text {
+            x: parent.width - 130px; width: 94px; height: parent.height;
+            text: Meta.version; color: #9aa6ba; font-size: 12px;
+            horizontal-alignment: right; vertical-alignment: center;
+        }
+        if index == 5: Icon {
             x: parent.width - 32px; y: 1px; width: 20px; height: 20px;
             source: Icons.right;
             colorize: index == Nav.sel ? #7fb0ff : #6f7c92;

@@ -1,9 +1,10 @@
 // 轻量弹幕引擎：加载时一次性分配赛道，按播放时间取出可见弹幕
+pub(crate) mod bitmap;
+
 use std::collections::HashMap;
 
 use crate::player::WIDTH;
 
-const FONT: f64 = 12.0; // 弹幕字号，单位为像素
 const LINE_H: f64 = 14.0; // 行高
 const AREA_TOP: f64 = 2.0; // 上部弹幕起始位置，标题栏显示时会覆盖此区域
 const AREA_BOTTOM: f64 = 168.0; // 底部固定弹幕的下边缘
@@ -27,6 +28,7 @@ pub struct Dm {
 }
 
 pub struct Row<'a> {
+    pub id: usize,
     pub text: &'a str,
     pub x: f32,
     pub y: f32,
@@ -91,7 +93,7 @@ impl Engine {
                 Some(k) => k,
                 None => continue,
             };
-            let len = crate::util::est_w(&d.text, FONT);
+            let len = bitmap::width(&d.text);
             if let Some(g) = groups.last_mut() {
                 if g.kind == kind && g.text == d.text && d.t - g.last_seen <= MERGE_WINDOW {
                     g.count += 1;
@@ -111,15 +113,17 @@ impl Engine {
             });
         }
 
+        for group in &mut groups {
+            if group.count > 1 {
+                group.text = format!("{} ×{}", group.text, group.count);
+                group.len = bitmap::width(&group.text);
+            }
+        }
+
         assign_lanes(&mut groups);
         groups.retain(|group| group.lane.is_some());
         let mut segments: HashMap<usize, Segment> = HashMap::new();
-        for (index, group) in groups.iter_mut().enumerate() {
-            if group.count > 1 {
-                group.text = format!("{} ×{}", group.text, group.count);
-                group.len = crate::util::est_w(&group.text, FONT);
-            }
-
+        for (index, group) in groups.iter().enumerate() {
             // 每个时间片保存可见弹幕的下标，跨分段弹幕同时索引到相邻分段
             let first = time_slice(group.t0);
             let last = time_slice(group.t0 + group.lifetime());
@@ -163,6 +167,7 @@ impl Engine {
                 _ => AREA_TOP + lane * LINE_H,
             };
             rows.push(Row {
+                id: index,
                 text: &group.text,
                 x: x as f32,
                 y: y as f32,
@@ -239,173 +244,4 @@ fn assign_lanes(groups: &mut [Group]) {
             live.push((g.t0, life));
         }
     }
-}
-
-// 描边位图使用外部字体，加载失败时由 Slint Text 绘制
-static FONT_FACE: std::sync::OnceLock<Option<fontdue::Font>> = std::sync::OnceLock::new();
-
-fn font_paths() -> Vec<std::path::PathBuf> {
-    let mut paths = Vec::new();
-    if let Ok(p) = std::env::var("BILI_FONT") {
-        if !p.is_empty() {
-            paths.push(std::path::PathBuf::from(p));
-        }
-    }
-    if let Ok(exe) = std::env::current_exe() {
-        if let Some(dir) = exe.parent() {
-            paths.push(dir.join("zpix.ttf"));
-        }
-    }
-    // 开发机上直接跑 target/debug 时也从工程目录找
-    if let Some(dir) = option_env!("CARGO_MANIFEST_DIR") {
-        paths.push(std::path::Path::new(dir).join("fonts").join("zpix.ttf"));
-    }
-    paths
-}
-
-fn font() -> Option<&'static fontdue::Font> {
-    FONT_FACE
-        .get_or_init(|| {
-            for p in font_paths() {
-                if let Ok(bytes) = std::fs::read(&p) {
-                    if let Ok(f) =
-                        fontdue::Font::from_bytes(bytes, fontdue::FontSettings::default())
-                    {
-                        return Some(f);
-                    }
-                }
-            }
-            None
-        })
-        .as_ref()
-}
-
-pub fn font_available() -> bool {
-    font().is_some()
-}
-
-pub struct Bitmap {
-    pub px: Vec<u8>,
-    pub w: u32,
-    pub h: u32,
-}
-
-// 将弹幕渲染为带 1px 黑色描边的 RGBA 位图
-pub fn bake(text: &str, color: u32) -> Option<Bitmap> {
-    let f = font()?;
-    let chars: Vec<char> = text.chars().collect();
-    if chars.is_empty() {
-        return None;
-    }
-    let px = FONT as f32;
-    let lm = f.horizontal_line_metrics(px)?;
-    let ascent = lm.ascent;
-    let pad = 1i32;
-
-    // 先收集字形度量，算出整句的真实包围盒
-    let mut glyphs = Vec::with_capacity(chars.len());
-    let mut advances = Vec::with_capacity(chars.len());
-    let mut pen = 0.0f32;
-    let mut min_x = f32::INFINITY;
-    let mut max_x = f32::NEG_INFINITY;
-    let mut min_top = f32::INFINITY;
-    let mut max_bottom = f32::NEG_INFINITY;
-    for &ch in &chars {
-        let m = f.metrics(ch, px);
-        if m.width > 0 && m.height > 0 {
-            let left = pen + m.xmin as f32;
-            let right = left + m.width as f32;
-            min_x = min_x.min(left);
-            max_x = max_x.max(right);
-            let top = ascent - (m.ymin + m.height as i32) as f32;
-            let bottom = ascent - m.ymin as f32;
-            min_top = min_top.min(top);
-            max_bottom = max_bottom.max(bottom);
-        }
-        // 字体自然前进宽度比 12px 略大，封顶到字号，避免汉字之间出现缝
-        let adv = m.advance_width.min(px);
-        advances.push(adv);
-        pen += adv;
-        glyphs.push(m);
-    }
-    if !min_x.is_finite() || !min_top.is_finite() {
-        return None;
-    }
-
-    let w = (max_x - min_x).ceil() as i32 + pad * 2;
-    let h = (max_bottom - min_top).ceil() as i32 + pad * 2;
-    if w <= pad * 2 || h <= pad * 2 {
-        return None;
-    }
-
-    // 硬边覆盖率：像素字体按 12px 栅格化后基本只有 0/255，阈值化消除灰边和虚影
-    let mut cov = vec![0u8; (w * h) as usize];
-    let x_origin = pad as f32 - min_x;
-    let baseline = (pad as f32 - min_top + ascent).round() as i32;
-    let mut pen = 0.0f32;
-    for (i, &ch) in chars.iter().enumerate() {
-        let m = glyphs[i];
-        if m.width > 0 && m.height > 0 {
-            let (_, bitmap) = f.rasterize(ch, px);
-            let gx = (x_origin + pen + m.xmin as f32).round() as i32;
-            let gy = baseline - m.ymin - m.height as i32;
-            for row in 0..m.height {
-                for col in 0..m.width {
-                    if bitmap[row * m.width + col] >= 128 {
-                        let x = gx + col as i32;
-                        let y = gy + row as i32;
-                        if x >= 0 && y >= 0 && x < w && y < h {
-                            cov[(y * w + x) as usize] = 255;
-                        }
-                    }
-                }
-            }
-        }
-        pen += advances[i];
-    }
-
-    // 3x3 膨胀一圈，得到实心黑色描边
-    let mut dil = vec![0u8; cov.len()];
-    for y in 0..h {
-        for x in 0..w {
-            let mut hit = false;
-            for dy in -1..=1 {
-                for dx in -1..=1 {
-                    let nx = x + dx;
-                    let ny = y + dy;
-                    if nx >= 0 && ny >= 0 && nx < w && ny < h && cov[(ny * w + nx) as usize] > 0 {
-                        hit = true;
-                    }
-                }
-            }
-            if hit {
-                dil[(y * w + x) as usize] = 255;
-            }
-        }
-    }
-
-    let cr = ((color >> 16) & 0xff) as u8;
-    let cg = ((color >> 8) & 0xff) as u8;
-    let cb = (color & 0xff) as u8;
-    let mut rgba = vec![0u8; (w * h * 4) as usize];
-    for i in 0..cov.len() {
-        // 位图保留完整覆盖率，显示透明度由界面设置控制
-        let a = 255;
-        let (r, g, b, al) = if cov[i] > 0 {
-            (cr, cg, cb, a)
-        } else if dil[i] > 0 {
-            (0, 0, 0, a)
-        } else {
-            (0, 0, 0, 0)
-        };
-        rgba[i * 4] = r;
-        rgba[i * 4 + 1] = g;
-        rgba[i * 4 + 2] = b;
-        rgba[i * 4 + 3] = al;
-    }
-    Some(Bitmap {
-        px: rgba,
-        w: w as u32,
-        h: h as u32,
-    })
 }

@@ -1,9 +1,13 @@
+mod diagnostics;
+mod frames;
+pub mod volume;
+
 use crate::model::{PlayInfo, Seg};
 use crate::net::{REFERER, UA};
 use crate::Msg;
 use std::io::Read;
 use std::process::{Child, Command, Stdio};
-use std::sync::mpsc::Sender;
+use std::sync::{mpsc::Sender, Arc};
 use std::thread;
 
 pub const WIDTH: u32 = 320;
@@ -23,34 +27,22 @@ fn headers(cookies: &str) -> String {
     h
 }
 
-fn stop_child(c: &mut Option<Child>) {
+fn stop_child(c: &mut Option<Child>, kind: &str) {
     if let Some(mut ch) = c.take() {
+        let pid = ch.id();
+        if let Ok(Some(status)) = ch.try_wait() {
+            diagnostics::write(format_args!("[{kind} pid={pid}] ffmpeg 已退出: {status}"));
+            return;
+        }
         let _ = ch.kill();
-        let _ = ch.wait();
-    }
-}
-
-fn pactl_vol(audio_pid: u32, pct: i32) {
-    let out = Command::new("pactl")
-        .args(["--format=json", "list", "sink-inputs"])
-        .output();
-    if let Ok(o) = out {
-        if let Ok(v) = serde_json::from_slice::<serde_json::Value>(&o.stdout) {
-            if let Some(arr) = v.as_array() {
-                let pid = audio_pid.to_string();
-                for s in arr {
-                    if s["properties"]["application.process.id"].as_str() == Some(pid.as_str()) {
-                        if let Some(idx) = s["index"].as_i64() {
-                            let _ = Command::new("pactl")
-                                .args([
-                                    "set-sink-input-volume",
-                                    &idx.to_string(),
-                                    &format!("{}%", pct),
-                                ])
-                                .output();
-                        }
-                    }
-                }
+        match ch.wait() {
+            Ok(status) => {
+                diagnostics::write(format_args!("[{kind} pid={pid}] ffmpeg 已停止: {status}"));
+            }
+            Err(error) => {
+                diagnostics::write(format_args!(
+                    "[{kind} pid={pid}] 等待 ffmpeg 退出失败: {error}"
+                ));
             }
         }
     }
@@ -60,7 +52,6 @@ fn pactl_vol(audio_pid: u32, pct: i32) {
 pub struct PlaybackState {
     pub position: f64,
     pub paused: bool,
-    pub volume: i32,
     pub rate: f64,
 }
 
@@ -69,7 +60,6 @@ impl Default for PlaybackState {
         Self {
             position: 0.0,
             paused: false,
-            volume: 100,
             rate: 1.0,
         }
     }
@@ -81,15 +71,15 @@ pub struct Player {
     pub duration: f64,
     pub base: f64,
     pub paused: bool,
-    pub vol: i32,
     pub rate: f64,
+    pub finished: bool,
     ready: bool,
     segs: Vec<Seg>,
     seg_idx: usize,
     cookies: String,
-    vchild: Option<Child>,
-    achild: Option<Child>,
+    child: Option<Child>,
     tx: Sender<Msg>,
+    frames: Arc<frames::Frames>,
 }
 
 impl Player {
@@ -106,15 +96,15 @@ impl Player {
             duration: info.duration,
             base: 0.0,
             paused: state.paused,
-            vol: state.volume.clamp(0, 150),
             rate: state.rate,
             ready: false,
+            finished: false,
             segs: info.segs.clone(),
             seg_idx: 0,
             cookies,
-            vchild: None,
-            achild: None,
+            child: None,
             tx,
+            frames: Arc::new(frames::Frames::default()),
         };
         let offset = p.set_position(state.position);
         p.spawn(offset);
@@ -122,16 +112,26 @@ impl Player {
     }
 
     fn spawn(&mut self, ss: f64) {
-        stop_child(&mut self.vchild);
-        stop_child(&mut self.achild);
+        stop_child(&mut self.child, "音视频");
+        self.frames.stop();
+        self.frames = Arc::new(frames::Frames::default());
+        self.frames.pause(self.paused);
         self.ready = false;
+        self.finished = false;
+        diagnostics::write(format_args!(
+            "开始解码 gen={} 分段={}/{} 跳转={ss:.3}s 倍速={} 日志=/tmp/cardbili-player.log",
+            self.gen,
+            self.seg_idx + 1,
+            self.segs.len(),
+            self.rate
+        ));
         let seg = self.segs.get(self.seg_idx).cloned().unwrap_or_default();
         let hd = headers(&self.cookies);
         let vf = format!(
             "setpts=(PTS-STARTPTS)/{},fps=30,scale={}:{}:force_original_aspect_ratio=decrease:force_divisible_by=2:flags=fast_bilinear,pad={}:{}:(ow-iw)/2:(oh-ih)/2:color=black",
             self.rate, WIDTH, HEIGHT, WIDTH, HEIGHT
         );
-        let mut vargs: Vec<String> = vec![
+        let mut args: Vec<String> = vec![
             "-hide_banner".into(),
             "-loglevel".into(),
             "error".into(),
@@ -147,103 +147,85 @@ impl Player {
             "-referer".into(),
             REFERER.into(),
             "-headers".into(),
-            hd.clone(),
+            hd,
         ];
         if ss > 0.0 {
-            vargs.push("-ss".into());
-            vargs.push(format!("{:.3}", ss));
+            args.push("-ss".into());
+            args.push(format!("{:.3}", ss));
         }
-        vargs.push("-readrate".into());
-        vargs.push(self.rate.to_string());
-        vargs.push("-i".into());
-        vargs.push(seg.url.clone());
-        vargs.push("-map".into());
-        vargs.push("0:v:0".into());
-        vargs.push("-vf".into());
-        vargs.push(vf);
-        vargs.push("-pix_fmt".into());
-        vargs.push("rgb24".into());
-        vargs.push("-threads:v".into());
-        vargs.push("2".into());
-        vargs.push("-f".into());
-        vargs.push("rawvideo".into());
-        vargs.push("pipe:1".into());
+        args.push("-i".into());
+        args.push(seg.url.clone());
+        args.push("-map".into());
+        args.push("0:v:0".into());
+        args.push("-vf".into());
+        args.push(vf);
+        args.push("-pix_fmt".into());
+        args.push("rgb24".into());
+        args.push("-threads:v".into());
+        args.push("2".into());
+        args.push("-f".into());
+        args.push("rawvideo".into());
+        args.push("pipe:1".into());
 
-        let mut vcmd = Command::new("ffmpeg");
-        vcmd.args(&vargs)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::null())
-            .stdin(Stdio::null());
-        if let Ok(mut ch) = vcmd.spawn() {
+        args.extend([
+            "-map".into(),
+            "0:a:0".into(),
+            "-af".into(),
+            format!("atempo={}", self.rate),
+            "-ac".into(),
+            "2".into(),
+            "-ar".into(),
+            "44100".into(),
+        ]);
+        if cfg!(target_os = "macos") {
+            args.extend(["-f".into(), "audiotoolbox".into()]);
+        } else {
+            args.extend([
+                "-f".into(),
+                "pulse".into(),
+                "-buffer_duration".into(),
+                "80".into(),
+            ]);
+        }
+        args.push("default".into());
+
+        if let Some(mut ch) = diagnostics::spawn("音视频", &args, &self.cookies, Stdio::piped())
+        {
+            let pid = ch.id();
             if let Some(mut so) = ch.stdout.take() {
                 let tx = self.tx.clone();
                 let gen = self.gen;
+                let pending = self.frames.clone();
                 thread::spawn(move || {
                     let mut buf = vec![0u8; VID_BYTES];
-                    while so.read_exact(&mut buf).is_ok() {
-                        if tx.send(Msg::Frame(gen, buf.clone())).is_err() {
+                    let mut frames = 0u64;
+                    loop {
+                        if let Err(error) = so.read_exact(&mut buf) {
+                            diagnostics::write(format_args!(
+                                "[视频 pid={pid} gen={gen}] 读取结束 已接收帧数={frames}: {error}"
+                            ));
                             break;
+                        }
+                        frames += 1;
+                        if frames == 1 {
+                            diagnostics::write(format_args!(
+                                "[视频 pid={pid} gen={gen}] 首帧已就绪"
+                            ));
+                        }
+                        match pending.publish(frames, buf.clone()) {
+                            Some(true) => {
+                                if tx.send(Msg::Frame(gen)).is_err() {
+                                    break;
+                                }
+                            }
+                            Some(false) => {}
+                            None => return,
                         }
                     }
                     let _ = tx.send(Msg::SegEnd(gen));
                 });
             }
-            self.vchild = Some(ch);
-        }
-
-        // 音频使用独立的解码进程
-        let aargs: Vec<String> = {
-            let mut a: Vec<String> = vec![
-                "-hide_banner".into(),
-                "-loglevel".into(),
-                "error".into(),
-                "-nostdin".into(),
-                "-protocol_whitelist".into(),
-                "file,pipe,crypto,http,https,tcp,tls".into(),
-                "-user_agent".into(),
-                UA.into(),
-                "-referer".into(),
-                REFERER.into(),
-                "-headers".into(),
-                hd.clone(),
-            ];
-            if ss > 0.0 {
-                a.push("-ss".into());
-                a.push(format!("{:.3}", ss));
-            }
-            a.push("-readrate".into());
-            a.push(self.rate.to_string());
-            a.push("-i".into());
-            a.push(seg.url.clone());
-            a.push("-map".into());
-            a.push("0:a:0".into());
-            a.push("-af".into());
-            a.push(format!("atempo={}", self.rate));
-            a.push("-ac".into());
-            a.push("2".into());
-            a.push("-ar".into());
-            a.push("44100".into());
-            a.push("-f".into());
-            a.push("pulse".into());
-            a.push("default".into());
-            a
-        };
-        if let Ok(ch) = Command::new("ffmpeg")
-            .args(&aargs)
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .stdin(Stdio::null())
-            .spawn()
-        {
-            self.achild = Some(ch);
-        }
-        if let Some(a) = &self.achild {
-            let pid = a.id();
-            let vol = self.vol;
-            thread::spawn(move || {
-                thread::sleep(std::time::Duration::from_millis(400));
-                pactl_vol(pid, vol);
-            });
+            self.child = Some(ch);
         }
     }
 
@@ -263,9 +245,10 @@ impl Player {
 
     pub fn pause_toggle(&mut self) {
         self.paused = !self.paused;
+        self.frames.pause(self.paused);
+        let signal = if self.paused { "-STOP" } else { "-CONT" };
         if self.ready {
-            let signal = if self.paused { "-STOP" } else { "-CONT" };
-            self.signal_children(signal);
+            Self::signal_child(&self.child, signal);
         }
     }
 
@@ -276,16 +259,20 @@ impl Player {
         self.ready = true;
         // 加载期间的暂停在首帧就绪后执行
         if self.paused {
-            self.signal_children("-STOP");
+            Self::signal_child(&self.child, "-STOP");
         }
     }
 
-    fn signal_children(&self, signal: &str) {
-        for child in [&self.vchild, &self.achild].into_iter().flatten() {
+    fn signal_child(child: &Option<Child>, signal: &str) {
+        if let Some(child) = child {
             let _ = Command::new("kill")
                 .args([signal, &child.id().to_string()])
                 .output();
         }
+    }
+
+    pub fn take_frame(&self) -> Option<(u64, Vec<u8>)> {
+        self.frames.take()
     }
 
     pub fn seek(&mut self, target: f64) -> f64 {
@@ -320,26 +307,13 @@ impl Player {
             self.spawn(0.0);
             true
         } else {
+            self.finished = true;
             false
         }
     }
 
-    pub fn vol_up(&mut self) {
-        self.set_vol(self.vol + 10);
-    }
-    pub fn vol_down(&mut self) {
-        self.set_vol(self.vol - 10);
-    }
-
-    fn set_vol(&mut self, v: i32) {
-        self.vol = v.clamp(0, 150);
-        if let Some(a) = &self.achild {
-            pactl_vol(a.id(), self.vol);
-        }
-    }
-
     pub fn stop(&mut self) {
-        stop_child(&mut self.vchild);
-        stop_child(&mut self.achild);
+        self.frames.stop();
+        stop_child(&mut self.child, "音视频");
     }
 }

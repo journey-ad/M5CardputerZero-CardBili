@@ -1,9 +1,8 @@
 // 首页：页签 + 列表/网格/我的 三态 + 空状态 + 底部栏 + 按键说明
-import { Nav, ListModel, Status, Preferences } from "../state.slint";
+import { Nav, Preferences } from "../state.slint";
 import { SettingsPanel } from "../components/settings_panel.slint";
 import { TabBar } from "../components/tab_bar.slint";
-import { ListView } from "../components/list_view.slint";
-import { GridView } from "../components/grid_view.slint";
+import { VideoList } from "../components/video_list.slint";
 import { MinePanel } from "../components/mine_panel.slint";
 import { HelpOverlay } from "../components/help_overlay.slint";
 import { EmptyState } from "../components/empty_state.slint";
@@ -23,16 +22,14 @@ export component HomePage inherits Rectangle {
         x: Preferences.menu-position == 2 ? parent.width - 56px : 0px;
         y: 0px;
         width: Preferences.menu-position == 0 ? parent.width : 56px;
-        height: Preferences.menu-position == 0 ? 24px : parent.height;
+        height: Preferences.menu-position == 0 ? 24px : parent.height - 20px;
     }
     Rectangle {
         x: root.content-x; y: root.content-y;
         width: root.content-width; height: root.content-height;
-        if (Nav.tab < 3 && Nav.view == 0) || (Nav.tab == 3 && Nav.mine-detail): ListView {
-            width: parent.width; height: parent.height;
-        }
-        if Nav.tab < 3 && Nav.view > 0: GridView {
-            width: parent.width; height: parent.height;
+        videos := VideoList {
+            x: 0px; y: 0px; width: parent.width; height: parent.height;
+            visible: Nav.tab < 3 || (Nav.tab == 3 && Nav.mine-detail);
         }
         if Nav.tab == 3 && !Nav.mine-detail: MinePanel {
             width: parent.width; height: parent.height;
@@ -40,10 +37,7 @@ export component HomePage inherits Rectangle {
         if Nav.tab == 4: SettingsPanel {
             width: parent.width; height: parent.height;
         }
-        if ((Nav.tab < 3 && Nav.view == 0) || (Nav.tab == 3 && Nav.mine-detail)) && ListModel.rows.length == 0: EmptyState {
-            width: parent.width; height: parent.height;
-        }
-        if Nav.view > 0 && Nav.tab < 3 && ListModel.grid-covers.length == 0: EmptyState {
+        if videos.visible && videos.empty: EmptyState {
             width: parent.width; height: parent.height;
         }
     }

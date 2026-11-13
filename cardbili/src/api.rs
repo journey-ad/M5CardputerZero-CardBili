@@ -104,12 +104,11 @@ pub fn rcmd(cookies: Option<&str>, page: u32) -> Result<Vec<Item>, String> {
     Ok(video_items(&v["data"]["item"]))
 }
 
+pub const HISTORY_URL: &str =
+    "https://api.bilibili.com/x/web-interface/history/cursor?max=0&view_at=0&business=";
+
 pub fn history(cookies: &str) -> Result<Vec<Item>, String> {
-    let v = cache::api_json(
-        "https://api.bilibili.com/x/web-interface/history/cursor?max=0&view_at=0&business=",
-        Some(cookies),
-        cache::TTL_LIST,
-    )?;
+    let v = cache::api_json(HISTORY_URL, Some(cookies), cache::TTL_LIST)?;
     if v["code"].as_i64() != Some(0) {
         return Err(api_err("历史记录", &v));
     }
@@ -194,9 +193,10 @@ pub fn fav(cookies: &str, mid: &str) -> Result<Vec<Item>, String> {
     Ok(out)
 }
 
-pub fn dynamic(cookies: &str) -> Result<Vec<Item>, String> {
-    let url = "https://api.bilibili.com/x/polymer/web-dynamic/v1/feed/all?type=video&page=1&features=itemOpusStyle,listOnlyfans,opusBigCover,onlyfansVote";
-    let v = cache::api_json(url, Some(cookies), cache::TTL_LIST)?;
+pub fn dynamic(cookies: &str, offset: &str) -> Result<model::DynamicPage, String> {
+    let params = net::query_string(&[("offset".into(), offset.into())]);
+    let url = format!("https://api.bilibili.com/x/polymer/web-dynamic/v1/feed/all?type=video&{params}&features=itemOpusStyle,listOnlyfans,opusBigCover,onlyfansVote");
+    let v = cache::api_json(&url, Some(cookies), cache::TTL_LIST)?;
     if v["code"].as_i64() != Some(0) {
         return Err(api_err("动态", &v));
     }
@@ -232,7 +232,16 @@ pub fn dynamic(cookies: &str) -> Result<Vec<Item>, String> {
             });
         }
     }
-    Ok(out)
+    let next = v["data"]["offset"].as_str().unwrap_or_default().to_string();
+    let more = &v["data"]["has_more"];
+    let has_more = (more.as_bool() == Some(true) || more.as_i64() == Some(1))
+        && !next.is_empty()
+        && next != offset;
+    Ok(model::DynamicPage {
+        items: out,
+        offset: next,
+        has_more,
+    })
 }
 
 pub fn play_info(bvid: &str, cookies: Option<&str>) -> Result<PlayInfo, String> {
@@ -516,4 +525,45 @@ pub fn uploader_videos(
         .map(|count| u64::from(page) * 20 < count)
         .unwrap_or(items.len() == 20);
     Ok(model::VideoPage { items, has_more })
+}
+
+pub fn followings(mid: &str, page: u32, cookies: &str) -> Result<model::FollowingPage, String> {
+    let params = net::query_string(&[
+        ("vmid".into(), mid.into()),
+        ("pn".into(), page.to_string()),
+        ("ps".into(), "20".into()),
+        ("order".into(), "desc".into()),
+        ("order_type".into(), String::new()),
+    ]);
+    let value = net::get_json(
+        &format!("https://api.bilibili.com/x/relation/followings?{params}"),
+        Some(cookies),
+    )?;
+    if value["code"].as_i64() != Some(0) {
+        return Err(api_err("我的关注", &value));
+    }
+    let items = value["data"]["list"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|user| {
+            let mid = user["mid"].as_i64()?.to_string();
+            Some(model::Following {
+                owner: Owner {
+                    mid,
+                    name: user["uname"].as_str().unwrap_or_default().into(),
+                },
+                signature: user["sign"]
+                    .as_str()
+                    .unwrap_or_default()
+                    .replace(['\n', '\r'], " "),
+            })
+        })
+        .collect::<Vec<_>>();
+    let has_more = !items.is_empty()
+        && value["data"]["total"]
+            .as_u64()
+            .map(|total| u64::from(page) * 20 < total)
+            .unwrap_or(items.len() == 20);
+    Ok(model::FollowingPage { items, has_more })
 }

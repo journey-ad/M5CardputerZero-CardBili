@@ -13,7 +13,7 @@ cardbili-dev/
 │   ├── src/                     main/model/api/util/tasks/app/player/net
 │   ├── ui/app.slint             全部界面
 │   ├── assets/                  方向三角图标 tri_*.png
-│   ├── fonts/                   zpix.ttf（实际使用）+ 其他中文字体
+│   ├── fonts/                   Fusion Pixel 8px 子集及 10px / 12px 完整字体
 │   └── syslib/libdl.a
 ├── skill/cardputer-zero/        可复用技能（SKILL.md + references + scripts）
 ├── docs/

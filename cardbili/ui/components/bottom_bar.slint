@@ -1,8 +1,7 @@
 // 菜单中心与实体 4–8 键对应，侧栏外的槽位由 Rust 分配
-import { Menu, Preferences } from "../state.slint";
+import { Menu } from "../state.slint";
 
 export component BottomBar inherits Rectangle {
-    x: Preferences.menu-position == 1 ? 56px : 0px;
     height: 20px;
     background: #121a2a;
 

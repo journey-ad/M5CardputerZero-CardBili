@@ -5,11 +5,6 @@ import { StatusBar } from "../components/status_bar.slint";
 import { Icon, Icons } from "../components/icons.slint";
 import { Player, Status, Danmaku, Preferences } from "../state.slint";
 
-// 弹幕文字的字号与字间距
-component DmGlyph inherits Text {
-    font-family: "Fusion Pixel 12px Prop zh-Hans"; font-size: 12px; letter-spacing: -0.5px; height: 14px; vertical-alignment: center;
-}
-
 export component PlayPage inherits Rectangle {
     width: 100%;
     height: 100%;
@@ -19,19 +14,12 @@ export component PlayPage inherits Rectangle {
         x: 0px; y: 0px; width: parent.width; height: parent.height;
         source: Player.frame; image-fit: contain;
     }
-    for row in Danmaku.rows: Rectangle {
-        x: row.x; y: row.y; width: row.w; height: 14px;
-        background: transparent;
+    // Fusion 12 字形和黑色描边已合成为整条弹幕图片
+    for row in Danmaku.rows: Image {
+        x: row.x; y: row.y; width: row.w; height: row.h;
+        source: row.img;
         visible: Danmaku.enabled;
         opacity: Preferences.danmaku-opacity / 100;
-        // 外部字体可用时，每条弹幕显示一张描边位图
-        if Danmaku.baked: Image { x: 0px; y: 0px; source: row.img; }
-        // 外部字体缺失时显示文字与半透明背景
-        if !Danmaku.baked: Rectangle {
-            x: 0px; y: 0px; width: row.w; height: 14px;
-            background: #00000066; border-radius: 2px;
-            DmGlyph { x: 2px; y: 0px; text: row.text; color: row.color; }
-        }
     }
     if !Player.has-frame: Text {
         x: 0px; y: parent.height / 2 - 8px; width: parent.width;
@@ -67,7 +55,7 @@ export component PlayPage inherits Rectangle {
         x: 0px; y: parent.height - self.height; width: parent.width;
     }
     if Player.triple-phase > 0: TripleAnimation {
-        x: (root.width - self.width) / 2; y: (root.height - self.height) / 2;
+        x: (root.width - self.width) / 2; y: (root.height - self.height) / 2 - 10px;
     }
     StatusBar { x: (parent.width - self.width) / 2; y: parent.height - 50px; }
 }

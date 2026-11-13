@@ -4,6 +4,7 @@ import { Icons } from "icons.slint";
 import { StatItem } from "stat_item.slint";
 
 export component ListView inherits Rectangle {
+    in property <bool> show-author: true;
     clip: true;
     for row[i] in ListModel.rows: Rectangle {
         x: 0px; y: (i - ListModel.first-row) * 30px;
@@ -20,11 +21,11 @@ export component ListView inherits Rectangle {
             }
         }
         HorizontalLayout {
-            x: 8px; y: 17px; width: parent.width - 16px; height: 12px; spacing: 4px;
+            x: 8px; y: 17px; width: parent.width - 16px; height: 12px; spacing: 4px; alignment: start;
             StatItem { icon: Icons.clock; value: row.duration; }
             StatItem { icon: Icons.play; value: row.views; }
             StatItem { icon: Icons.thumbs-up; value: row.likes; }
-            Rectangle {
+            if root.show-author: Rectangle {
                 horizontal-stretch: 1; min-width: 0px; preferred-width: 0px; clip: true;
                 Text {
                     x: 0px; y: 0px; width: parent.width; height: 12px;

@@ -1,9 +1,12 @@
-// 我的页：账号信息卡与历史、收藏入口
+// 我的页：账号信息卡与关注、历史、收藏入口
 import { Icon, Icons } from "icons.slint";
 import { Nav, ListModel, Account } from "../state.slint";
 
 export component MinePanel inherits Rectangle {
     clip: true;
+    Rectangle {
+    y: -max(0px, 52px + (Nav.sel + 1) * 36px - root.height);
+    width: parent.width; height: 160px;
 
     Rectangle { x: 6px; y: 4px; width: parent.width - 12px; height: 44px; background: #121a2a; border-radius: 6px; }
     if Account.has-avatar: Image { x: 12px; y: 10px; width: 32px; height: 32px; source: Account.avatar; image-fit: cover; }
@@ -12,13 +15,14 @@ export component MinePanel inherits Rectangle {
     Text { x: 52px; y: 23px; width: parent.width - 60px; height: 12px; text: Account.logged ? "UID " + Account.mid : (Account.known ? "请稍候" : "按 登录 键扫码登录"); color: #8b95a7; font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px; vertical-alignment: center; }
     if Account.logged: Text { x: 52px; y: 34px; width: parent.width - 60px; height: 11px; text: Account.level + "  " + Account.vip; color: #c9a0ff; font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px; vertical-alignment: center; }
 
-    for t[i] in ["历史观看", "我的收藏"]: Rectangle {
+    for t[i] in ["我的关注", "历史观看", "我的收藏"]: Rectangle {
         x: 6px; y: 52px + i * 36px; width: parent.width - 12px; height: 32px;
         background: i == Nav.sel ? #1f2b45 : #0f1623;
         border-radius: 4px;
-        Icon { x: 8px; y: 4px; width: 24px; height: 24px; source: i == 0 ? Icons.clock : Icons.bookmark; colorize: #7fb0ff; }
+        Icon { x: 8px; y: 4px; width: 24px; height: 24px; source: [Icons.user, Icons.clock, Icons.bookmark][i]; colorize: #7fb0ff; }
         Text { x: 40px; y: 0px; width: 112px; height: 32px; text: t; color: #e6ebf5; font-size: 12px; vertical-alignment: center; }
         Icon { x: parent.width - 22px; y: 10px; source: Icons.right; colorize: #6f7c92; }
-        Text { x: parent.width - 100px; y: 0px; width: 70px; height: 32px; text: i == 0 ? ListModel.history-count : ListModel.favorite-count; color: #6f7c92; font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px; horizontal-alignment: right; vertical-alignment: center; }
+        Text { x: parent.width - 100px; y: 0px; width: 70px; height: 32px; text: i == 0 ? "" : (i == 1 ? ListModel.history-count : ListModel.favorite-count); color: #6f7c92; font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px; horizontal-alignment: right; vertical-alignment: center; }
     }
+}
 }

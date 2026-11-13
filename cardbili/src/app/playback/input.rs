@@ -33,6 +33,9 @@ impl App {
             }
             _ => {}
         }
+        if matches!(k, "SPACE" | "ENTER" | "LEFT" | "z" | "RIGHT" | "c") {
+            self.report_history(true, false);
+        }
         if let Some(p) = self.player.as_mut() {
             match k {
                 "SPACE" | "ENTER" => {
@@ -79,10 +82,10 @@ impl App {
                     self.seek_deadline = Some(Instant::now() + Duration::from_millis(300));
                 }
                 "UP" | "f" | "w" => {
-                    p.vol_up();
+                    let _ = self.volume_queue.try_send(10);
                 }
                 "DOWN" | "x" | "s" => {
-                    p.vol_down();
+                    let _ = self.volume_queue.try_send(-10);
                 }
                 "u" => {
                     self.requested_uploader = self

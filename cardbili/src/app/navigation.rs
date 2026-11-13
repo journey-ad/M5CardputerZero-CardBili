@@ -10,12 +10,14 @@ pub(super) struct DetailDisplay {
 pub(super) struct UploaderState {
     pub(super) owner: model::Owner,
     pub(super) items: Vec<model::Item>,
+    pub(super) covers: Vec<Option<slint::Image>>,
     pub(super) page: u32,
     pub(super) has_more: bool,
     pub(super) loading: bool,
     pub(super) error: String,
     pub(super) selection: i32,
     pub(super) first_row: usize,
+    pub(super) grid_scroll: f64,
 }
 
 pub(super) enum BackTarget {
@@ -28,14 +30,15 @@ pub(super) enum BackTarget {
     Detail {
         bvid: String,
         display: Option<DetailDisplay>,
+        from_uploader: bool,
         scroll: f64,
     },
     Uploader(UploaderState),
+    Following(following::FollowingState),
     Play {
         info: model::PlayInfo,
         position: f64,
         paused: bool,
-        volume: i32,
         rate: f64,
         engine: Option<danmaku::Engine>,
     },
@@ -55,11 +58,20 @@ impl App {
             self.login_uploader = self.requested_uploader.take();
             self.requested_login = true;
         }
-        let navigating = self.requested_play.is_some()
+        if self.requested_following && self.cookies.is_none() {
+            self.requested_following = false;
+            self.login_following = true;
+            self.requested_login = true;
+        }
+        let navigating = self.requested_following
+            || self.requested_play.is_some()
             || self.requested_detail.is_some()
             || self.requested_uploader.is_some()
             || self.requested_login
             || self.requested_comments.is_some();
+        if navigating || self.go_back {
+            self.report_history(true, false);
+        }
         if navigating {
             let target = match self.page {
                 0 => Some(BackTarget::Home {
@@ -71,11 +83,14 @@ impl App {
                 3 => Some(BackTarget::Detail {
                     bvid: self.detail_bvid.clone(),
                     display: self.detail_display.clone(),
+                    from_uploader: self.detail_from_uploader,
                     scroll: self.detail_scroll,
                 }),
+                7 => Some(BackTarget::Following(std::mem::take(&mut self.following))),
                 5 => {
                     self.uploader.selection = self.sel;
                     self.uploader.first_row = self.first_row;
+                    self.uploader.grid_scroll = self.grid_scroll;
                     Some(BackTarget::Uploader(std::mem::take(&mut self.uploader)))
                 }
                 1 => self.current_play.take().map(|info| BackTarget::Play {
@@ -86,7 +101,6 @@ impl App {
                         .map(|player| player.position(self.frames_in_seg))
                         .unwrap_or(0.0),
                     paused: self.player.as_ref().is_some_and(|player| player.paused),
-                    volume: self.player.as_ref().map(|player| player.vol).unwrap_or(100),
                     rate: self
                         .player
                         .as_ref()
@@ -114,6 +128,7 @@ impl App {
             self.ui.set_bar_sticky(false);
             self.detail_request += 1;
             self.uploader_request += 1;
+            self.following_request += 1;
             self.current_play = None;
             self.danmaku = None;
             self.frames_in_seg = 0;
@@ -122,10 +137,20 @@ impl App {
             self.left_hold = None;
             self.right_hold = None;
             self.detail_hold = None;
+            self.scroll_tap = None;
             self.ui.set_has_frame(false);
             self.ui.set_paused(false);
-            self.ui
-                .set_dm_rows(ModelRc::new(VecModel::from(Vec::<crate::DmRow>::new())));
+            self.danmaku_view.clear();
+        }
+        if self.requested_following {
+            self.requested_following = false;
+            self.page = 7;
+            self.following = following::FollowingState {
+                has_more: true,
+                dirty: true,
+                ..Default::default()
+            };
+            self.load_following();
         }
         if let Some(aid) = self.requested_comments.take() {
             self.open_comments(aid);
@@ -154,6 +179,7 @@ impl App {
             );
         }
         if let Some((bvid, title)) = self.requested_detail.take() {
+            self.detail_from_uploader = self.page == 5;
             self.page = 3;
             self.detail_bvid = bvid.clone();
             self.detail_display = None;
@@ -181,6 +207,7 @@ impl App {
             };
             self.sel = 0;
             self.first_row = 0;
+            self.grid_scroll = 0.0;
             self.uploader_dirty = true;
             tasks::load_uploader(
                 self.uploader.owner.mid.clone(),
@@ -210,12 +237,15 @@ impl App {
                 Some(BackTarget::Detail {
                     bvid,
                     display,
+                    from_uploader,
                     scroll,
                 }) => {
                     self.page = 3;
                     self.detail_bvid = bvid;
                     self.detail_scroll = scroll;
                     self.detail_display = display;
+                    self.detail_from_uploader = from_uploader;
+                    self.marq_t = 0.0;
                     self.ui.set_detail_bvid(self.detail_bvid.as_str().into());
                     if let Some(display) = &self.detail_display {
                         show_detail(&self.ui, display);
@@ -230,13 +260,31 @@ impl App {
                     }
                     self.ui.set_detail_scroll(self.detail_scroll as f32);
                 }
+                Some(BackTarget::Following(previous)) => {
+                    self.page = 7;
+                    self.following = previous;
+                    self.following.loading = false;
+                    self.following.dirty = true;
+                }
                 Some(BackTarget::Uploader(previous)) => {
                     self.page = 5;
                     self.uploader = previous;
                     self.sel = self.uploader.selection;
                     self.first_row = self.uploader.first_row;
+                    self.grid_scroll = self.uploader.grid_scroll;
                     self.uploader.loading = false;
                     self.uploader_dirty = true;
+                    let missing_covers = self
+                        .uploader
+                        .items
+                        .iter()
+                        .zip(&self.uploader.covers)
+                        .filter(|(_, cover)| cover.is_none())
+                        .map(|(item, _)| item.clone())
+                        .collect::<Vec<_>>();
+                    if !missing_covers.is_empty() {
+                        tasks::spawn_covers(5, missing_covers, self.tx.clone());
+                    }
                     if self.uploader.items.is_empty() {
                         self.uploader.loading = true;
                         tasks::load_uploader(
@@ -252,7 +300,6 @@ impl App {
                     info,
                     position,
                     paused,
-                    volume,
                     rate,
                     engine,
                 }) => {
@@ -266,7 +313,6 @@ impl App {
                         player::PlaybackState {
                             position,
                             paused,
-                            volume,
                             rate,
                         },
                     ));

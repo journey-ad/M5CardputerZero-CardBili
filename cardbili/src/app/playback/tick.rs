@@ -3,6 +3,7 @@ use super::super::*;
 impl App {
     pub(in crate::app) fn tick(&mut self) {
         self.tick_like();
+        self.report_history(false, false);
         // 方向键停止输入 300ms 后提交跳转并显示加载状态
         if let Some(dl) = self.seek_deadline {
             if Instant::now() >= dl {
@@ -15,12 +16,8 @@ impl App {
                         .as_ref()
                         .filter(|_| self.settings.danmaku_enabled)
                     {
-                        render_danmaku(
-                            &self.ui,
-                            engine,
-                            pp.position(self.frames_in_seg),
-                            &mut self.dm_cache,
-                        );
+                        self.danmaku_view
+                            .update(engine, pp.position(self.frames_in_seg));
                     }
                     self.ui.set_status("加载中…".into());
                     self.ui.set_has_frame(false);

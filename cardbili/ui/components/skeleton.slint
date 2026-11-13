@@ -1,0 +1,12 @@
+export component Skeleton inherits Rectangle {
+    in property <float> phase;
+    background: #172237;
+    border-radius: 2px;
+    clip: true;
+
+    Rectangle {
+        x: -40px + (root.width + 40px) * root.phase;
+        y: 0px; width: 40px; height: parent.height;
+        background: @linear-gradient(90deg, #7fb0ff00, #7fb0ff30, #7fb0ff00);
+    }
+}

@@ -9,6 +9,7 @@ pub struct Settings {
     pub danmaku_enabled: bool,
     pub danmaku_opacity: i32,
     pub menu_position: i32,
+    pub record_history: bool,
 }
 
 impl Default for Settings {
@@ -18,6 +19,7 @@ impl Default for Settings {
             danmaku_enabled: true,
             danmaku_opacity: 90,
             menu_position: 0,
+            record_history: true,
         }
     }
 }
