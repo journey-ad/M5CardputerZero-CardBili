@@ -1,6 +1,50 @@
 use super::*;
 
 impl App {
+    pub(super) fn load_author_profile(&self) {
+        if let model::VideoSource::Author(owner) = &self.collection.source {
+            tasks::load_author_profile(
+                owner.mid.clone(),
+                self.cookies.clone(),
+                self.collection_request,
+                self.tx.clone(),
+            );
+        }
+    }
+
+    pub(super) fn sync_collection_header(&self) {
+        let model::VideoSource::Author(owner) = &self.collection.source else {
+            self.ui.set_collection_is_author(false);
+            return;
+        };
+        self.ui.set_collection_is_author(true);
+        let profile = self.collection.profile.as_ref();
+        self.ui.set_collection_name(
+            profile
+                .map(|profile| profile.name.as_str())
+                .unwrap_or(&owner.name)
+                .into(),
+        );
+        self.ui.set_collection_uid(owner.mid.as_str().into());
+        self.ui.set_collection_level(
+            profile
+                .map(|profile| format!("Lv{}", profile.level))
+                .unwrap_or_default()
+                .into(),
+        );
+        self.ui.set_collection_followers(
+            profile
+                .map(|profile| format!("粉丝 {}", model::fmt_num(profile.followers)))
+                .unwrap_or_default()
+                .into(),
+        );
+        self.ui
+            .set_collection_has_avatar(self.collection.avatar.is_some());
+        if let Some(avatar) = &self.collection.avatar {
+            self.ui.set_collection_avatar(avatar.clone());
+        }
+    }
+
     pub(super) fn page_key(&mut self, k: &str) {
         if self.page == 7 {
             self.following_key(k);
@@ -44,6 +88,11 @@ impl App {
                         .map(|display| display.data.owner.clone())
                         .filter(|owner| !owner.mid.is_empty());
                 }
+                "r" => {
+                    if !self.detail_bvid.is_empty() {
+                        self.requested_related = Some(self.detail_bvid.clone());
+                    }
+                }
                 "ESC" | "BACKSPACE" => {
                     self.go_back = true;
                 }
@@ -65,33 +114,36 @@ impl App {
             match k {
                 "ENTER" => {
                     self.requested_play = self
-                        .uploader
+                        .collection
                         .items
                         .get(self.sel as usize)
                         .map(|item| item.bvid.clone())
                 }
                 "SPACE" => {
                     self.requested_detail = self
-                        .uploader
+                        .collection
                         .items
                         .get(self.sel as usize)
                         .map(|item| (item.bvid.clone(), item.title.clone()))
                 }
                 "r" => {
-                    self.uploader_request += 1;
-                    self.uploader.loading = true;
-                    self.uploader.error.clear();
-                    tasks::load_uploader(
-                        self.uploader.owner.mid.clone(),
-                        if self.uploader.items.is_empty() {
+                    self.collection_request += 1;
+                    self.collection.loading = true;
+                    self.collection.error.clear();
+                    tasks::load_collection(
+                        self.collection.source.clone(),
+                        if self.collection.items.is_empty() {
                             1
                         } else {
-                            self.uploader.page + 1
+                            self.collection.page + 1
                         },
                         self.cookies.clone(),
-                        self.uploader_request,
+                        self.collection_request,
                         self.tx.clone(),
                     );
+                    if self.collection.profile.is_none() {
+                        self.load_author_profile();
+                    }
                 }
                 "ESC" | "BACKSPACE" => self.go_back = true,
                 _ => {}

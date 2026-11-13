@@ -34,7 +34,8 @@ pub enum Msg {
     Acct(model::Account, Vec<u8>),
     Detail(u64, model::Detail, u32, u32, Vec<u8>),
     DetailError(u64, String),
-    Uploader(u64, u32, Result<model::VideoPage, String>),
+    Collection(u64, u32, Result<model::VideoPage, String>),
+    AuthorProfile(u64, Result<(model::AuthorProfile, Vec<u8>), String>),
     Stats(String, Result<model::VideoStats, String>),
 }
 

@@ -32,7 +32,7 @@ impl App {
             return;
         }
         let video_len = if self.page == 5 {
-            Some(self.uploader.items.len())
+            Some(self.collection.items.len())
         } else if self.page == 0 {
             list_source(self.tab, self.mine_detail).map(|source| self.lists[source].len())
         } else {

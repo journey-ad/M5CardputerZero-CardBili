@@ -130,16 +130,33 @@ pub fn start_play(bvid: String, cookies: Option<String>, request: u64, tx: Sende
     });
 }
 
-pub fn load_uploader(
-    mid: String,
+pub fn load_collection(
+    source: crate::model::VideoSource,
     page: u32,
     cookies: Option<String>,
     request: u64,
     tx: Sender<Msg>,
 ) {
     thread::spawn(move || {
-        let result = api::uploader_videos(&mid, page, cookies.as_deref());
-        let _ = tx.send(Msg::Uploader(request, page, result));
+        let result = match source {
+            crate::model::VideoSource::Author(owner) => {
+                api::uploader_videos(&owner.mid, page, cookies.as_deref())
+            }
+            crate::model::VideoSource::Related(bvid) => {
+                api::related_videos(&bvid, cookies.as_deref())
+            }
+        };
+        let _ = tx.send(Msg::Collection(request, page, result));
+    });
+}
+
+pub fn load_author_profile(mid: String, cookies: Option<String>, request: u64, tx: Sender<Msg>) {
+    thread::spawn(move || {
+        let result = api::author_profile(&mid, cookies.as_deref()).map(|profile| {
+            let avatar = net::curl_bytes(&profile.face).unwrap_or_default();
+            (profile, avatar)
+        });
+        let _ = tx.send(Msg::AuthorProfile(request, result));
     });
 }
 

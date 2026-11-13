@@ -55,6 +55,7 @@ pub(super) struct App {
     pub(super) current_play: Option<model::PlayInfo>,
     pub(super) requested_play: Option<String>,
     pub(super) requested_uploader: Option<model::Owner>,
+    pub(super) requested_related: Option<String>,
     pub(super) requested_login: bool,
     pub(super) login_request: u64,
     pub(super) login_uploader: Option<model::Owner>,
@@ -64,9 +65,9 @@ pub(super) struct App {
     pub(super) following_request: u64,
     pub(super) requested_following: bool,
     pub(super) login_following: bool,
-    pub(super) uploader: UploaderState,
-    pub(super) uploader_request: u64,
-    pub(super) uploader_dirty: bool,
+    pub(super) collection: CollectionState,
+    pub(super) collection_request: u64,
+    pub(super) collection_dirty: bool,
     pub(super) back_stack: Vec<BackTarget>,
     pub(super) first_row: usize,
     pub(super) grid_scroll: f64,
@@ -163,9 +164,9 @@ impl App {
         let requested_login = false;
         let mut login_request = 0u64;
         let login_uploader: Option<model::Owner> = None;
-        let uploader = UploaderState::default();
-        let uploader_request = 0u64;
-        let uploader_dirty = false;
+        let collection = CollectionState::default();
+        let collection_request = 0u64;
+        let collection_dirty = false;
         let back_stack: Vec<BackTarget> = Vec::new();
         let first_row = 0usize;
         let grid_scroll = 0.0f64;
@@ -282,6 +283,7 @@ impl App {
             current_play,
             requested_play,
             requested_uploader,
+            requested_related: None,
             requested_login,
             login_request,
             login_uploader,
@@ -291,9 +293,9 @@ impl App {
             following_request: 0,
             requested_following: false,
             login_following: false,
-            uploader,
-            uploader_request,
-            uploader_dirty,
+            collection,
+            collection_request,
+            collection_dirty,
             back_stack,
             first_row,
             grid_scroll,

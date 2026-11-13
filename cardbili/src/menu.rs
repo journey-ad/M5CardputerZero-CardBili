@@ -5,6 +5,8 @@ pub enum Action {
     Help,
     Back,
     Works,
+    Author,
+    Related,
     Play,
     Detail,
     Retry,
@@ -23,6 +25,8 @@ impl Action {
             Self::Help => "说明",
             Self::Back => "返回",
             Self::Works => "作品",
+            Self::Author => "作者",
+            Self::Related => "相关",
             Self::Play => "播放",
             Self::Detail => "详情",
             Self::Retry => "重试",
@@ -41,6 +45,8 @@ impl Action {
             Self::Help => "h",
             Self::Back => "ESC",
             Self::Works => "u",
+            Self::Author => "u",
+            Self::Related => "r",
             Self::Play => "ENTER",
             Self::Detail | Self::TogglePlay => "SPACE",
             Self::Like => "l",
@@ -93,7 +99,8 @@ pub fn actions(
             ]
         }
         3 => {
-            slots[first] = Some(Works);
+            slots[1] = Some(Author);
+            slots[2] = Some(Related);
             slots[last] = Some(Back);
         }
         2 => {

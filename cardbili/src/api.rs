@@ -527,6 +527,37 @@ pub fn uploader_videos(
     Ok(model::VideoPage { items, has_more })
 }
 
+pub fn related_videos(bvid: &str, cookies: Option<&str>) -> Result<model::VideoPage, String> {
+    let query = net::query_string(&[("bvid".into(), bvid.into())]);
+    let url = format!("https://api.bilibili.com/x/web-interface/archive/related?{query}");
+    let value = cache::api_json(&url, cookies, cache::TTL_LIST)?;
+    if value["code"].as_i64() != Some(0) {
+        return Err(api_err("相关推荐", &value));
+    }
+    Ok(model::VideoPage {
+        items: video_items(&value["data"]),
+        has_more: false,
+    })
+}
+
+pub fn author_profile(mid: &str, cookies: Option<&str>) -> Result<model::AuthorProfile, String> {
+    let query = net::query_string(&[("mid".into(), mid.into()), ("photo".into(), "false".into())]);
+    let url = format!("https://api.bilibili.com/x/web-interface/card?{query}");
+    let value = cache::api_json(&url, cookies, cache::TTL_DETAIL)?;
+    if value["code"].as_i64() != Some(0) {
+        return Err(api_err("作者资料", &value));
+    }
+    let card = &value["data"]["card"];
+    Ok(model::AuthorProfile {
+        name: card["name"].as_str().unwrap_or_default().into(),
+        face: card["face"].as_str().unwrap_or_default().into(),
+        level: card["level_info"]["current_level"]
+            .as_i64()
+            .unwrap_or_default(),
+        followers: value["data"]["follower"].as_i64().unwrap_or_default(),
+    })
+}
+
 pub fn followings(mid: &str, page: u32, cookies: &str) -> Result<model::FollowingPage, String> {
     let params = net::query_string(&[
         ("vmid".into(), mid.into()),

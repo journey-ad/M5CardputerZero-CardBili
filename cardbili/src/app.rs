@@ -20,7 +20,7 @@ use crate::settings::Settings;
 use crate::{danmaku, menu, model, player, tasks, util, AppWindow, Cmt, Msg, VideoRow};
 use components::*;
 use detail::{show_detail, show_detail_loading, sync_thumb};
-use navigation::{BackTarget, DetailDisplay, UploaderState};
+use navigation::{BackTarget, CollectionState, DetailDisplay};
 use slint::{ComponentHandle, ModelRc, Rgb8Pixel, VecModel};
 use state::App;
 use std::collections::{HashMap, HashSet};

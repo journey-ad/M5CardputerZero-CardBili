@@ -16,6 +16,25 @@ pub struct Owner {
     pub name: String,
 }
 
+#[derive(Clone)]
+pub enum VideoSource {
+    Author(Owner),
+    Related(String),
+}
+
+impl Default for VideoSource {
+    fn default() -> Self {
+        Self::Author(Owner::default())
+    }
+}
+
+pub struct AuthorProfile {
+    pub name: String,
+    pub face: String,
+    pub level: i64,
+    pub followers: i64,
+}
+
 pub struct VideoStats {
     pub views: String,
     pub likes: String,

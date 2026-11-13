@@ -341,14 +341,14 @@ impl App {
                     }
                 } else if t == 5 {
                     if let Some(index) = self
-                        .uploader
+                        .collection
                         .items
                         .iter()
                         .position(|item| item.bvid == bvid)
                     {
-                        if let Some(cover) = self.uploader.covers.get_mut(index) {
+                        if let Some(cover) = self.collection.covers.get_mut(index) {
                             *cover = Some(util::raw_to_image(w, h, &raw));
-                            self.uploader_dirty = true;
+                            self.collection_dirty = true;
                         }
                     }
                 }
@@ -375,54 +375,66 @@ impl App {
                     self.ui.set_detail_error(error.into());
                 }
             }
-            Msg::Uploader(request, loaded_page, result) => {
-                if self.page != 5 || request != self.uploader_request {
+            Msg::AuthorProfile(request, result) => {
+                if self.page != 5 || request != self.collection_request {
                     return;
                 }
-                self.uploader.loading = false;
+                match result {
+                    Ok((profile, raw)) => {
+                        self.collection.avatar = util::decode_avatar(&raw);
+                        self.collection.profile = Some(profile);
+                    }
+                    Err(error) => eprintln!("{error}"),
+                }
+            }
+            Msg::Collection(request, loaded_page, result) => {
+                if self.page != 5 || request != self.collection_request {
+                    return;
+                }
+                self.collection.loading = false;
                 match result {
                     Ok(videos) => {
                         if loaded_page == 1 {
-                            self.uploader.items.clear();
-                            self.uploader.covers.clear();
+                            self.collection.items.clear();
+                            self.collection.covers.clear();
                         }
                         let mut known: HashSet<String> = self
-                            .uploader
+                            .collection
                             .items
                             .iter()
                             .map(|item| item.bvid.clone())
                             .collect();
-                        let previous_len = self.uploader.items.len();
-                        self.uploader.items.extend(
+                        let previous_len = self.collection.items.len();
+                        self.collection.items.extend(
                             videos
                                 .items
                                 .into_iter()
                                 .filter(|item| known.insert(item.bvid.clone())),
                         );
-                        self.uploader
+                        self.collection
                             .covers
-                            .resize_with(self.uploader.items.len(), || None);
+                            .resize_with(self.collection.items.len(), || None);
                         tasks::spawn_covers(
                             5,
-                            self.uploader.items[previous_len..].to_vec(),
+                            self.collection.items[previous_len..].to_vec(),
                             self.tx.clone(),
                         );
-                        self.uploader.page = loaded_page;
-                        self.uploader.has_more =
-                            videos.has_more && self.uploader.items.len() > previous_len;
-                        self.uploader.error.clear();
+                        self.collection.page = loaded_page;
+                        self.collection.has_more =
+                            videos.has_more && self.collection.items.len() > previous_len;
+                        self.collection.error.clear();
                     }
                     Err(error) => {
-                        self.uploader.error = error;
+                        self.collection.error = error;
                     }
                 }
-                self.uploader_dirty = true;
+                self.collection_dirty = true;
             }
             Msg::Stats(bvid, result) => {
                 if let Ok(stats) = result {
                     self.stats_cache.insert(bvid, stats);
                     self.home_dirty = true;
-                    self.uploader_dirty = true;
+                    self.collection_dirty = true;
                 }
             }
         }

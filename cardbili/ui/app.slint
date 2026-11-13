@@ -1,12 +1,12 @@
 // 主窗口通过双向绑定向 Rust 暴露全局状态
 import { Cmt, DmRow, VideoRow } from "common.slint";
-import { Nav, ListModel, Status, Account, Player, Danmaku, Detail, Login, Meta, Preferences, Uploader, Menu, Comments } from "state.slint";
+import { Nav, ListModel, Status, Account, Player, Danmaku, Detail, Login, Meta, Preferences, Collection, Menu, Comments } from "state.slint";
 import { BottomBar } from "components/bottom_bar.slint";
 import { HomePage } from "pages/home.slint";
 import { PlayPage } from "pages/play.slint";
 import { LoginPage } from "pages/login.slint";
 import { DetailPage } from "pages/detail.slint";
-import { UploaderPage } from "pages/uploader.slint";
+import { CollectionPage } from "pages/collection.slint";
 import { CommentsPage } from "pages/comments.slint";
 import { FollowingPage } from "pages/following.slint";
 import { AboutPage } from "pages/about.slint";
@@ -93,9 +93,15 @@ export component AppWindow inherits Window {
     in-out property <int> danmaku-opacity <=> Preferences.danmaku-opacity;
     in-out property <int> menu-position <=> Preferences.menu-position;
     in-out property <bool> record-history <=> Preferences.record-history;
-    in-out property <string> uploader-name <=> Uploader.name;
-    in-out property <bool> uploader-loading <=> Uploader.loading;
-    in-out property <string> uploader-error <=> Uploader.error;
+    in-out property <string> collection-name <=> Collection.name;
+    in-out property <bool> collection-is-author <=> Collection.is-author;
+    in-out property <string> collection-uid <=> Collection.uid;
+    in-out property <string> collection-level <=> Collection.level;
+    in-out property <string> collection-followers <=> Collection.followers;
+    in-out property <image> collection-avatar <=> Collection.avatar;
+    in-out property <bool> collection-has-avatar <=> Collection.has-avatar;
+    in-out property <bool> collection-loading <=> Collection.loading;
+    in-out property <string> collection-error <=> Collection.error;
     in-out property <bool> detail-loading <=> Detail.loading;
     in-out property <string> detail-error <=> Detail.error;
     in-out property <string> version <=> Meta.version;
@@ -128,7 +134,7 @@ export component AppWindow inherits Window {
     if page == 2: LoginPage {}
     detail-page := DetailPage { visible: page == 3; }
     about-page := AboutPage { visible: page == 4; }
-    if page == 5: UploaderPage {}
+    if page == 5: CollectionPage {}
     comments-page := CommentsPage { visible: page == 6; }
     if page == 7: FollowingPage {
         rows: root.following-rows; selected: root.following-selected;

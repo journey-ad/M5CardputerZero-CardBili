@@ -7,8 +7,10 @@ pub(super) struct DetailDisplay {
 }
 
 #[derive(Default)]
-pub(super) struct UploaderState {
-    pub(super) owner: model::Owner,
+pub(super) struct CollectionState {
+    pub(super) source: model::VideoSource,
+    pub(super) profile: Option<model::AuthorProfile>,
+    pub(super) avatar: Option<slint::Image>,
     pub(super) items: Vec<model::Item>,
     pub(super) covers: Vec<Option<slint::Image>>,
     pub(super) page: u32,
@@ -33,7 +35,7 @@ pub(super) enum BackTarget {
         from_uploader: bool,
         scroll: f64,
     },
-    Uploader(UploaderState),
+    Collection(CollectionState),
     Following(following::FollowingState),
     Play {
         info: model::PlayInfo,
@@ -46,6 +48,8 @@ pub(super) enum BackTarget {
 
 impl App {
     pub(super) fn navigate(&mut self) {
+        let from_uploader =
+            self.page == 5 && matches!(self.collection.source, model::VideoSource::Author(_));
         if self.settings_changed {
             self.settings.list_view = self.view;
             if let Err(error) = self.settings.save() {
@@ -67,6 +71,7 @@ impl App {
             || self.requested_play.is_some()
             || self.requested_detail.is_some()
             || self.requested_uploader.is_some()
+            || self.requested_related.is_some()
             || self.requested_login
             || self.requested_comments.is_some();
         if navigating || self.go_back {
@@ -88,10 +93,10 @@ impl App {
                 }),
                 7 => Some(BackTarget::Following(std::mem::take(&mut self.following))),
                 5 => {
-                    self.uploader.selection = self.sel;
-                    self.uploader.first_row = self.first_row;
-                    self.uploader.grid_scroll = self.grid_scroll;
-                    Some(BackTarget::Uploader(std::mem::take(&mut self.uploader)))
+                    self.collection.selection = self.sel;
+                    self.collection.first_row = self.first_row;
+                    self.collection.grid_scroll = self.grid_scroll;
+                    Some(BackTarget::Collection(std::mem::take(&mut self.collection)))
                 }
                 1 => self.current_play.take().map(|info| BackTarget::Play {
                     info,
@@ -127,7 +132,7 @@ impl App {
             self.ui.set_bar("".into());
             self.ui.set_bar_sticky(false);
             self.detail_request += 1;
-            self.uploader_request += 1;
+            self.collection_request += 1;
             self.following_request += 1;
             self.current_play = None;
             self.danmaku = None;
@@ -179,7 +184,7 @@ impl App {
             );
         }
         if let Some((bvid, title)) = self.requested_detail.take() {
-            self.detail_from_uploader = self.page == 5;
+            self.detail_from_uploader = from_uploader;
             self.page = 3;
             self.detail_bvid = bvid.clone();
             self.detail_display = None;
@@ -197,10 +202,19 @@ impl App {
                 self.tx.clone(),
             );
         }
-        if let Some(owner) = self.requested_uploader.take() {
+        let collection_source = self
+            .requested_uploader
+            .take()
+            .map(model::VideoSource::Author)
+            .or_else(|| {
+                self.requested_related
+                    .take()
+                    .map(model::VideoSource::Related)
+            });
+        if let Some(source) = collection_source {
             self.page = 5;
-            self.uploader = UploaderState {
-                owner,
+            self.collection = CollectionState {
+                source,
                 loading: true,
                 has_more: true,
                 ..Default::default()
@@ -208,14 +222,15 @@ impl App {
             self.sel = 0;
             self.first_row = 0;
             self.grid_scroll = 0.0;
-            self.uploader_dirty = true;
-            tasks::load_uploader(
-                self.uploader.owner.mid.clone(),
+            self.collection_dirty = true;
+            tasks::load_collection(
+                self.collection.source.clone(),
                 1,
                 self.cookies.clone(),
-                self.uploader_request,
+                self.collection_request,
                 self.tx.clone(),
             );
+            self.load_author_profile();
         }
         if self.go_back {
             match self.back_stack.pop() {
@@ -266,34 +281,37 @@ impl App {
                     self.following.loading = false;
                     self.following.dirty = true;
                 }
-                Some(BackTarget::Uploader(previous)) => {
+                Some(BackTarget::Collection(previous)) => {
                     self.page = 5;
-                    self.uploader = previous;
-                    self.sel = self.uploader.selection;
-                    self.first_row = self.uploader.first_row;
-                    self.grid_scroll = self.uploader.grid_scroll;
-                    self.uploader.loading = false;
-                    self.uploader_dirty = true;
+                    self.collection = previous;
+                    self.sel = self.collection.selection;
+                    self.first_row = self.collection.first_row;
+                    self.grid_scroll = self.collection.grid_scroll;
+                    self.collection.loading = false;
+                    self.collection_dirty = true;
                     let missing_covers = self
-                        .uploader
+                        .collection
                         .items
                         .iter()
-                        .zip(&self.uploader.covers)
+                        .zip(&self.collection.covers)
                         .filter(|(_, cover)| cover.is_none())
                         .map(|(item, _)| item.clone())
                         .collect::<Vec<_>>();
                     if !missing_covers.is_empty() {
                         tasks::spawn_covers(5, missing_covers, self.tx.clone());
                     }
-                    if self.uploader.items.is_empty() {
-                        self.uploader.loading = true;
-                        tasks::load_uploader(
-                            self.uploader.owner.mid.clone(),
+                    if self.collection.items.is_empty() {
+                        self.collection.loading = true;
+                        tasks::load_collection(
+                            self.collection.source.clone(),
                             1,
                             self.cookies.clone(),
-                            self.uploader_request,
+                            self.collection_request,
                             self.tx.clone(),
                         );
+                    }
+                    if self.collection.profile.is_none() {
+                        self.load_author_profile();
                     }
                 }
                 Some(BackTarget::Play {

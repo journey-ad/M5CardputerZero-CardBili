@@ -5,6 +5,9 @@ impl App {
         if self.page != 0 && self.page != 5 {
             return;
         }
+        if self.page == 5 {
+            self.sync_collection_header();
+        }
 
         // 选中项保持在当前页面范围内
         if self.page == 0 {
@@ -62,24 +65,27 @@ impl App {
             }
         }
 
-        let uploader = self.page == 5;
-        let source = if uploader {
+        let collection = self.page == 5;
+        let source = if collection {
             5
         } else if let Some(source) = list_source(self.tab, self.mine_detail) {
             source
         } else {
             return;
         };
-        let content_width = if uploader || self.settings.menu_position == 0 {
+        let content_width = if collection || self.settings.menu_position == 0 {
             320.0
         } else {
             264.0
         };
-        let content_height = if uploader || self.settings.menu_position == 0 {
-            126.0
-        } else {
-            150.0
-        };
+        let content_height =
+            if collection && matches!(self.collection.source, model::VideoSource::Author(_)) {
+                114.0
+            } else if collection || self.settings.menu_position == 0 {
+                126.0
+            } else {
+                150.0
+            };
         let columns = video_columns(self.view);
         let cell_height = if self.view == 2 { 113.0 } else { 84.0 };
         let context = (
@@ -95,8 +101,8 @@ impl App {
             }
             self.scroll_context = Some(context);
         }
-        let (items, covers) = if uploader {
-            (&self.uploader.items, &self.uploader.covers)
+        let (items, covers) = if collection {
+            (&self.collection.items, &self.collection.covers)
         } else {
             (&self.lists[source], &self.covers[source])
         };
@@ -162,26 +168,24 @@ impl App {
                 self.stats_requested.insert(item.bvid.clone());
             }
         }
-        if uploader {
-            if !self.uploader.loading
-                && self.uploader.error.is_empty()
-                && self.uploader.has_more
+        if collection {
+            if !self.collection.loading
+                && self.collection.error.is_empty()
+                && self.collection.has_more
                 && selected + visible_count >= items.len()
             {
-                self.uploader.loading = true;
-                tasks::load_uploader(
-                    self.uploader.owner.mid.clone(),
-                    self.uploader.page + 1,
+                self.collection.loading = true;
+                tasks::load_collection(
+                    self.collection.source.clone(),
+                    self.collection.page + 1,
                     self.cookies.clone(),
-                    self.uploader_request,
+                    self.collection_request,
                     self.tx.clone(),
                 );
             }
+            self.ui.set_collection_loading(self.collection.loading);
             self.ui
-                .set_uploader_name(self.uploader.owner.name.as_str().into());
-            self.ui.set_uploader_loading(self.uploader.loading);
-            self.ui
-                .set_uploader_error(self.uploader.error.as_str().into());
+                .set_collection_error(self.collection.error.as_str().into());
         }
 
         // 列表标题跑马灯
@@ -202,15 +206,15 @@ impl App {
             grid_start,
             self.settings.menu_position,
         );
-        let dirty = if uploader {
-            self.uploader_dirty
+        let dirty = if collection {
+            self.collection_dirty
         } else {
             self.home_dirty
         };
         if dirty || self.home_view != Some(current_view) {
             self.home_view = Some(current_view);
-            if uploader {
-                self.uploader_dirty = false;
+            if collection {
+                self.collection_dirty = false;
             } else {
                 self.home_dirty = false;
             }

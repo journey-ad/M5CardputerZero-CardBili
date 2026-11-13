@@ -187,8 +187,10 @@ pub fn api_json_with(
             s.chars().take(200).collect::<String>()
         )
     })?;
-    write_atomic(&path, s.as_bytes());
-    enforce_limit(&api_dir(), API_MAX);
+    if v["code"].as_i64() == Some(0) {
+        write_atomic(&path, s.as_bytes());
+        enforce_limit(&api_dir(), API_MAX);
+    }
     Ok(v)
 }
 

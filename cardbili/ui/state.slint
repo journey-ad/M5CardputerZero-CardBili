@@ -116,8 +116,14 @@ export global Meta {
     in-out property <length> about-scroll: 0px;
 }
 
-export global Uploader {
+export global Collection {
+    in-out property <bool> is-author: false;
     in-out property <string> name: "";
+    in-out property <string> uid: "";
+    in-out property <string> level: "";
+    in-out property <string> followers: "";
+    in-out property <image> avatar;
+    in-out property <bool> has-avatar: false;
     in-out property <bool> loading: false;
     in-out property <string> error: "";
 }

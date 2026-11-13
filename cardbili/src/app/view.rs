@@ -86,7 +86,7 @@ impl App {
         let retry = match self.page {
             6 => !self.comment_page.error.is_empty(),
             7 => !self.following.error.is_empty(),
-            _ => !self.uploader.error.is_empty(),
+            _ => !self.collection.error.is_empty(),
         };
         let mut actions = menu::actions(
             self.page,
@@ -99,7 +99,7 @@ impl App {
         );
         if self.page == 3 && self.detail_from_uploader {
             for action in &mut actions {
-                if *action == Some(menu::Action::Works) {
+                if *action == Some(menu::Action::Author) {
                     *action = Some(menu::Action::Play);
                 }
             }
