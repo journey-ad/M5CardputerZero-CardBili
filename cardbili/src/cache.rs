@@ -8,10 +8,10 @@ use serde_json::Value;
 use crate::net;
 
 // 接口数据缓存有效期（秒）
-pub const TTL_LIST: u64 = 300;
-pub const TTL_DETAIL: u64 = 600;
-pub const TTL_PLAYURL: u64 = 300;
-pub const TTL_REPLY: u64 = 300;
+pub const TTL_LIST: u64 = 60;
+pub const TTL_DETAIL: u64 = 120;
+pub const TTL_PLAYURL: u64 = 120;
+pub const TTL_REPLY: u64 = 120;
 
 // 缩略图缓存文件上限
 const IMG_MAX: usize = 256;
@@ -19,6 +19,19 @@ const IMG_MAX: usize = 256;
 const API_MAX: usize = 512;
 
 static SEQ: AtomicUsize = AtomicUsize::new(0);
+
+thread_local! {
+    static FORCE: std::cell::Cell<bool> = std::cell::Cell::new(false);
+}
+
+// 当前线程是否强制跳过缓存读取（手动刷新用）
+pub fn set_force(v: bool) {
+    FORCE.with(|f| f.set(v));
+}
+
+fn force_on() -> bool {
+    FORCE.with(|f| f.get())
+}
 
 fn base() -> PathBuf {
     std::env::temp_dir().join("cardbili-cache")
@@ -103,11 +116,13 @@ pub fn api_json(url: &str, cookies: Option<&str>, ttl: u64) -> Result<Value, Str
     init();
     let tag = if cookies.map(|c| !c.is_empty()).unwrap_or(false) { "u" } else { "a" };
     let path = api_dir().join(format!("{}.json", key_of(&format!("{}\n{}", url, tag))));
-    if let Ok(s) = fs::read_to_string(&path) {
-        if now().saturating_sub(mtime(&path)) <= ttl {
-            if let Ok(v) = serde_json::from_str::<Value>(&s) {
-                touch(&path);
-                return Ok(v);
+    if !force_on() {
+        if let Ok(s) = fs::read_to_string(&path) {
+            if now().saturating_sub(mtime(&path)) <= ttl {
+                if let Ok(v) = serde_json::from_str::<Value>(&s) {
+                    touch(&path);
+                    return Ok(v);
+                }
             }
         }
     }

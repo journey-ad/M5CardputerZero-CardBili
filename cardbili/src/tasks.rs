@@ -4,8 +4,9 @@ use std::time::Duration;
 
 use crate::{api, net, util, Msg};
 
-pub fn load_list(tab: usize, cookies: Option<String>, mid: String, tx: Sender<Msg>) {
+pub fn load_list(tab: usize, cookies: Option<String>, mid: String, tx: Sender<Msg>, force: bool) {
     thread::spawn(move || {
+        crate::cache::set_force(force);
         let res = match tab {
             0 => net::fetch_mixin().and_then(|mk| api::rcmd(&mk, cookies.as_deref(), 1)),
             1 => api::popular(cookies.as_deref(), 1),

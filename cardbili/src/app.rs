@@ -129,7 +129,8 @@ pub fn run() {
     let mut marq_t: f64 = 0.0;
     let mut last_tick = Instant::now();
 
-    tasks::load_list(tab, cookies.clone(), mid.clone(), tx.clone());
+    let force0 = std::env::var("BILI_FORCE").is_ok();
+    tasks::load_list(tab, cookies.clone(), mid.clone(), tx.clone(), force0);
 
     if let Ok(b) = std::env::var("BILI_AUTOPLAY") {
         if !b.is_empty() { status = "正在加载视频...".into(); tasks::start_play(b, cookies.clone(), tx.clone()); }
@@ -246,7 +247,7 @@ pub fn run() {
                             loaded[tab] = false;
                             loading = true;
                             status = "已登录，刷新中...".into();
-                            tasks::load_list(tab, cookies.clone(), mid.clone(), tx.clone());
+                            tasks::load_list(tab, cookies.clone(), mid.clone(), tx.clone(), false);
                         }
                     }
                 }
@@ -298,7 +299,7 @@ pub fn run() {
                         loading = false; status.clear(); acct_loaded = false;
                     } else {
                         if loaded[tab] { loading = false; status = format!("{} 条", lists[tab].len()); }
-                        else { loading = true; status = "加载中...".into(); tasks::load_list(tab, cookies.clone(), mid.clone(), tx.clone()); }
+                        else { loading = true; status = "加载中...".into(); tasks::load_list(tab, cookies.clone(), mid.clone(), tx.clone(), false); }
                         if loaded[tab] && !covers_started[tab] {
                             covers_started[tab] = true;
                             covers[tab] = vec![None; lists[tab].len()];
@@ -323,7 +324,7 @@ pub fn run() {
                                     sel = 0;
                                     let src = mine_detail as usize;
                                     loaded[src] = false; loading = true; status = "加载中...".into();
-                                    tasks::load_list(src, cookies.clone(), mid.clone(), tx.clone());
+                                    tasks::load_list(src, cookies.clone(), mid.clone(), tx.clone(), false);
                                 }
                             }
                             "r" | "4" => { acct_loaded = false; }
@@ -348,7 +349,7 @@ pub fn run() {
                                     if !it.bvid.is_empty() { detail_bvid = it.bvid.clone(); status = "正在加载详情...".into(); tasks::start_detail(it.bvid.clone(), cookies.clone(), tx.clone()); }
                                 }
                             }
-                            "r" | "4" => { loaded[src] = false; loading = true; status = "刷新中...".into(); tasks::load_list(src, cookies.clone(), mid.clone(), tx.clone()); }
+                            "r" | "4" => { loaded[src] = false; loading = true; status = "刷新中...".into(); tasks::load_list(src, cookies.clone(), mid.clone(), tx.clone(), true); }
                             "ESC" | "8" | "BACKSPACE" | "q" => { mine_detail = -1; sel = 0; }
                             _ => {}
                         }
@@ -374,7 +375,7 @@ pub fn run() {
                                 if !it.bvid.is_empty() { detail_bvid = it.bvid.clone(); status = "正在加载详情...".into(); tasks::start_detail(it.bvid.clone(), cookies.clone(), tx.clone()); }
                             }
                         }
-                        "r" | "4" => { loaded[tab] = false; loading = true; status = "刷新中...".into(); tasks::load_list(tab, cookies.clone(), mid.clone(), tx.clone()); }
+                        "r" | "4" => { loaded[tab] = false; loading = true; status = "刷新中...".into(); tasks::load_list(tab, cookies.clone(), mid.clone(), tx.clone(), true); }
                         "l" | "5" => { page = 2; ui.set_has_qr(false); ui.set_qr_status("正在生成二维码...".into()); tasks::start_login(tx.clone()); }
                         "8" | "q" => { quit = true; }
                         _ => {}
