@@ -79,20 +79,10 @@ export component AppWindow inherits Window {
 
     out property <length> detail-content-h: detail-page.content-height;
 
-    if page == 0: HomePage {
-        x: 0px; y: 0px; width: parent.width; height: parent.height;
-    }
-    if page == 1: PlayPage {
-        x: 0px; y: 0px; width: parent.width; height: parent.height;
-    }
-    if page == 2: LoginPage {
-        x: 0px; y: 0px; width: parent.width; height: parent.height;
-    }
-    detail-page := DetailPage {
-        x: 0px; y: 0px; width: parent.width; height: parent.height;
-        visible: page == 3;
-    }
-    if page == 4: AboutPage {
-        x: 0px; y: 0px; width: parent.width; height: parent.height;
-    }
+    // 各页面组件自填父级尺寸，实例处不再逐层透传位置与尺寸
+    if page == 0: HomePage {}
+    if page == 1: PlayPage {}
+    if page == 2: LoginPage {}
+    detail-page := DetailPage { visible: page == 3; }
+    if page == 4: AboutPage {}
 }

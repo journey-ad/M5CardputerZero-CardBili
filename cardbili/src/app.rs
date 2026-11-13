@@ -15,6 +15,22 @@ use crate::{tasks, util, AppWindow, Cmt, Msg};
 
 const FB_BYTES: usize = (WIDTH as usize) * (HEIGHT as usize) * 2;
 
+/// 本机预览：把窗口按键映射成与真机 evdev 一致的按键字符串
+#[cfg(feature = "desktop")]
+fn desktop_key(k: minifb::Key) -> Option<&'static str> {
+    use minifb::Key;
+    Some(match k {
+        Key::Left => "LEFT", Key::Right => "RIGHT", Key::Up => "UP", Key::Down => "DOWN",
+        Key::Enter => "ENTER", Key::Space => "SPACE", Key::Escape => "ESC",
+        Key::Backspace => "BACKSPACE", Key::Tab => "TAB",
+        Key::Key1 => "1", Key::Key2 => "2", Key::Key3 => "3", Key::Key4 => "4",
+        Key::Key5 => "5", Key::Key7 => "7",
+        Key::Z => "z", Key::C => "c", Key::F => "f", Key::W => "w",
+        Key::X => "x", Key::S => "s", Key::Q => "q",
+        _ => return None,
+    })
+}
+
 struct DemoPlatform {
     window: Rc<MinimalSoftwareWindow>,
 }
@@ -63,9 +79,11 @@ fn detail_max(body: &str) -> f64 {
 }
 
 pub fn run() {
+    #[cfg(not(feature = "desktop"))]
     let fb_path = std::env::var("APPLAUNCH_LINUX_FBDEV_DEVICE")
         .or_else(|_| std::env::var("BILI_FB"))
         .unwrap_or_else(|_| "/dev/fb0".into());
+    #[cfg(not(feature = "desktop"))]
     let kb_path = std::env::var("APPLAUNCH_LINUX_KEYBOARD_DEVICE")
         .or_else(|_| std::env::var("BILI_KBD"))
         .unwrap_or_else(|_| "/dev/input/by-path/platform-3f804000.i2c-event".into());
@@ -82,14 +100,37 @@ pub fn run() {
     let ui = AppWindow::new().expect("ui");
     ui.show().expect("show");
 
+    #[cfg(not(feature = "desktop"))]
     let file = OpenOptions::new().read(true).write(true).open(&fb_path).expect("open fb");
+    #[cfg(not(feature = "desktop"))]
     let mut fbmap = unsafe { MmapOptions::new().len(FB_BYTES).map_mut(&file).expect("mmap fb") };
+
+    #[cfg(feature = "desktop")]
+    let mut win = minifb::Window::new(
+        "CardBili 320x170",
+        WIDTH as usize,
+        HEIGHT as usize,
+        minifb::WindowOptions { scale: minifb::Scale::X2, resize: false, ..Default::default() },
+    ).expect("创建预览窗口失败");
+    #[cfg(feature = "desktop")]
+    let mut dbuf: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
     crate::cache::init();
 
     let (tx, rx) = mpsc::channel::<Msg>();
     let (ktx, krx) = mpsc::channel::<String>();
+    #[cfg(not(feature = "desktop"))]
     util::spawn_keys(kb_path, ktx);
+
+    // 本机预览可用的按键脚本：BILI_KEYS="TAB,RIGHT,ENTER" 按 700ms 间隔依次注入
+    #[cfg(feature = "desktop")]
+    let scripted: Vec<String> = std::env::var("BILI_KEYS").ok()
+        .map(|s| s.split(',').map(|x| x.trim().to_string()).filter(|x| !x.is_empty()).collect())
+        .unwrap_or_default();
+    #[cfg(feature = "desktop")]
+    let mut script_idx = 0usize;
+    #[cfg(feature = "desktop")]
+    let mut script_next = Instant::now() + Duration::from_millis(900);
 
     ui.set_about_text(format!(
         "CardBili  v{}\nCardputerZero 哔哩哔哩客户端\n\n功能：推荐 / 热门 / 动态 / 我的\n      播放 · 扫码登录 · 视频详情\n\n内核：Rust + Slint 软件渲染\n屏幕：M5Stack 320x170\n\nESC 返回",
@@ -155,6 +196,8 @@ pub fn run() {
     let mut esc_press: Option<Instant> = None;
     let mut bar_until: Option<Instant> = None;
     while !quit {
+        #[cfg(feature = "desktop")]
+        if !win.is_open() { quit = true; }
         if let Some(d) = deadline { if Instant::now() >= d { quit = true; } }
         // 左右调整结束（停止按键 300ms）后才真正跳转，此时展示加载中
         if let Some(dl) = seek_deadline {
@@ -352,6 +395,16 @@ pub fn run() {
         }
 
         // --- 键盘 ---
+        #[cfg(feature = "desktop")]
+        if script_idx < scripted.len() && Instant::now() >= script_next {
+            let _ = ktx.send(scripted[script_idx].clone());
+            script_idx += 1;
+            script_next = Instant::now() + Duration::from_millis(700);
+        }
+        #[cfg(feature = "desktop")]
+        for key in win.get_keys_pressed(minifb::KeyRepeat::No) {
+            if let Some(s) = desktop_key(key) { let _ = ktx.send(s.to_string()); }
+        }
         while let Ok(k) = krx.try_recv() {
             if page == 0 {
                 if tab < 3 && !help && (k == "ESC_DOWN" || k == "ESC_UP") {
@@ -651,7 +704,8 @@ pub fn run() {
             if let Some(p) = player.as_ref() {
                 ui.set_ptitle(p.title.as_str().into());
                 ui.set_paused(p.paused);
-                let pos = p.position(frames_in_seg);
+                // 有未落地的跳转时用预览位置，避免每帧被实际播放位置覆盖
+                let pos = seek_pending.unwrap_or_else(|| p.position(frames_in_seg));
                 let dur = p.duration;
                 ui.set_progress(if dur > 0.0 { (pos / dur) as f32 } else { 0.0 });
                 ui.set_time_text(format!("{} / {}", model::mmss(pos), model::mmss(dur)).as_str().into());
@@ -671,8 +725,22 @@ pub fn run() {
         if window.draw_if_needed(|r| {
             let _ = r.render(&mut buffer, WIDTH as usize);
         }) {
-            let out = unsafe { std::slice::from_raw_parts(buffer.as_ptr() as *const u8, FB_BYTES) };
-            fbmap[..FB_BYTES].copy_from_slice(out);
+            #[cfg(not(feature = "desktop"))]
+            {
+                let out = unsafe { std::slice::from_raw_parts(buffer.as_ptr() as *const u8, FB_BYTES) };
+                fbmap[..FB_BYTES].copy_from_slice(out);
+            }
+            #[cfg(feature = "desktop")]
+            {
+                for (i, px) in buffer.iter().enumerate() {
+                    let v = px.0;
+                    let r = ((v >> 11) & 0x1f) as u32 * 255 / 31;
+                    let g = ((v >> 5) & 0x3f) as u32 * 255 / 63;
+                    let b = (v & 0x1f) as u32 * 255 / 31;
+                    dbuf[i] = (r << 16) | (g << 8) | b;
+                }
+                if win.update_with_buffer(&dbuf, WIDTH as usize, HEIGHT as usize).is_err() { quit = true; }
+            }
         }
 
         thread::sleep(Duration::from_millis(16));
