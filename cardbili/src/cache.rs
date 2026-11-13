@@ -33,6 +33,22 @@ fn force_on() -> bool {
     FORCE.with(|f| f.get())
 }
 
+// SWR 预取阶段可接受的旧数据上限（秒）
+const STALE_MAX: u64 = 86400;
+
+thread_local! {
+    static CACHED_ONLY: std::cell::Cell<bool> = std::cell::Cell::new(false);
+}
+
+// 仅读缓存、不请求网络（SWR 先展示旧数据的阶段）
+pub fn set_cached_only(v: bool) {
+    CACHED_ONLY.with(|f| f.set(v));
+}
+
+fn cached_only_on() -> bool {
+    CACHED_ONLY.with(|f| f.get())
+}
+
 fn base() -> PathBuf {
     std::env::temp_dir().join("cardbili-cache")
 }
@@ -111,19 +127,32 @@ fn enforce_limit(dir: &Path, max: usize) {
     }
 }
 
-// 带缓存的接口请求：ttl 秒内直接返回本地 JSON
+// 读取本地缓存 JSON（不请求网络）；超过 max_age 秒视为未命中
+fn read_cached(path: &Path, max_age: u64) -> Option<Value> {
+    if let Ok(s) = fs::read_to_string(path) {
+        if now().saturating_sub(mtime(path)) <= max_age {
+            if let Ok(v) = serde_json::from_str::<Value>(&s) {
+                touch(path);
+                return Some(v);
+            }
+        }
+    }
+    None
+}
+
+// 带缓存的接口请求
+// 模式优先级：force（强制网络）> cached_only（仅读缓存，SWR 用）> 正常 TTL
 pub fn api_json(url: &str, cookies: Option<&str>, ttl: u64) -> Result<Value, String> {
     init();
     let tag = if cookies.map(|c| !c.is_empty()).unwrap_or(false) { "u" } else { "a" };
     let path = api_dir().join(format!("{}.json", key_of(&format!("{}\n{}", url, tag))));
     if !force_on() {
-        if let Ok(s) = fs::read_to_string(&path) {
-            if now().saturating_sub(mtime(&path)) <= ttl {
-                if let Ok(v) = serde_json::from_str::<Value>(&s) {
-                    touch(&path);
-                    return Ok(v);
-                }
-            }
+        let max_age = if cached_only_on() { STALE_MAX } else { ttl };
+        if let Some(v) = read_cached(&path, max_age) {
+            return Ok(v);
+        }
+        if cached_only_on() {
+            return Err("缓存未命中".to_string());
         }
     }
     let s = net::curl_get(url, cookies)?;

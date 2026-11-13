@@ -170,17 +170,38 @@ pub fn run() {
                     }
                 }
                 Msg::ListLoaded(t, items) => {
+                    let first = !loaded[t];
+                    // 内容与已展示的一致时保留封面与选中，避免 SWR 更新时闪烁
+                    let same_ids = !first
+                        && lists[t].len() == items.len()
+                        && lists[t].iter().zip(items.iter()).all(|(a, b)| a.bvid == b.bvid);
                     loaded[t] = true;
                     pages[t] = 1; has_more[t] = true; loading_more[t] = false;
                     let len = items.len();
                     if t < 3 {
-                        covers[t] = vec![None; len];
+                        if same_ids {
+                            if covers[t].len() != len {
+                                let mut newc = vec![None; len];
+                                for i in 0..covers[t].len().min(len) { newc[i] = covers[t][i].take(); }
+                                covers[t] = newc;
+                            }
+                        } else {
+                            covers[t] = vec![None; len];
+                        }
                         covers_started[t] = true;
-                        tasks::spawn_covers(t, items.clone(), 0, tx.clone());
+                        let have: Vec<bool> = covers[t].iter().map(|c| c.is_some()).collect();
+                        if have.iter().any(|b| !b) {
+                            tasks::spawn_covers_missing(t, items.clone(), have, tx.clone());
+                        }
                     }
                     lists[t] = items;
                     if t == tab || (tab == 3 && t == mine_detail as usize) {
-                        sel = 0; loading = false;
+                        if first {
+                            sel = 0;
+                        } else if sel >= len as i32 {
+                            sel = if len == 0 { 0 } else { len as i32 - 1 };
+                        }
+                        loading = false;
                         status = if len == 0 { "暂无内容".to_string() } else { format!("{} 条", len) };
                         if let Ok(v) = std::env::var("BILI_SEL") { if let Ok(v) = v.parse::<i32>() { sel = v; } }
                     }
@@ -263,12 +284,15 @@ pub fn run() {
                     }
                 }
                 Msg::Detail(d, w, h, raw) => {
+                    let first = page != 3;
                     if !raw.is_empty() { detail_img = Some(util::raw_to_image(w, h, &raw)); }
                     else { detail_img = None; }
                     let desc = d.desc.trim();
                     let desc = if desc.is_empty() { "（无简介）".to_string() } else { desc.to_string() };
-                    detail_maxv = 0.0;
-                    detail_scroll = std::env::var("BILI_DSCROLL").ok().and_then(|v| v.parse::<f64>().ok()).unwrap_or(0.0);
+                    if first {
+                        detail_maxv = 0.0;
+                        detail_scroll = std::env::var("BILI_DSCROLL").ok().and_then(|v| v.parse::<f64>().ok()).unwrap_or(0.0);
+                    }
                     if std::env::var("BILI_DUMP").is_ok() { eprintln!("DETAIL comments={}", d.comments.len()); }
                     ui.set_detail_scroll(detail_scroll as f32);
                     sync_thumb(&ui, detail_scroll, detail_maxv);
@@ -283,8 +307,7 @@ pub fn run() {
                     ).as_str().into());
                     ui.set_has_detail_cover(detail_img.is_some());
                     if let Some(im) = detail_img.clone() { ui.set_detail_cover(im); }
-                    page = 3;
-                    status.clear();
+                    if first { page = 3; status.clear(); }
                 }
             }
         }
