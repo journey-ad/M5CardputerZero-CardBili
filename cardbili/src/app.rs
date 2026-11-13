@@ -152,6 +152,8 @@ pub fn run() {
     let mut quit = false;
     let mut seek_pending: Option<f64> = None;
     let mut seek_deadline: Option<Instant> = None;
+    let mut esc_press: Option<Instant> = None;
+    let mut bar_until: Option<Instant> = None;
     while !quit {
         if let Some(d) = deadline { if Instant::now() >= d { quit = true; } }
         // 左右调整结束（停止按键 300ms）后才真正跳转，此时展示加载中
@@ -163,6 +165,18 @@ pub fn run() {
                     ui.set_status("加载中…".into());
                     ui.set_has_frame(false);
                 }
+            }
+        }
+        if page == 0 && tab < 3 {
+            if let Some(t) = esc_press {
+                if t.elapsed() >= Duration::from_millis(2000) { quit = true; }
+            }
+        }
+        if let Some(t) = bar_until {
+            if Instant::now() >= t {
+                ui.set_bar("".into());
+                ui.set_bar_sticky(false);
+                bar_until = None;
             }
         }
         let mut latest: Option<Vec<u8>> = None;
@@ -340,6 +354,18 @@ pub fn run() {
         // --- 键盘 ---
         while let Ok(k) = krx.try_recv() {
             if page == 0 {
+                if tab < 3 && !help && (k == "ESC_DOWN" || k == "ESC_UP") {
+                    if k == "ESC_DOWN" {
+                        esc_press = Some(Instant::now());
+                        ui.set_bar("长按 2 秒退出".into());
+                        ui.set_bar_sticky(true);
+                        bar_until = None;
+                    } else {
+                        esc_press = None;
+                        bar_until = Some(Instant::now() + Duration::from_millis(3000));
+                    }
+                    continue;
+                }
                 if k == "TAB" && !help {
                     tab = (tab + 1) % 4;
                     sel = 0; mine_detail = -1;

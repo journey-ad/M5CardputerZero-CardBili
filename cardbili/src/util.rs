@@ -35,11 +35,12 @@ pub fn spawn_keys(path: String, tx: mpsc::Sender<String>) {
             if code == 1 {
                 if value == 1 {
                     esc_down = Some(std::time::Instant::now());
+                    if tx.send("ESC_DOWN".to_string()).is_err() { break; }
                 } else if value == 0 {
-                    if let Some(t) = esc_down.take() {
-                        let name = if t.elapsed().as_millis() >= 600 { "ESC_HOLD" } else { "ESC" };
-                        if tx.send(name.to_string()).is_err() { break; }
-                    }
+                    let held = esc_down.take().map(|t| t.elapsed().as_millis()).unwrap_or(0);
+                    if tx.send("ESC_UP".to_string()).is_err() { break; }
+                    let name = if held >= 2000 { "ESC_HOLD" } else { "ESC" };
+                    if tx.send(name.to_string()).is_err() { break; }
                 }
                 continue;
             }
