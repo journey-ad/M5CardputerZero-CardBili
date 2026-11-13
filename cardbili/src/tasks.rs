@@ -146,7 +146,7 @@ pub fn start_login(tx: Sender<Msg>) {
         let _ = std::fs::remove_file(jar);
         let (url, key) = match net::qr_generate() {
             Ok(v) => v,
-            Err(e) => { let _ = tx.send(Msg::QrStatus(format!("生成二维码失败: {}", e))); return; }
+            Err(e) => { let _ = tx.send(Msg::QrStatus(e)); return; }
         };
         let _ = tx.send(Msg::QrReady(url));
         loop {
@@ -155,7 +155,7 @@ pub fn start_login(tx: Sender<Msg>) {
                 net::Poll::Scanned => { let _ = tx.send(Msg::QrStatus("已扫码，请在手机上确认".into())); }
                 net::Poll::Pending => {}
                 net::Poll::Expired => { let _ = tx.send(Msg::QrStatus("二维码已过期，请刷新".into())); break; }
-                net::Poll::Err(e) => { let _ = tx.send(Msg::QrStatus(format!("登录出错: {}", e))); break; }
+                net::Poll::Err(e) => { let _ = tx.send(Msg::QrStatus(e)); break; }
             }
             thread::sleep(Duration::from_secs(2));
         }

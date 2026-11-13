@@ -117,6 +117,7 @@ pub fn run() {
     let mut frames_in_seg: u64 = 0;
     let mut gen: u64 = 1;
     let mut status = String::from("加载中...");
+    let mut status_detail = String::new();
     let mut loading = true;
 
     // 详情页
@@ -133,10 +134,10 @@ pub fn run() {
     tasks::load_list(tab, cookies.clone(), mid.clone(), tx.clone(), force0);
 
     if let Ok(b) = std::env::var("BILI_AUTOPLAY") {
-        if !b.is_empty() { status = "正在加载视频...".into(); tasks::start_play(b, cookies.clone(), tx.clone()); }
+        if !b.is_empty() { status = "正在加载视频...".into(); status_detail.clear(); tasks::start_play(b, cookies.clone(), tx.clone()); }
     }
     if let Ok(b) = std::env::var("BILI_DETAIL") {
-        if !b.is_empty() { detail_bvid = b.clone(); status = "正在加载详情...".into(); tasks::start_detail(b, cookies.clone(), tx.clone()); }
+        if !b.is_empty() { detail_bvid = b.clone(); status = "正在加载详情...".into(); status_detail.clear(); tasks::start_detail(b, cookies.clone(), tx.clone()); }
     }
     if std::env::var("BILI_ABOUT").is_ok() { page = 4; }
     if std::env::var("BILI_TEST_LOGIN").is_ok() {
@@ -165,7 +166,7 @@ pub fn run() {
                 Msg::SegEnd(g) => {
                     if let Some(p) = player.as_mut() {
                         if g == p.gen {
-                            if p.advance() { frames_in_seg = 0; } else { status = "播放结束，按 ESC 返回".into(); }
+                            if p.advance() { frames_in_seg = 0; } else { status = "播放结束，按 ESC 返回".into(); status_detail.clear(); }
                         }
                     }
                 }
@@ -202,7 +203,7 @@ pub fn run() {
                             sel = if len == 0 { 0 } else { len as i32 - 1 };
                         }
                         loading = false;
-                        status = if len == 0 { "暂无内容".to_string() } else { format!("{} 条", len) };
+                        status = if len == 0 { "暂无内容".to_string() } else { format!("{} 条", len) }; status_detail.clear();
                         if let Ok(v) = std::env::var("BILI_SEL") { if let Ok(v) = v.parse::<i32>() { sel = v; } }
                     }
                 }
@@ -227,13 +228,17 @@ pub fn run() {
                                 eprintln!("MORE tab={} page={} add={} total={}", t, pages[t], add.len(), lists[t].len());
                             }
                             tasks::spawn_covers(t, add, start, tx.clone());
-                            if t == tab { status = format!("{} 条", lists[t].len()); }
+                            if t == tab { status = format!("{} 条", lists[t].len()); status_detail.clear(); }
                         }
                     }
                 }
                 Msg::Err(t, msg) => {
-                    if t == 9 || t == 10 { status = msg; }
-                    else if t == tab { loading = false; status = msg; }
+                    let (friendly, tech) = match msg.split_once('\n') {
+                        Some((a, b)) => (a.to_string(), b.to_string()),
+                        None => (msg, String::new()),
+                    };
+                    if t == 9 || t == 10 { status = friendly; status_detail = tech; }
+                    else if t == tab { loading = false; status = friendly; status_detail = tech; }
                 }
                 Msg::PlayReady(info) => {
                     if let Some(mut old) = player.take() { old.stop(); }
@@ -245,7 +250,7 @@ pub fn run() {
                     );
                     player = Some(p);
                     page = 1;
-                    status.clear();
+                    status.clear(); status_detail.clear();
                 }
                 Msg::QrReady(url) => {
                     if let Some(img) = util::make_qr(&url) { ui.set_qr(img); ui.set_has_qr(true); }
@@ -263,11 +268,11 @@ pub fn run() {
                         page = 0;
                         if tab == 3 {
                             loading = false;
-                            status = "已登录".into();
+                            status = "已登录".into(); status_detail.clear();
                         } else {
                             loaded[tab] = false;
                             loading = true;
-                            status = "已登录，刷新中...".into();
+                            status = "已登录，刷新中...".into(); status_detail.clear();
                             tasks::load_list(tab, cookies.clone(), mid.clone(), tx.clone(), false);
                         }
                     }
@@ -307,7 +312,7 @@ pub fn run() {
                     ).as_str().into());
                     ui.set_has_detail_cover(detail_img.is_some());
                     if let Some(im) = detail_img.clone() { ui.set_detail_cover(im); }
-                    if first { page = 3; status.clear(); }
+                    if first { page = 3; status.clear(); status_detail.clear(); }
                 }
             }
         }
@@ -319,10 +324,10 @@ pub fn run() {
                     tab = (tab + 1) % 4;
                     sel = 0; mine_detail = -1;
                     if tab == 3 {
-                        loading = false; status.clear(); acct_loaded = false;
+                        loading = false; status.clear(); status_detail.clear(); acct_loaded = false;
                     } else {
-                        if loaded[tab] { loading = false; status = format!("{} 条", lists[tab].len()); }
-                        else { loading = true; status = "加载中...".into(); tasks::load_list(tab, cookies.clone(), mid.clone(), tx.clone(), false); }
+                        if loaded[tab] { loading = false; status = format!("{} 条", lists[tab].len()); status_detail.clear(); }
+                        else { loading = true; status = "加载中...".into(); status_detail.clear(); tasks::load_list(tab, cookies.clone(), mid.clone(), tx.clone(), false); }
                         if loaded[tab] && !covers_started[tab] {
                             covers_started[tab] = true;
                             covers[tab] = vec![None; lists[tab].len()];
@@ -346,7 +351,7 @@ pub fn run() {
                                     mine_detail = if sel == 0 { 3 } else { 4 };
                                     sel = 0;
                                     let src = mine_detail as usize;
-                                    loaded[src] = false; loading = true; status = "加载中...".into();
+                                    loaded[src] = false; loading = true; status = "加载中...".into(); status_detail.clear();
                                     tasks::load_list(src, cookies.clone(), mid.clone(), tx.clone(), false);
                                 }
                             }
@@ -363,16 +368,16 @@ pub fn run() {
                             "DOWN" | "x" | "s" | "RIGHT" | "c" => { if sel + 1 < n { sel += 1; } }
                             "ENTER" => {
                                 if let Some(it) = lists[src].get(sel as usize) {
-                                    if !it.bvid.is_empty() { status = "正在加载视频...".into(); tasks::start_play(it.bvid.clone(), cookies.clone(), tx.clone()); }
-                                    else { status = "该条目无视频".into(); }
+                                    if !it.bvid.is_empty() { status = "正在加载视频...".into(); status_detail.clear(); tasks::start_play(it.bvid.clone(), cookies.clone(), tx.clone()); }
+                                    else { status = "该条目无视频".into(); status_detail.clear(); }
                                 }
                             }
                             "SPACE" => {
                                 if let Some(it) = lists[src].get(sel as usize) {
-                                    if !it.bvid.is_empty() { detail_bvid = it.bvid.clone(); status = "正在加载详情...".into(); tasks::start_detail(it.bvid.clone(), cookies.clone(), tx.clone()); }
+                                    if !it.bvid.is_empty() { detail_bvid = it.bvid.clone(); status = "正在加载详情...".into(); status_detail.clear(); tasks::start_detail(it.bvid.clone(), cookies.clone(), tx.clone()); }
                                 }
                             }
-                            "r" | "4" => { loaded[src] = false; loading = true; status = "刷新中...".into(); tasks::load_list(src, cookies.clone(), mid.clone(), tx.clone(), true); }
+                            "r" | "4" => { loaded[src] = false; loading = true; status = "刷新中...".into(); status_detail.clear(); tasks::load_list(src, cookies.clone(), mid.clone(), tx.clone(), true); }
                             "ESC" | "8" | "BACKSPACE" | "q" => { mine_detail = -1; sel = 0; }
                             _ => {}
                         }
@@ -389,16 +394,16 @@ pub fn run() {
                         "RIGHT" | "c" => { if sel + 1 < n { sel += 1; } }
                         "ENTER" => {
                             if let Some(it) = lists[tab].get(sel as usize) {
-                                if !it.bvid.is_empty() { status = "正在加载视频...".into(); tasks::start_play(it.bvid.clone(), cookies.clone(), tx.clone()); }
-                                else { status = "该条目无视频".into(); }
+                                if !it.bvid.is_empty() { status = "正在加载视频...".into(); status_detail.clear(); tasks::start_play(it.bvid.clone(), cookies.clone(), tx.clone()); }
+                                else { status = "该条目无视频".into(); status_detail.clear(); }
                             }
                         }
                         "SPACE" => {
                             if let Some(it) = lists[tab].get(sel as usize) {
-                                if !it.bvid.is_empty() { detail_bvid = it.bvid.clone(); status = "正在加载详情...".into(); tasks::start_detail(it.bvid.clone(), cookies.clone(), tx.clone()); }
+                                if !it.bvid.is_empty() { detail_bvid = it.bvid.clone(); status = "正在加载详情...".into(); status_detail.clear(); tasks::start_detail(it.bvid.clone(), cookies.clone(), tx.clone()); }
                             }
                         }
-                        "r" | "4" => { loaded[tab] = false; loading = true; status = "刷新中...".into(); tasks::load_list(tab, cookies.clone(), mid.clone(), tx.clone(), true); }
+                        "r" | "4" => { loaded[tab] = false; loading = true; status = "刷新中...".into(); status_detail.clear(); tasks::load_list(tab, cookies.clone(), mid.clone(), tx.clone(), true); }
                         "l" | "5" => { page = 2; ui.set_has_qr(false); ui.set_qr_status("正在生成二维码...".into()); tasks::start_login(tx.clone()); }
                         "8" | "q" => { quit = true; }
                         _ => {}
@@ -429,7 +434,7 @@ pub fn run() {
                     "UP" | "f" | "w" => { detail_scroll = (detail_scroll - 22.0).max(0.0); ui.set_detail_scroll(detail_scroll as f32); sync_thumb(&ui, detail_scroll, detail_maxv); }
                     "DOWN" | "x" | "s" => { detail_scroll = (detail_scroll + 22.0).min(detail_maxv); ui.set_detail_scroll(detail_scroll as f32); sync_thumb(&ui, detail_scroll, detail_maxv); }
                     "ENTER" => {
-                        if !detail_bvid.is_empty() { status = "正在加载视频...".into(); tasks::start_play(detail_bvid.clone(), cookies.clone(), tx.clone()); }
+                        if !detail_bvid.is_empty() { status = "正在加载视频...".into(); status_detail.clear(); tasks::start_play(detail_bvid.clone(), cookies.clone(), tx.clone()); }
                     }
                     "ESC" | "BACKSPACE" | "q" | "8" => { page = 0; }
                     _ => {}
@@ -509,6 +514,7 @@ pub fn run() {
         ui.set_tab(tab as i32);
         ui.set_sel(sel);
         ui.set_status(status.as_str().into());
+        ui.set_status_detail(status_detail.as_str().into());
         ui.set_loading(loading);
         ui.set_view(view);
         ui.set_help(help);

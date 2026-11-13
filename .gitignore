@@ -5,3 +5,6 @@
 
 # Rust 构建目录
 cardbili/target/
+
+# 部署产物
+dist/

@@ -8,9 +8,9 @@ fn api_err(name: &str, v: &Value) -> String {
     let code = v["code"].as_i64().unwrap_or(-1);
     let msg = v["message"].as_str().unwrap_or("");
     if msg.is_empty() {
-        format!("{}加载失败（code={}）", name, code)
+        format!("{}加载失败\ncode={}", name, code)
     } else {
-        format!("{}加载失败（code={}）：{}", name, code, msg)
+        format!("{}加载失败\ncode={} {}", name, code, msg)
     }
 }
 

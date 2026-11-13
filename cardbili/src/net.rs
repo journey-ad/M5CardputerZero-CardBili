@@ -33,9 +33,12 @@ fn tidy(s: &str) -> String {
 
 fn curl_out(url: &str, cookies: Option<&str>, jar: Option<&str>) -> Result<String, String> {
     let out = Command::new("curl").args(curl_args(url, cookies, jar)).output()
-        .map_err(|e| format!("网络请求启动失败（{e}）"))?;
+        .map_err(|e| format!("网络请求启动失败\n{e}"))?;
     if !out.status.success() {
-        return Err(format!("网络请求失败（状态 {:?}）：{}", out.status, tidy(&String::from_utf8_lossy(&out.stderr))));
+        let code = out.status.code().map(|c| c.to_string()).unwrap_or_else(|| "?".into());
+        let t = tidy(&String::from_utf8_lossy(&out.stderr));
+        let tail = if t.is_empty() { String::new() } else { format!(" {}", t) };
+        return Err(format!("网络连接失败\nexit {}{}", code, tail));
     }
     Ok(String::from_utf8_lossy(&out.stdout).into_owned())
 }
@@ -46,16 +49,17 @@ pub fn curl_get(url: &str, cookies: Option<&str>) -> Result<String, String> {
 
 pub fn curl_bytes(url: &str) -> Result<Vec<u8>, String> {
     let out = Command::new("curl").args(curl_args(url, None, None)).output()
-        .map_err(|e| format!("网络请求启动失败（{e}）"))?;
+        .map_err(|e| format!("网络请求启动失败\n{e}"))?;
     if !out.status.success() {
-        return Err(format!("网络请求失败（状态 {:?}）", out.status));
+        let code = out.status.code().map(|c| c.to_string()).unwrap_or_else(|| "?".into());
+        return Err(format!("网络连接失败\nexit {}", code));
     }
     Ok(out.stdout)
 }
 
 pub fn get_json(url: &str, cookies: Option<&str>) -> Result<serde_json::Value, String> {
     let s = curl_get(url, cookies)?;
-    serde_json::from_str(&s).map_err(|e| format!("数据解析失败（{e}）：{}", s.chars().take(200).collect::<String>()))
+    serde_json::from_str(&s).map_err(|e| format!("数据解析失败\n{e}"))
 }
 
 fn pct(s: &str) -> String {
@@ -87,8 +91,8 @@ pub fn mixin_key(img: &str, sub: &str) -> String {
 pub fn fetch_mixin() -> Result<String, String> {
     let v = get_json("https://api.bilibili.com/x/web-interface/nav", None)?;
     let wi = &v["data"]["wbi_img"];
-    let img = wi["img_url"].as_str().ok_or("签名信息不完整（缺少 img_url）")?;
-    let sub = wi["sub_url"].as_str().ok_or("签名信息不完整（缺少 sub_url）")?;
+    let img = wi["img_url"].as_str().ok_or("签名信息不完整\n缺少 img_url")?;
+    let sub = wi["sub_url"].as_str().ok_or("签名信息不完整\n缺少 sub_url")?;
     Ok(mixin_key(img, sub))
 }
 
@@ -116,11 +120,11 @@ pub fn query_string(params: &[(String, String)]) -> String {
 // ---------- QR login ----------
 pub fn qr_generate() -> Result<(String, String), String> {
     let v = get_json("https://passport.bilibili.com/x/passport-login/web/qrcode/generate", None)?;
-    if v["code"].as_i64() != Some(0) { return Err(format!("二维码生成失败（code={} {}）", v["code"], v["message"])); }
+    if v["code"].as_i64() != Some(0) { return Err(format!("二维码生成失败\ncode={} {}", v["code"], v["message"])); }
     let d = &v["data"];
     let url = d["url"].as_str().unwrap_or("").to_string();
     let key = d["qrcode_key"].as_str().unwrap_or("").to_string();
-    if url.is_empty() || key.is_empty() { return Err("二维码生成失败（返回为空）".into()); }
+    if url.is_empty() || key.is_empty() { return Err("二维码生成失败\n返回为空".into()); }
     Ok((url, key))
 }
 
@@ -193,15 +197,18 @@ pub fn qr_poll(key: &str, jar: &str) -> Poll {
     ];
     let out = match Command::new("curl").args(&args).output() {
         Ok(o) => o,
-        Err(e) => return Poll::Err(format!("网络请求启动失败（{e}）")),
+        Err(e) => return Poll::Err(format!("网络请求启动失败\n{e}")),
     };
     if !out.status.success() {
-        return Poll::Err(format!("网络请求失败（状态 {:?}）：{}", out.status, tidy(&String::from_utf8_lossy(&out.stderr))));
+        let code = out.status.code().map(|c| c.to_string()).unwrap_or_else(|| "?".into());
+        let t = tidy(&String::from_utf8_lossy(&out.stderr));
+        let tail = if t.is_empty() { String::new() } else { format!(" {}", t) };
+        return Poll::Err(format!("网络连接失败\nexit {}{}", code, tail));
     }
     let body = String::from_utf8_lossy(&out.stdout).into_owned();
     let v: serde_json::Value = match serde_json::from_str(&body) {
         Ok(v) => v,
-        Err(e) => return Poll::Err(format!("登录状态解析失败（{e}）：{}", body.chars().take(160).collect::<String>())),
+        Err(e) => return Poll::Err(format!("登录状态解析失败\n{e}")),
     };
     let d = &v["data"];
     let code = d["code"].as_i64().unwrap_or(-1);
@@ -239,6 +246,6 @@ pub fn qr_poll(key: &str, jar: &str) -> Poll {
         86101 => Poll::Pending,
         86090 => Poll::Scanned,
         86038 => Poll::Expired,
-        other => Poll::Err(format!("登录状态异常（code={} {}）", other, d["message"])),
+        other => Poll::Err(format!("登录状态异常\ncode={} {}", other, d["message"])),
     }
 }

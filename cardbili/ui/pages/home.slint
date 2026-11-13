@@ -37,8 +37,8 @@ export component HomePage inherits Rectangle {
         x: 0px; y: 18px; width: parent.width; height: parent.height - 52px;
     }
 
-    // 底部状态栏
-    Rectangle {
+    // 底部状态栏：仅有数据且无错误时显示条数（加载/空/错误由中间空状态呈现）
+    if Status.detail == "" && (ListModel.titles.length > 0 || ListModel.grid-covers.length > 0): Rectangle {
         x: 0px; y: parent.height - 32px; width: parent.width; height: 12px; background: #0f1623;
         Text { x: 6px; y: 0px; height: 12px; text: Status.status; color: #5f6b7f; font-size: 9px; vertical-alignment: center; }
     }
