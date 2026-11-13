@@ -131,6 +131,17 @@ pub fn run() {
     let mut script_idx = 0usize;
     #[cfg(feature = "desktop")]
     let mut script_next = Instant::now() + Duration::from_millis(900);
+    #[cfg(feature = "desktop")]
+    let mut prev_keys: std::collections::HashSet<minifb::Key> = std::collections::HashSet::new();
+    // 长按测试入口：BILI_HOLD=RIGHT，按下后保持 BILI_HOLD_MS 毫秒再松开
+    #[cfg(feature = "desktop")]
+    let hold_key = std::env::var("BILI_HOLD").ok();
+    #[cfg(feature = "desktop")]
+    let hold_ms = std::env::var("BILI_HOLD_MS").ok().and_then(|s| s.parse::<u64>().ok()).unwrap_or(1500);
+    #[cfg(feature = "desktop")]
+    let mut hold_started = false;
+    #[cfg(feature = "desktop")]
+    let mut hold_release: Option<Instant> = None;
 
     ui.set_about_text(format!(
         "CardBili  v{}\nCardputerZero 哔哩哔哩客户端\n\n功能：推荐 / 热门 / 动态 / 我的\n      播放 · 扫码登录 · 视频详情\n\n内核：Rust + Slint 软件渲染\n屏幕：M5Stack 320x170\n\nESC 返回",
@@ -195,6 +206,11 @@ pub fn run() {
     let mut seek_deadline: Option<Instant> = None;
     let mut esc_press: Option<Instant> = None;
     let mut bar_until: Option<Instant> = None;
+    let mut last_input = Instant::now();
+    let mut left_hold: Option<Instant> = None;
+    let mut right_hold: Option<Instant> = None;
+    let mut left_rep = Instant::now();
+    let mut right_rep = Instant::now();
     while !quit {
         #[cfg(feature = "desktop")]
         if !win.is_open() { quit = true; }
@@ -207,6 +223,32 @@ pub fn run() {
                     pp.seek(t); frames_in_seg = 0;
                     ui.set_status("加载中…".into());
                     ui.set_has_frame(false);
+                }
+            }
+        }
+        // 长按左右：按住超过 350ms 后每 120ms 连续调整 2 秒，松开后按现有防抖落地
+        if page == 1 {
+            if let Some(p) = player.as_mut() {
+                let mut step = 0.0f64;
+                if let Some(start) = left_hold {
+                    if start.elapsed() >= Duration::from_millis(350) && left_rep.elapsed() >= Duration::from_millis(120) {
+                        left_rep = Instant::now();
+                        step = -2.0;
+                    }
+                }
+                if let Some(start) = right_hold {
+                    if start.elapsed() >= Duration::from_millis(350) && right_rep.elapsed() >= Duration::from_millis(120) {
+                        right_rep = Instant::now();
+                        step = 2.0;
+                    }
+                }
+                if step != 0.0 {
+                    let base = seek_pending.unwrap_or_else(|| p.position(frames_in_seg));
+                    let t = (base + step).clamp(0.0, p.duration.max(0.0));
+                    ui.set_progress(if p.duration > 0.0 { (t / p.duration) as f32 } else { 0.0 });
+                    ui.set_time_text(format!("{} / {}", model::mmss(t), model::mmss(p.duration)).as_str().into());
+                    seek_pending = Some(t);
+                    seek_deadline = Some(Instant::now() + Duration::from_millis(300));
                 }
             }
         }
@@ -402,10 +444,41 @@ pub fn run() {
             script_next = Instant::now() + Duration::from_millis(700);
         }
         #[cfg(feature = "desktop")]
-        for key in win.get_keys_pressed(minifb::KeyRepeat::No) {
-            if let Some(s) = desktop_key(key) { let _ = ktx.send(s.to_string()); }
+        if let Some(hk) = hold_key.clone() {
+            if !hold_started && scripted.is_empty() && Instant::now() >= script_next {
+                let _ = ktx.send(hk);
+                hold_started = true;
+                hold_release = Some(Instant::now() + Duration::from_millis(hold_ms));
+            }
+        }
+        #[cfg(feature = "desktop")]
+        if let Some(rt) = hold_release {
+            if Instant::now() >= rt {
+                if let Some(hk) = &hold_key { let _ = ktx.send(format!("{}_UP", hk)); }
+                hold_release = None;
+            }
+        }
+        #[cfg(feature = "desktop")]
+        {
+            let cur: std::collections::HashSet<minifb::Key> = win.get_keys().into_iter().collect();
+            for key in cur.iter() {
+                if !prev_keys.contains(key) {
+                    if let Some(s) = desktop_key(*key) { let _ = ktx.send(s.to_string()); }
+                }
+            }
+            for key in prev_keys.iter() {
+                if !cur.contains(key) {
+                    if let Some(s) = desktop_key(*key) {
+                        if s == "LEFT" || s == "RIGHT" { let _ = ktx.send(format!("{}_UP", s)); }
+                    }
+                }
+            }
+            prev_keys = cur;
         }
         while let Ok(k) = krx.try_recv() {
+            last_input = Instant::now();
+            if k == "LEFT_UP" { left_hold = None; continue; }
+            if k == "RIGHT_UP" { right_hold = None; continue; }
             if page == 0 {
                 if tab < 3 && !help && (k == "ESC_DOWN" || k == "ESC_UP") {
                     if k == "ESC_DOWN" {
@@ -513,6 +586,8 @@ pub fn run() {
                     match k.as_str() {
                         "SPACE" | "ENTER" => { p.pause_toggle(); }
                         "LEFT" | "z" => {
+                            left_hold = Some(Instant::now());
+                            left_rep = Instant::now();
                             let base = seek_pending.unwrap_or_else(|| p.position(frames_in_seg));
                             let t = (base - 10.0).max(0.0);
                             ui.set_progress(if p.duration > 0.0 { (t / p.duration) as f32 } else { 0.0 });
@@ -521,6 +596,8 @@ pub fn run() {
                             seek_deadline = Some(Instant::now() + Duration::from_millis(300));
                         }
                         "RIGHT" | "c" => {
+                            right_hold = Some(Instant::now());
+                            right_rep = Instant::now();
                             let base = seek_pending.unwrap_or_else(|| p.position(frames_in_seg));
                             let t = (base + 10.0).min(p.duration.max(0.0));
                             ui.set_progress(if p.duration > 0.0 { (t / p.duration) as f32 } else { 0.0 });
@@ -624,6 +701,14 @@ pub fn run() {
         }
 
         // --- 同步 UI ---
+        // 播放中 3 秒无操作隐藏控件；暂停或正在长按调进度时保持显示
+        let controls_show = if page == 1 {
+            player.as_ref().map(|p| p.paused || left_hold.is_some() || right_hold.is_some()
+                || last_input.elapsed() < Duration::from_millis(3000)).unwrap_or(true)
+        } else {
+            true
+        };
+        ui.set_controls_visible(controls_show);
         ui.set_page(page);
         ui.set_tab(tab as i32);
         ui.set_sel(sel);

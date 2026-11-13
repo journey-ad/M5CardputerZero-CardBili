@@ -48,6 +48,13 @@ pub fn spawn_keys(path: String, tx: mpsc::Sender<String>) {
                 if let Some(n) = code_name(code) {
                     if tx.send(n.to_string()).is_err() { break; }
                 }
+            } else if value == 0 {
+                // 方向键松开事件，供长按连续调整进度使用
+                if let Some(n) = code_name(code) {
+                    if n == "LEFT" || n == "RIGHT" {
+                        if tx.send(format!("{}_UP", n)).is_err() { break; }
+                    }
+                }
             }
         }
     });
