@@ -1,17 +1,16 @@
-// 首页底部操作栏：刷新、登录、说明分别对应按键 4、5、8
-// 已登录时隐藏“登录”项
-import { Account, Nav } from "../state.slint";
+// 菜单中心与实体 4–8 键对应，侧栏外的槽位由 Rust 分配
+import { Menu, Preferences } from "../state.slint";
 
 export component BottomBar inherits Rectangle {
+    x: Preferences.menu-position == 1 ? 56px : 0px;
     height: 20px;
     background: #121a2a;
 
-    if Nav.tab < 4: Text { x: 22px; y: 0px; width: 54px; height: 20px; text: "刷新"; color: #7fb0ff; font-size: 12px; horizontal-alignment: center; vertical-alignment: center; }
-    if Nav.tab < 4 && !Account.known: Text { x: 79px; y: 0px; width: 54px; height: 20px; text: "登录"; color: #7ee787; font-size: 12px; horizontal-alignment: center; vertical-alignment: center; }
-    if Nav.tab == 4: Text {
-        x: 10px; height: 20px; text: "上下选择  左右调整  回车打开";
-        color: #8b95a7; font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
-        vertical-alignment: center;
+    property <[length]> centers: [49px, 106px, 162px, 217px, 275px];
+    for label[index] in Menu.labels: Text {
+        x: root.centers[index] - root.x - 27px; y: 0px;
+        width: 54px; height: 20px; text: label;
+        color: label == "返回" ? #ffcf6e : (label == "说明" ? #c9a0ff : #7fb0ff);
+        font-size: 12px; horizontal-alignment: center; vertical-alignment: center;
     }
-    Text { x: 248px; y: 0px; width: 54px; height: 20px; text: "说明"; color: #c9a0ff; font-size: 12px; horizontal-alignment: center; vertical-alignment: center; }
 }

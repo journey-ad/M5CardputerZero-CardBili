@@ -1,60 +1,58 @@
-import { Nav, Preferences, Meta } from "../state.slint";
+import { Nav, Preferences, Danmaku } from "../state.slint";
 import { Icon, Icons } from "icons.slint";
 
 export component SettingsPanel inherits Rectangle {
-    for label[index] in ["列表风格", "弹幕透明度", "关于"]: Rectangle {
+    for label[index] in ["列表风格", "弹幕开关", "弹幕不透明度", "界面布局", "关于"]: Rectangle {
         x: 6px;
-        y: 8px + index * 28px;
+        y: 4px + index * 24px;
         width: parent.width - 12px;
-        height: 26px;
+        height: 22px;
         background: index == Nav.sel ? #1f2b45 : #0f1623;
         border-radius: 3px;
 
         Text {
             x: 10px;
-            width: 136px;
+            width: parent.width - 144px;
             height: parent.height;
             text: label;
             color: index == Nav.sel ? #e6ebf5 : #9aa6ba;
             font-size: 12px;
             vertical-alignment: center;
         }
-        if index < 2: Rectangle {
+        if index < 4: Rectangle {
             x: parent.width - 130px;
             width: 120px;
             height: parent.height;
             Icon {
-                x: 0px; y: 1px; width: 24px; height: 24px;
+                x: 2px; y: 1px; width: 20px; height: 20px;
                 source: Icons.left;
                 colorize: index == Nav.sel ? #7fb0ff : #6f7c92;
-                opacity: index == 1 && Preferences.danmaku-transparency == 0 ? 0.3 : 1;
+                opacity: index == 2 && Preferences.danmaku-opacity == 0 ? 0.3 : 1;
             }
             Text {
                 x: 24px; width: 72px; height: parent.height;
-                text: index == 0 ? ["单列", "3列", "2列"][Nav.view] : Preferences.danmaku-transparency + "%";
+                text: [
+                    ["列表", "3列", "2列"][Nav.view],
+                    Danmaku.enabled ? "开启" : "关闭",
+                    Preferences.danmaku-opacity + "%",
+                    ["顶部", "左侧", "右侧"][Preferences.menu-position],
+                ][index];
                 color: index == Nav.sel ? #7fb0ff : #9aa6ba;
                 font-size: 12px;
                 horizontal-alignment: center;
                 vertical-alignment: center;
             }
             Icon {
-                x: 96px; y: 1px; width: 24px; height: 24px;
+                x: 98px; y: 1px; width: 20px; height: 20px;
                 source: Icons.right;
                 colorize: index == Nav.sel ? #7fb0ff : #6f7c92;
-                opacity: index == 1 && Preferences.danmaku-transparency == 100 ? 0.3 : 1;
+                opacity: index == 2 && Preferences.danmaku-opacity == 100 ? 0.3 : 1;
             }
         }
-        if index == 2: Icon {
-            x: parent.width - 34px; y: 1px; width: 24px; height: 24px;
+        if index == 4: Icon {
+            x: parent.width - 32px; y: 1px; width: 20px; height: 20px;
             source: Icons.right;
             colorize: index == Nav.sel ? #7fb0ff : #6f7c92;
         }
-    }
-    Text {
-        x: 16px; y: 102px; width: parent.width - 32px;
-        text: Meta.version;
-        color: #6f7c92;
-        font-family: "Fusion Pixel 10px Prop zh-Hans";
-        font-size: 10px;
     }
 }

@@ -6,14 +6,18 @@ use serde::{Deserialize, Serialize};
 #[serde(default)]
 pub struct Settings {
     pub list_view: i32,
-    pub danmaku_transparency: i32,
+    pub danmaku_enabled: bool,
+    pub danmaku_opacity: i32,
+    pub menu_position: i32,
 }
 
 impl Default for Settings {
     fn default() -> Self {
         Self {
             list_view: 1,
-            danmaku_transparency: 10,
+            danmaku_enabled: true,
+            danmaku_opacity: 90,
+            menu_position: 0,
         }
     }
 }
@@ -22,10 +26,19 @@ impl Settings {
     pub fn load() -> Self {
         let mut settings: Self = std::fs::read(Self::path())
             .ok()
-            .and_then(|data| serde_json::from_slice(&data).ok())
+            .and_then(|data| {
+                let mut value: serde_json::Value = serde_json::from_slice(&data).ok()?;
+                if value.get("danmaku_opacity").is_none() {
+                    if let Some(transparency) = value["danmaku_transparency"].as_i64() {
+                        value["danmaku_opacity"] = (100 - transparency.clamp(0, 100)).into();
+                    }
+                }
+                serde_json::from_value(value).ok()
+            })
             .unwrap_or_default();
         settings.list_view = settings.list_view.clamp(0, 2);
-        settings.danmaku_transparency = settings.danmaku_transparency.clamp(0, 100);
+        settings.danmaku_opacity = settings.danmaku_opacity.clamp(0, 100);
+        settings.menu_position = settings.menu_position.clamp(0, 2);
         settings
     }
 

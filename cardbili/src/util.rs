@@ -11,6 +11,7 @@ use slint::Rgb8Pixel;
 
 pub fn key_release(name: &str) -> Option<&'static str> {
     match name {
+        "l" | "5" => Some("LIKE_UP"),
         "LEFT" | "z" => Some("LEFT_UP"),
         "RIGHT" | "c" => Some("RIGHT_UP"),
         "UP" | "f" | "w" => Some("UP_UP"),

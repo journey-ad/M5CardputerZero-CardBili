@@ -1,5 +1,5 @@
 // 页面与组件共用的全局状态
-import { Cmt, DmRow } from "common.slint";
+import { Cmt, DmRow, VideoRow } from "common.slint";
 
 // 导航与交互态
 export global Nav {
@@ -13,14 +13,17 @@ export global Nav {
 
 // 列表数据与状态
 export global ListModel {
-    in-out property <[string]> titles: [];
-    in-out property <[string]> metas: [];
+    in-out property <[VideoRow]> rows: [];
+    in-out property <int> first-row: 0;
+    in-out property <length> grid-offset: 0px;
+    in-out property <string> history-count: "";
+    in-out property <string> favorite-count: "";
     in-out property <bool> loading: false;
     in-out property <int> cols: 3;
     in-out property <length> cell-w: 106px;
-    in-out property <length> cell-h: 58px;
+    in-out property <length> cell-h: 84px;
     in-out property <[image]> grid-covers: [];
-    in-out property <[string]> grid-titles: [];
+    in-out property <[VideoRow]> grid-rows: [];
     in-out property <int> grid-active: -1;
     in-out property <bool> title-marquee: false;
     in-out property <length> title-shift: 0px;
@@ -48,6 +51,14 @@ export global Account {
 
 // 播放
 export global Player {
+    callback key(string);
+    in-out property <bool> liked: false;
+    in-out property <bool> reaction-busy: false;
+    // 0 隐藏，1 长按，2 请求中，3 已完成
+    in-out property <int> triple-phase: 0;
+    in-out property <int> triple-charge: 0;
+    in-out property <int> triple-tick: 0;
+    in-out property <string> speed-text: "1X";
     in-out property <image> frame;
     in-out property <bool> has-frame: false;
     in-out property <string> ptitle: "";
@@ -56,12 +67,12 @@ export global Player {
     in-out property <float> progress: 0.0;
     in-out property <string> time-text: "00:00 / 00:00";
     in-out property <bool> paused: false;
-    in-out property <string> play-state: "";
     in-out property <bool> controls-visible: true;
 }
 
 // 弹幕：Rust 每帧写入当前可见弹幕
 export global Danmaku {
+    in-out property <bool> enabled: true;
     in-out property <[DmRow]> rows: [];
     // 外部字体可用时显示描边位图
     in-out property <bool> baked: false;
@@ -69,7 +80,8 @@ export global Danmaku {
 
 // 应用设置
 export global Preferences {
-    in-out property <int> danmaku-transparency: 10;
+    in-out property <int> danmaku-opacity: 90;
+    in-out property <int> menu-position: 0;
 }
 
 // 详情
@@ -77,7 +89,8 @@ export global Detail {
     in-out property <bool> loading: false;
     in-out property <string> error: "";
     in-out property <string> title: "";
-    in-out property <string> stats: "";
+    in-out property <string> bvid: "";
+    in-out property <[string]> metrics: [];
     in-out property <string> desc: "";
     in-out property <string> owner: "";
     in-out property <[Cmt]> comments: [];
@@ -100,4 +113,22 @@ export global Meta {
     in-out property <string> about-text: "";
     in-out property <[string]> tab-names: ["推荐", "热门", "动态", "我的", "设置"];
     in-out property <string> version: "";
+    in-out property <length> about-scroll: 0px;
+}
+
+export global Uploader {
+    in-out property <string> name: "";
+    in-out property <bool> loading: false;
+    in-out property <string> error: "";
+}
+
+export global Menu {
+    in-out property <[string]> labels: [];
+}
+
+export global Comments {
+    in-out property <[Cmt]> rows: [];
+    in-out property <bool> loading: false;
+    in-out property <string> error: "";
+    in-out property <length> scroll: 0px;
 }

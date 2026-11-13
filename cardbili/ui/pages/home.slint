@@ -1,11 +1,10 @@
 // 首页：页签 + 列表/网格/我的 三态 + 空状态 + 底部栏 + 按键说明
-import { Nav, ListModel, Status } from "../state.slint";
+import { Nav, ListModel, Status, Preferences } from "../state.slint";
 import { SettingsPanel } from "../components/settings_panel.slint";
 import { TabBar } from "../components/tab_bar.slint";
 import { ListView } from "../components/list_view.slint";
 import { GridView } from "../components/grid_view.slint";
 import { MinePanel } from "../components/mine_panel.slint";
-import { BottomBar } from "../components/bottom_bar.slint";
 import { HelpOverlay } from "../components/help_overlay.slint";
 import { EmptyState } from "../components/empty_state.slint";
 import { StatusBar } from "../components/status_bar.slint";
@@ -15,34 +14,38 @@ export component HomePage inherits Rectangle {
     height: 100%;
     background: #0b0f17;
 
-    TabBar { x: 0px; y: 0px; width: parent.width; }
+    property <length> content-x: Preferences.menu-position == 1 ? 56px : 0px;
+    property <length> content-y: Preferences.menu-position == 0 ? 24px : 0px;
+    property <length> content-width: root.width - (Preferences.menu-position == 0 ? 0px : 56px);
+    property <length> content-height: root.height - root.content-y - 20px;
 
-    // 列表视图
-    if (Nav.tab < 3 && Nav.view == 0) || (Nav.tab == 3 && Nav.mine-detail): ListView {
-        x: 0px; y: 18px; width: parent.width; height: parent.height - 38px;
+    TabBar {
+        x: Preferences.menu-position == 2 ? parent.width - 56px : 0px;
+        y: 0px;
+        width: Preferences.menu-position == 0 ? parent.width : 56px;
+        height: Preferences.menu-position == 0 ? 24px : parent.height;
     }
-
-    // 缩略图网格视图
-    if Nav.tab < 3 && Nav.view > 0: GridView {
-        x: 0px; y: 18px; width: parent.width; height: parent.height - 38px;
-    }
-
-    // 我的：账号信息与历史、收藏入口
-    if Nav.tab == 3 && !Nav.mine-detail: MinePanel {
-        x: 0px; y: 18px; width: parent.width; height: parent.height - 38px;
-    }
-
-    if Nav.tab == 4: SettingsPanel {
-        x: 0px; y: 18px; width: parent.width; height: parent.height - 38px;
-    }
-
-    // 空状态：列表无数据
-    if ((Nav.tab < 3 && Nav.view == 0) || (Nav.tab == 3 && Nav.mine-detail)) && ListModel.titles.length == 0: EmptyState {
-        x: 0px; y: 18px; width: parent.width; height: parent.height - 38px;
-    }
-    // 空状态：网格无数据
-    if Nav.view > 0 && Nav.tab < 3 && ListModel.grid-covers.length == 0: EmptyState {
-        x: 0px; y: 18px; width: parent.width; height: parent.height - 38px;
+    Rectangle {
+        x: root.content-x; y: root.content-y;
+        width: root.content-width; height: root.content-height;
+        if (Nav.tab < 3 && Nav.view == 0) || (Nav.tab == 3 && Nav.mine-detail): ListView {
+            width: parent.width; height: parent.height;
+        }
+        if Nav.tab < 3 && Nav.view > 0: GridView {
+            width: parent.width; height: parent.height;
+        }
+        if Nav.tab == 3 && !Nav.mine-detail: MinePanel {
+            width: parent.width; height: parent.height;
+        }
+        if Nav.tab == 4: SettingsPanel {
+            width: parent.width; height: parent.height;
+        }
+        if ((Nav.tab < 3 && Nav.view == 0) || (Nav.tab == 3 && Nav.mine-detail)) && ListModel.rows.length == 0: EmptyState {
+            width: parent.width; height: parent.height;
+        }
+        if Nav.view > 0 && Nav.tab < 3 && ListModel.grid-covers.length == 0: EmptyState {
+            width: parent.width; height: parent.height;
+        }
     }
 
     // 浮动状态提示显示在内容上方，数秒后自动消失
@@ -50,9 +53,6 @@ export component HomePage inherits Rectangle {
         x: (parent.width - self.width) / 2;
         y: parent.height - 46px;
     }
-
-    // 底部菜单：已登录时隐藏“登录”
-    BottomBar { x: 0px; y: parent.height - 20px; width: parent.width; }
 
     // 按键说明弹窗
     if Nav.help: HelpOverlay { x: 16px; y: 26px; width: parent.width - 32px; height: parent.height - 38px; }

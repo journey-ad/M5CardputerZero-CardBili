@@ -1,4 +1,4 @@
-use crate::model::Seg;
+use crate::model::{PlayInfo, Seg};
 use crate::net::{REFERER, UA};
 use crate::Msg;
 use std::io::Read;
@@ -56,6 +56,25 @@ fn pactl_vol(audio_pid: u32, pct: i32) {
     }
 }
 
+#[derive(Clone, Copy)]
+pub struct PlaybackState {
+    pub position: f64,
+    pub paused: bool,
+    pub volume: i32,
+    pub rate: f64,
+}
+
+impl Default for PlaybackState {
+    fn default() -> Self {
+        Self {
+            position: 0.0,
+            paused: false,
+            volume: 100,
+            rate: 1.0,
+        }
+    }
+}
+
 pub struct Player {
     pub gen: u64,
     pub title: String,
@@ -63,6 +82,7 @@ pub struct Player {
     pub base: f64,
     pub paused: bool,
     pub vol: i32,
+    pub rate: f64,
     ready: bool,
     segs: Vec<Seg>,
     seg_idx: usize,
@@ -74,29 +94,30 @@ pub struct Player {
 
 impl Player {
     pub fn start(
-        segs: Vec<Seg>,
-        duration: f64,
-        title: String,
+        info: &PlayInfo,
         cookies: String,
         gen: u64,
         tx: Sender<Msg>,
+        state: PlaybackState,
     ) -> Player {
         let mut p = Player {
             gen,
-            title,
-            duration,
+            title: info.title.clone(),
+            duration: info.duration,
             base: 0.0,
-            paused: false,
-            vol: 100,
+            paused: state.paused,
+            vol: state.volume.clamp(0, 150),
+            rate: state.rate,
             ready: false,
-            segs,
+            segs: info.segs.clone(),
             seg_idx: 0,
             cookies,
             vchild: None,
             achild: None,
             tx,
         };
-        p.spawn(0.0);
+        let offset = p.set_position(state.position);
+        p.spawn(offset);
         p
     }
 
@@ -107,8 +128,8 @@ impl Player {
         let seg = self.segs.get(self.seg_idx).cloned().unwrap_or_default();
         let hd = headers(&self.cookies);
         let vf = format!(
-            "fps=30,scale={}:{}:force_original_aspect_ratio=decrease:force_divisible_by=2:flags=fast_bilinear,pad={}:{}:(ow-iw)/2:(oh-ih)/2:color=black",
-            WIDTH, HEIGHT, WIDTH, HEIGHT
+            "setpts=(PTS-STARTPTS)/{},fps=30,scale={}:{}:force_original_aspect_ratio=decrease:force_divisible_by=2:flags=fast_bilinear,pad={}:{}:(ow-iw)/2:(oh-ih)/2:color=black",
+            self.rate, WIDTH, HEIGHT, WIDTH, HEIGHT
         );
         let mut vargs: Vec<String> = vec![
             "-hide_banner".into(),
@@ -132,7 +153,8 @@ impl Player {
             vargs.push("-ss".into());
             vargs.push(format!("{:.3}", ss));
         }
-        vargs.push("-re".into());
+        vargs.push("-readrate".into());
+        vargs.push(self.rate.to_string());
         vargs.push("-i".into());
         vargs.push(seg.url.clone());
         vargs.push("-map".into());
@@ -189,11 +211,14 @@ impl Player {
                 a.push("-ss".into());
                 a.push(format!("{:.3}", ss));
             }
-            a.push("-re".into());
+            a.push("-readrate".into());
+            a.push(self.rate.to_string());
             a.push("-i".into());
             a.push(seg.url.clone());
             a.push("-map".into());
             a.push("0:a:0".into());
+            a.push("-af".into());
+            a.push(format!("atempo={}", self.rate));
             a.push("-ac".into());
             a.push("2".into());
             a.push("-ar".into());
@@ -223,7 +248,17 @@ impl Player {
     }
 
     pub fn position(&self, frames_in_seg: u64) -> f64 {
-        self.base + frames_in_seg as f64 / FPS
+        (self.base + frames_in_seg as f64 / FPS * self.rate).min(self.duration)
+    }
+
+    pub fn cycle_rate(&mut self, position: f64) {
+        self.rate = match self.rate {
+            0.5 => 1.0,
+            1.0 => 1.5,
+            1.5 => 2.0,
+            _ => 0.5,
+        };
+        self.seek(position);
     }
 
     pub fn pause_toggle(&mut self) {
@@ -254,6 +289,13 @@ impl Player {
     }
 
     pub fn seek(&mut self, target: f64) -> f64 {
+        let offset = self.set_position(target);
+        self.gen += 1;
+        self.spawn(offset);
+        self.base
+    }
+
+    fn set_position(&mut self, target: f64) -> f64 {
         let target = target.max(0.0).min(self.duration.max(0.0));
         let mut idx = 0usize;
         let mut acc = 0.0;
@@ -267,9 +309,7 @@ impl Player {
         let ss = (target - acc).max(0.0);
         self.seg_idx = idx;
         self.base = acc + ss;
-        self.gen += 1;
-        self.spawn(ss);
-        self.base
+        ss
     }
 
     pub fn advance(&mut self) -> bool {

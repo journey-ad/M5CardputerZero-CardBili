@@ -5,6 +5,18 @@ use std::time::{SystemTime, UNIX_EPOCH};
 pub const UA: &str = "Mozilla/5.0 (X11; Linux aarch64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 pub const REFERER: &str = "https://www.bilibili.com/";
 
+pub struct RequestHeaders<'a> {
+    pub user_agent: &'a str,
+    pub referer: &'a str,
+    pub origin: &'a str,
+}
+
+const DEFAULT_HEADERS: RequestHeaders<'static> = RequestHeaders {
+    user_agent: UA,
+    referer: REFERER,
+    origin: "https://www.bilibili.com",
+};
+
 pub fn now_secs() -> i64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -12,7 +24,7 @@ pub fn now_secs() -> i64 {
         .unwrap_or(0)
 }
 
-fn curl_args(url: &str, cookies: Option<&str>, jar: Option<&str>) -> Vec<String> {
+fn curl_args(url: &str, cookies: Option<&str>, headers: &RequestHeaders<'_>) -> Vec<String> {
     let mut a: Vec<String> = vec![
         "-s".into(),
         "-L".into(),
@@ -20,11 +32,11 @@ fn curl_args(url: &str, cookies: Option<&str>, jar: Option<&str>) -> Vec<String>
         "--max-time".into(),
         "25".into(),
         "-A".into(),
-        UA.into(),
+        headers.user_agent.into(),
         "-e".into(),
-        REFERER.into(),
+        headers.referer.into(),
         "-H".into(),
-        "Origin: https://www.bilibili.com".into(),
+        format!("Origin: {}", headers.origin),
         "-H".into(),
         "Accept: application/json, text/plain, */*".into(),
     ];
@@ -33,12 +45,6 @@ fn curl_args(url: &str, cookies: Option<&str>, jar: Option<&str>) -> Vec<String>
             a.push("-H".into());
             a.push(format!("Cookie: {}", ck));
         }
-    }
-    if let Some(j) = jar {
-        a.push("-c".into());
-        a.push(j.into());
-        a.push("-b".into());
-        a.push(j.into());
     }
     a.push(url.into());
     a
@@ -52,9 +58,34 @@ fn tidy(s: &str) -> String {
         .to_string()
 }
 
-fn curl_out(url: &str, cookies: Option<&str>, jar: Option<&str>) -> Result<String, String> {
+pub fn curl_get_with_headers(
+    url: &str,
+    cookies: Option<&str>,
+    headers: &RequestHeaders<'_>,
+) -> Result<String, String> {
+    curl_text(curl_args(url, cookies, headers))
+}
+
+pub fn post_form_json(
+    url: &str,
+    cookies: &str,
+    referer: &str,
+    params: &[(String, String)],
+) -> Result<serde_json::Value, String> {
+    let headers = RequestHeaders {
+        user_agent: UA,
+        referer,
+        origin: "https://www.bilibili.com",
+    };
+    let mut args = curl_args(url, Some(cookies), &headers);
+    args.extend(["--data".into(), query_string(params)]);
+    let body = curl_text(args)?;
+    serde_json::from_str(&body).map_err(|error| format!("数据解析失败\n{error}"))
+}
+
+fn curl_text(args: Vec<String>) -> Result<String, String> {
     let out = Command::new("curl")
-        .args(curl_args(url, cookies, jar))
+        .args(args)
         .output()
         .map_err(|e| format!("网络请求启动失败\n{e}"))?;
     if !out.status.success() {
@@ -75,12 +106,12 @@ fn curl_out(url: &str, cookies: Option<&str>, jar: Option<&str>) -> Result<Strin
 }
 
 pub fn curl_get(url: &str, cookies: Option<&str>) -> Result<String, String> {
-    curl_out(url, cookies, None)
+    curl_get_with_headers(url, cookies, &DEFAULT_HEADERS)
 }
 
 pub fn curl_bytes(url: &str) -> Result<Vec<u8>, String> {
     let out = Command::new("curl")
-        .args(curl_args(url, None, None))
+        .args(curl_args(url, None, &DEFAULT_HEADERS))
         .output()
         .map_err(|e| format!("网络请求启动失败\n{e}"))?;
     if !out.status.success() {

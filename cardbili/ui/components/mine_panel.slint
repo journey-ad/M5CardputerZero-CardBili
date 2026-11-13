@@ -12,12 +12,13 @@ export component MinePanel inherits Rectangle {
     Text { x: 52px; y: 23px; width: parent.width - 60px; height: 12px; text: Account.logged ? "UID " + Account.mid : (Account.known ? "请稍候" : "按 登录 键扫码登录"); color: #8b95a7; font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px; vertical-alignment: center; }
     if Account.logged: Text { x: 52px; y: 34px; width: parent.width - 60px; height: 11px; text: Account.level + "  " + Account.vip; color: #c9a0ff; font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px; vertical-alignment: center; }
 
-    for t[i] in ListModel.titles: Rectangle {
-        x: 6px; y: 50px + i * 22px; width: parent.width - 12px; height: 20px;
+    for t[i] in ["历史观看", "我的收藏"]: Rectangle {
+        x: 6px; y: 52px + i * 36px; width: parent.width - 12px; height: 32px;
         background: i == Nav.sel ? #1f2b45 : #0f1623;
         border-radius: 4px;
-        Text { x: 10px; y: 0px; width: 160px; height: 20px; text: t; color: #e6ebf5; font-size: 12px; vertical-alignment: center; }
-        Icon { x: parent.width - 22px; y: 4px; source: Icons.right; colorize: #6f7c92; }
-        Text { x: parent.width - 100px; y: 0px; width: 70px; height: 20px; text: ListModel.metas[i]; color: #6f7c92; font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px; horizontal-alignment: right; vertical-alignment: center; }
+        Icon { x: 8px; y: 4px; width: 24px; height: 24px; source: i == 0 ? Icons.clock : Icons.bookmark; colorize: #7fb0ff; }
+        Text { x: 40px; y: 0px; width: 112px; height: 32px; text: t; color: #e6ebf5; font-size: 12px; vertical-alignment: center; }
+        Icon { x: parent.width - 22px; y: 10px; source: Icons.right; colorize: #6f7c92; }
+        Text { x: parent.width - 100px; y: 0px; width: 70px; height: 32px; text: i == 0 ? ListModel.history-count : ListModel.favorite-count; color: #6f7c92; font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px; horizontal-alignment: right; vertical-alignment: center; }
     }
 }

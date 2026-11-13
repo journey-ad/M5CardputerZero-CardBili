@@ -1,4 +1,7 @@
 // 播放页：画面 + 顶部标题栏 + 底部进度条
+import { TripleAnimation } from "../components/triple_animation.slint";
+import { PlaybackBar } from "../components/playback_bar.slint";
+import { StatusBar } from "../components/status_bar.slint";
 import { Icon, Icons } from "../components/icons.slint";
 import { Player, Status, Danmaku, Preferences } from "../state.slint";
 
@@ -19,7 +22,8 @@ export component PlayPage inherits Rectangle {
     for row in Danmaku.rows: Rectangle {
         x: row.x; y: row.y; width: row.w; height: 14px;
         background: transparent;
-        opacity: (100 - Preferences.danmaku-transparency) / 100;
+        visible: Danmaku.enabled;
+        opacity: Preferences.danmaku-opacity / 100;
         // 外部字体可用时，每条弹幕显示一张描边位图
         if Danmaku.baked: Image { x: 0px; y: 0px; source: row.img; }
         // 外部字体缺失时显示文字与半透明背景
@@ -34,11 +38,12 @@ export component PlayPage inherits Rectangle {
         text: Status.status; color: #9aa6ba; font-size: 12px; horizontal-alignment: center;
     }
 
-    // 暂停时画面中央的半透明暂停图标
-    if Player.paused: Rectangle {
-        x: (parent.width - 56px) / 2; y: (parent.height - 56px) / 2; width: 56px; height: 56px;
-        background: #00000070; border-radius: 28px;
-        Icon { x: 4px; y: 4px; width: 48px; height: 48px; source: Icons.pause; colorize: #ffffffee; }
+    // 暂停时在画面中央显示继续播放按钮
+    if Player.paused && Player.triple-phase == 0: Rectangle {
+        x: (root.width - self.width) / 2; y: (root.height - self.height) / 2;
+        width: 32px; height: 32px; background: #00000070; border-radius: 16px;
+        Icon { x: 4px; y: 4px; width: 24px; height: 24px; source: Icons.play; colorize: #ffffffee; }
+        TouchArea { clicked => { Player.key("SPACE"); } }
     }
 
     Rectangle {
@@ -57,14 +62,12 @@ export component PlayPage inherits Rectangle {
         }
     }
 
-    Rectangle {
+    PlaybackBar {
         visible: Player.controls-visible;
-        x: 0px; y: parent.height - 26px; width: parent.width; height: 26px; background: #000000b0;
-        Rectangle { x: 6px; y: 3px; width: parent.width - 12px; height: 4px; background: #2a3346; border-radius: 2px; }
-        Rectangle { x: 6px; y: 3px; width: (parent.width - 12px) * Player.progress; height: 4px; background: #6ea8ff; border-radius: 2px; }
-        Icon {
-            x: 4px; y: 10px; source: Player.paused ? Icons.pause : Icons.play;
-        }
-        Text { x: 18px; y: 11px; text: Player.time-text; color: #cfd8e6; font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px; }
+        x: 0px; y: parent.height - self.height; width: parent.width;
     }
+    if Player.triple-phase > 0: TripleAnimation {
+        x: (root.width - self.width) / 2; y: (root.height - self.height) / 2;
+    }
+    StatusBar { x: (parent.width - self.width) / 2; y: parent.height - 50px; }
 }

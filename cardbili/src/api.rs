@@ -1,7 +1,11 @@
+pub mod playback;
+
 use crate::cache;
-use crate::model::{self, Account, Comment, Detail, Item, PlayInfo, Seg};
+use crate::model::{self, Account, Comment, Detail, Item, Owner, PlayInfo, Seg, VideoStats};
 use crate::net;
+use base64::Engine;
 use serde_json::Value;
+use std::io::Read;
 
 /// 统一生成友好的接口错误文案，保留业务码与原始错误信息
 fn api_err(name: &str, v: &Value) -> String {
@@ -11,6 +15,25 @@ fn api_err(name: &str, v: &Value) -> String {
         format!("{}加载失败\ncode={}", name, code)
     } else {
         format!("{}加载失败\ncode={} {}", name, code, msg)
+    }
+}
+
+fn count_text(value: &Value) -> Option<String> {
+    value.as_i64().map(model::fmt_num).or_else(|| {
+        value
+            .as_str()
+            .filter(|text| !text.is_empty())
+            .map(str::to_string)
+    })
+}
+
+fn owner(value: &Value) -> Owner {
+    Owner {
+        mid: value["mid"]
+            .as_i64()
+            .map(|mid| mid.to_string())
+            .unwrap_or_default(),
+        name: value["name"].as_str().unwrap_or_default().to_string(),
     }
 }
 
@@ -40,9 +63,13 @@ fn video_items(value: &Value) -> Vec<Item> {
             let pic = it["pic"].as_str().unwrap_or("").to_string();
             out.push(Item {
                 title,
-                meta: format!("{} · {}", name, model::mmss(d)),
+                meta: name.to_string(),
+                duration: model::mmss(d),
                 bvid,
                 pic,
+                views: count_text(&it["stat"]["view"]),
+                likes: count_text(&it["stat"]["like"]),
+                danmaku: count_text(&it["stat"]["danmaku"]),
             });
         }
     }
@@ -100,13 +127,17 @@ pub fn history(cookies: &str) -> Result<Vec<Item>, String> {
                 it["title"].as_str().unwrap_or("").to_string()
             };
             let name = it["author_name"].as_str().unwrap_or("");
-            let d = model::dur_of(&it["history"]["duration"]);
+            let d = model::dur_of(&it["duration"]);
             let pic = it["cover"].as_str().unwrap_or("").to_string();
             out.push(Item {
                 title,
-                meta: format!("{} · {}", name, model::mmss(d)),
+                meta: name.to_string(),
+                duration: model::mmss(d),
                 bvid,
                 pic,
+                views: count_text(&it["stat"]["view"]),
+                likes: count_text(&it["stat"]["like"]),
+                danmaku: count_text(&it["stat"]["danmaku"]),
             });
         }
     }
@@ -150,9 +181,13 @@ pub fn fav(cookies: &str, mid: &str) -> Result<Vec<Item>, String> {
             let pic = it["cover"].as_str().unwrap_or("").to_string();
             out.push(Item {
                 title,
-                meta: format!("{} · {}", name, model::mmss(d)),
+                meta: name.to_string(),
+                duration: model::mmss(d),
                 bvid,
                 pic,
+                views: count_text(&it["cnt_info"]["play"]),
+                likes: count_text(&it["cnt_info"]["thumb_up"]),
+                danmaku: count_text(&it["cnt_info"]["danmaku"]),
             });
         }
     }
@@ -184,14 +219,14 @@ pub fn dynamic(cookies: &str) -> Result<Vec<Item>, String> {
                 .as_str()
                 .unwrap_or("");
             let dtext = archive["duration_text"].as_str().unwrap_or("");
-            let mut meta = author.to_string();
-            if !dtext.is_empty() {
-                meta = format!("{} · {}", author, dtext);
-            }
             let pic = archive["cover"].as_str().unwrap_or("").to_string();
             out.push(Item {
                 title,
-                meta,
+                meta: author.to_string(),
+                duration: dtext.to_string(),
+                views: count_text(&archive["stat"]["play"]),
+                likes: count_text(&archive["stat"]["like"]),
+                danmaku: count_text(&archive["stat"]["danmaku"]),
                 bvid: bvid.to_string(),
                 pic,
             });
@@ -243,6 +278,9 @@ pub fn play_info(bvid: &str, cookies: Option<&str>) -> Result<PlayInfo, String> 
     let sum: f64 = segs.iter().map(|s| s.len).sum();
     let duration = if view_dur > 0.0 { view_dur } else { sum };
     Ok(PlayInfo {
+        aid: d["aid"].as_i64().unwrap_or(0),
+        bvid: bvid.to_string(),
+        owner: owner(&d["owner"]),
         title,
         segs,
         duration,
@@ -377,11 +415,105 @@ pub fn video_detail(bvid: &str, cookies: Option<&str>) -> Result<Detail, String>
         title: d["title"].as_str().unwrap_or("").to_string(),
         pic: d["pic"].as_str().unwrap_or("").to_string(),
         duration: model::dur_of(&d["duration"]),
-        owner: d["owner"]["name"].as_str().unwrap_or("").to_string(),
+        owner: owner(&d["owner"]),
         views: stat["view"].as_i64().unwrap_or(0),
         likes: stat["like"].as_i64().unwrap_or(0),
         coins: stat["coin"].as_i64().unwrap_or(0),
+        favorites: stat["favorite"].as_i64().unwrap_or(0),
+        danmaku: stat["danmaku"].as_i64().unwrap_or(0),
         desc: d["desc"].as_str().unwrap_or("").to_string(),
         comments,
     })
+}
+
+pub fn video_stats(bvid: &str, cookies: Option<&str>) -> Result<VideoStats, String> {
+    let url = format!("https://api.bilibili.com/x/web-interface/view?bvid={bvid}");
+    let value = cache::api_json(&url, cookies, cache::TTL_DETAIL)?;
+    if value["code"].as_i64() != Some(0) {
+        return Err(api_err("视频信息", &value));
+    }
+    let stats = &value["data"]["stat"];
+    Ok(VideoStats {
+        views: count_text(&stats["view"]).unwrap_or_else(|| "—".into()),
+        likes: count_text(&stats["like"]).unwrap_or_else(|| "—".into()),
+        danmaku: count_text(&stats["danmaku"]).unwrap_or_else(|| "—".into()),
+    })
+}
+
+fn random_base64(length: usize) -> Result<String, String> {
+    let mut bytes = vec![0; length];
+    std::fs::File::open("/dev/urandom")
+        .and_then(|mut file| file.read_exact(&mut bytes))
+        .map_err(|error| format!("请求参数生成失败\n{error}"))?;
+    let mut encoded = base64::engine::general_purpose::STANDARD.encode(bytes);
+    // PiliPlus 的随机参数保留 Base64 编码除末尾两字符之外的内容
+    encoded.truncate(encoded.len() - 2);
+    Ok(encoded)
+}
+
+pub fn uploader_videos(
+    mid: &str,
+    page: u32,
+    cookies: Option<&str>,
+) -> Result<model::VideoPage, String> {
+    let endpoint = "https://api.bilibili.com/x/space/wbi/arc/search";
+    let params = vec![
+        ("mid".into(), mid.to_string()),
+        ("pn".into(), page.to_string()),
+        ("ps".into(), "20".into()),
+        ("order".into(), "pubdate".into()),
+        ("tid".into(), "0".into()),
+        ("platform".into(), "web".into()),
+        ("web_location".into(), "333.1387".into()),
+        ("order_avoided".into(), "true".into()),
+        ("dm_img_list".into(), "[]".into()),
+        (
+            "dm_img_inter".into(),
+            r#"{"ds":[],"wh":[0,0,0],"of":[0,0,0]}"#.into(),
+        ),
+    ];
+    let key = format!("{}?{}", endpoint, net::query_string(&params));
+    let value = cache::api_json_with(&key, cookies, cache::TTL_LIST, || {
+        let mut params = params;
+        params.push(("dm_img_str".into(), random_base64(32)?));
+        params.push(("dm_cover_img_str".into(), random_base64(64)?));
+        let mixin = net::fetch_mixin()?;
+        let signed = net::wbi_sign(&params, &mixin);
+        net::curl_get_with_headers(
+            &format!("{}?{}", endpoint, net::query_string(&signed)),
+            cookies,
+            &net::RequestHeaders {
+                user_agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.2 Safari/605.1.15",
+                referer: &format!("https://space.bilibili.com/{mid}"),
+                origin: "https://space.bilibili.com",
+            },
+        )
+    })?;
+    if value["code"].as_i64() != Some(0) {
+        return Err(api_err("用户作品", &value));
+    }
+    let mut items = Vec::new();
+    if let Some(videos) = value["data"]["list"]["vlist"].as_array() {
+        for video in videos {
+            let bvid = video["bvid"].as_str().unwrap_or_default();
+            if bvid.is_empty() {
+                continue;
+            }
+            items.push(Item {
+                title: video["title"].as_str().unwrap_or_default().into(),
+                meta: video["author"].as_str().unwrap_or_default().into(),
+                bvid: bvid.into(),
+                pic: video["pic"].as_str().unwrap_or_default().into(),
+                duration: video["length"].as_str().unwrap_or_default().into(),
+                views: count_text(&video["play"]),
+                likes: count_text(&video["like"]),
+                danmaku: count_text(&video["video_review"]),
+            });
+        }
+    }
+    let has_more = value["data"]["page"]["count"]
+        .as_u64()
+        .map(|count| u64::from(page) * 20 < count)
+        .unwrap_or(items.len() == 20);
+    Ok(model::VideoPage { items, has_more })
 }

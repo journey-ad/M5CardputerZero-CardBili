@@ -4,6 +4,27 @@ pub struct Item {
     pub meta: String,
     pub bvid: String,
     pub pic: String,
+    pub duration: String,
+    pub views: Option<String>,
+    pub likes: Option<String>,
+    pub danmaku: Option<String>,
+}
+
+#[derive(Clone, Default)]
+pub struct Owner {
+    pub mid: String,
+    pub name: String,
+}
+
+pub struct VideoStats {
+    pub views: String,
+    pub likes: String,
+    pub danmaku: String,
+}
+
+pub struct VideoPage {
+    pub items: Vec<Item>,
+    pub has_more: bool,
 }
 
 #[derive(Clone, Default)]
@@ -14,6 +35,9 @@ pub struct Seg {
 
 #[derive(Clone, Default)]
 pub struct PlayInfo {
+    pub aid: i64,
+    pub bvid: String,
+    pub owner: Owner,
     pub title: String,
     pub segs: Vec<Seg>,
     pub duration: f64,
@@ -41,10 +65,12 @@ pub struct Detail {
     pub title: String,
     pub pic: String,
     pub duration: f64,
-    pub owner: String,
+    pub owner: Owner,
     pub views: i64,
     pub likes: i64,
     pub coins: i64,
+    pub favorites: i64,
+    pub danmaku: i64,
     pub desc: String,
     pub comments: Vec<Comment>,
 }
@@ -79,4 +105,21 @@ pub fn fmt_num(n: i64) -> String {
     } else {
         n.to_string()
     }
+}
+
+#[derive(Clone, Copy)]
+pub enum VideoAction {
+    Like(bool),
+    Triple,
+}
+
+pub struct ReactionResult {
+    pub triple_complete: bool,
+    pub liked: bool,
+    pub message: String,
+}
+
+pub struct CommentPage {
+    pub items: Vec<Comment>,
+    pub has_more: bool,
 }

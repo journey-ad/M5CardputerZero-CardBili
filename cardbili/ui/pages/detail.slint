@@ -1,34 +1,51 @@
 // 详情页：封面 + 标题/统计 + 可滚动正文与评论
+import { Icons } from "../components/icons.slint";
+import { StatItem } from "../components/stat_item.slint";
 import { Detail } from "../state.slint";
 
 export component DetailPage inherits Rectangle {
     width: 100%;
     height: 100%;
     out property <length> content-height: body-lay.preferred-height;
+    out property <length> viewport-height: body-viewport.height;
 
     background: #0b0f17;
 
     Rectangle {
         x: 0px; y: 0px; width: parent.width; height: 20px; background: #121a2a;
-        Text { x: 6px; y: 0px; width: 200px; height: 20px; text: "视频详情"; color: #7fb0ff; font-size: 12px; vertical-alignment: center; }
-        Text { x: parent.width - 76px; y: 0px; width: 70px; height: 20px; text: "ESC 返回"; color: #ffcf6e; font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px; horizontal-alignment: right; vertical-alignment: center; }
+        Text { x: 6px; y: 0px; width: parent.width - 12px; height: 20px; text: "视频详情"; color: #7fb0ff; font-size: 12px; vertical-alignment: center; }
     }
     if !Detail.loading && Detail.error == "" && Detail.has-cover: Image {
-        x: 6px; y: 24px; width: 104px; height: 58px; source: Detail.cover; image-fit: cover;
+        x: 6px; y: 24px; width: 96px; height: 68px; source: Detail.cover; image-fit: cover;
     }
-    if !Detail.loading && Detail.error == "" && !Detail.has-cover: Rectangle { x: 6px; y: 24px; width: 104px; height: 58px; background: #121a2a; }
+    if !Detail.loading && Detail.error == "" && !Detail.has-cover: Rectangle {
+        x: 6px; y: 24px; width: 96px; height: 68px; background: #121a2a;
+    }
     Text {
-        x: 116px; y: 22px; width: parent.width - 122px; height: 34px;
+        x: 110px; y: 22px; width: parent.width - 116px; height: 28px;
         text: Detail.title; color: #e6ebf5; font-size: 12px; wrap: word-wrap; overflow: elide;
     }
     Text {
-        x: 116px; y: 56px; width: parent.width - 122px; height: 26px;
-        visible: !Detail.loading && Detail.error == "";
-        text: Detail.stats; color: #8b95a7; font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px; wrap: word-wrap;
+        x: 110px; y: 52px; width: parent.width - 116px; height: 12px;
+        text: Detail.bvid; color: #7d8798;
+        font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
+        vertical-alignment: center;
     }
-    Rectangle {
+    metrics := Rectangle {
+        x: 110px; y: 66px; width: parent.width - 116px; height: 28px;
         visible: !Detail.loading && Detail.error == "";
-        x: 0px; y: 86px; width: parent.width; height: parent.height - 86px; clip: true;
+        property <[image]> icons: [Icons.clock, Icons.play, Icons.thumbs-up, Icons.coins, Icons.bookmark, Icons.message-text];
+        for row in [0, 1]: HorizontalLayout {
+            x: 0px; y: row * 14px; width: parent.width; height: 12px;
+            spacing: 6px; alignment: start;
+            for col in [0, 1, 2]: StatItem {
+                icon: metrics.icons[row * 3 + col]; value: Detail.metrics[row * 3 + col];
+            }
+        }
+    }
+    body-viewport := Rectangle {
+        visible: !Detail.loading && Detail.error == "";
+        x: 0px; y: 100px; width: parent.width; height: parent.height - 120px; clip: true;
         Rectangle { x: 0px; y: 0px; width: parent.width; height: 1px; background: #1a2436; }
         body-lay := VerticalLayout {
             x: 8px; y: -Detail.scroll; width: parent.width - 20px; spacing: 4px;
@@ -55,7 +72,7 @@ export component DetailPage inherits Rectangle {
         }
     }
     if !Detail.loading && Detail.error == "" && Detail.thumb-h > 0px: Rectangle {
-        x: parent.width - 4px; y: 86px; width: 4px; height: parent.height - 86px; background: #10141c;
+        x: parent.width - 4px; y: 100px; width: 4px; height: body-viewport.height; background: #10141c;
         Rectangle { x: 0px; y: Detail.thumb-y; width: 4px; height: Detail.thumb-h; background: #3a4a66; border-radius: 2px; }
     }
     if Detail.loading || Detail.error != "": Text {

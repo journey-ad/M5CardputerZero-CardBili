@@ -1,3 +1,5 @@
+pub mod playback;
+
 use std::sync::mpsc::Sender;
 use std::thread;
 use std::time::Duration;
@@ -121,15 +123,39 @@ pub fn load_more(tab: usize, page: u32, cookies: Option<String>, tx: Sender<Msg>
     });
 }
 
-pub fn start_play(bvid: String, cookies: Option<String>, tx: Sender<Msg>) {
-    thread::spawn(move || match api::play_info(&bvid, cookies.as_deref()) {
-        Ok(p) => {
-            let _ = tx.send(Msg::PlayReady(p));
-        }
-        Err(e) => {
-            let _ = tx.send(Msg::Err(9, e));
+pub fn start_play(bvid: String, cookies: Option<String>, request: u64, tx: Sender<Msg>) {
+    thread::spawn(move || {
+        let result = api::play_info(&bvid, cookies.as_deref());
+        let _ = tx.send(Msg::PlayReady(request, result));
+    });
+}
+
+pub fn load_uploader(
+    mid: String,
+    page: u32,
+    cookies: Option<String>,
+    request: u64,
+    tx: Sender<Msg>,
+) {
+    thread::spawn(move || {
+        let result = api::uploader_videos(&mid, page, cookies.as_deref());
+        let _ = tx.send(Msg::Uploader(request, page, result));
+    });
+}
+
+pub fn spawn_stats_worker(
+    tx: Sender<Msg>,
+) -> std::sync::mpsc::SyncSender<(String, Option<String>)> {
+    let (queue, requests) = std::sync::mpsc::sync_channel::<(String, Option<String>)>(8);
+    thread::spawn(move || {
+        for (bvid, cookies) in requests {
+            let result = api::video_stats(&bvid, cookies.as_deref());
+            if tx.send(Msg::Stats(bvid, result)).is_err() {
+                break;
+            }
         }
     });
+    queue
 }
 
 // 播放就绪后单独拉取弹幕，失败时回空列表，不影响播放
@@ -181,34 +207,34 @@ pub fn start_detail(bvid: String, cookies: Option<String>, request: u64, tx: Sen
     });
 }
 
-pub fn start_login(tx: Sender<Msg>) {
+pub fn start_login(request: u64, tx: Sender<Msg>) {
     thread::spawn(move || {
         let jar = "/tmp/cardbili_qr.jar";
         let _ = std::fs::remove_file(jar);
         let (url, key) = match net::qr_generate() {
             Ok(v) => v,
             Err(e) => {
-                let _ = tx.send(Msg::QrStatus(e));
+                let _ = tx.send(Msg::QrStatus(request, e));
                 return;
             }
         };
-        let _ = tx.send(Msg::QrReady(url));
+        let _ = tx.send(Msg::QrReady(request, url));
         loop {
             match net::qr_poll(&key, jar) {
                 net::Poll::Success(ck) => {
-                    let _ = tx.send(Msg::QrDone(ck));
+                    let _ = tx.send(Msg::QrDone(request, ck));
                     break;
                 }
                 net::Poll::Scanned => {
-                    let _ = tx.send(Msg::QrStatus("已扫码，请在手机上确认".into()));
+                    let _ = tx.send(Msg::QrStatus(request, "已扫码，请在手机上确认".into()));
                 }
                 net::Poll::Pending => {}
                 net::Poll::Expired => {
-                    let _ = tx.send(Msg::QrStatus("二维码已过期，请刷新".into()));
+                    let _ = tx.send(Msg::QrStatus(request, "二维码已过期，请刷新".into()));
                     break;
                 }
                 net::Poll::Err(e) => {
-                    let _ = tx.send(Msg::QrStatus(e));
+                    let _ = tx.send(Msg::QrStatus(request, e));
                     break;
                 }
             }

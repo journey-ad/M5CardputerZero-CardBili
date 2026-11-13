@@ -1,0 +1,45 @@
+import { Icon, Icons } from "icons.slint";
+import { Player } from "../state.slint";
+
+export component TripleAnimation inherits Rectangle {
+    width: 144px; height: 68px;
+    background: #0b0f17ed;
+    border-width: 1px;
+    border-color: Player.triple-phase == 3 ? #ffcf6e : #536581;
+    property <[color]> tones: [#7fb0ff, #ffcf6e, #ff77a8];
+
+    Text {
+        x: 0px; y: 4px; width: parent.width; height: 14px;
+        text: Player.triple-phase == 1 ? "一键三连" : (Player.triple-phase == 2 ? "提交中…" : "三连成功");
+        color: #e6ebf5; font-size: 12px;
+        horizontal-alignment: center; vertical-alignment: center;
+    }
+    for glyph[index] in [Icons.thumbs-up, Icons.coins, Icons.bookmark]: Rectangle {
+        property <bool> lit: Player.triple-phase >= 2 || Player.triple-charge >= (index + 1) * 5;
+        property <bool> bounce: Player.triple-phase == 1 && Player.triple-charge >= index * 5 && Player.triple-charge < (index + 1) * 5;
+        x: 18px + index * 40px;
+        y: 24px - (self.bounce && Math.mod(Player.triple-tick, 2) == 0 ? 2px : 0px);
+        width: 28px; height: 28px;
+        background: self.lit ? #1f2b45 : #121a2a;
+        border-width: 1px; border-color: self.lit ? root.tones[index] : #334158;
+        Icon {
+            x: 2px; y: 2px; width: 24px; height: 24px; source: glyph;
+            colorize: parent.lit ? root.tones[index] : #536581;
+            opacity: Player.triple-phase == 2 && Math.mod(Player.triple-tick + index, 3) == 0 ? 0.5 : 1;
+        }
+    }
+    for step in 16: Rectangle {
+        x: 9px + step * 8px; y: 59px; width: 6px; height: 3px;
+        background: step < Player.triple-charge ? root.tones[Math.min(2, Math.floor(step / 5))] : #25314a;
+    }
+    if Player.triple-phase == 3: Rectangle {
+        x: 0px; y: 0px; width: parent.width; height: parent.height;
+        property <[length]> particle-x: [-6px, 12px, 40px, 72px, 100px, 128px, 146px, 148px];
+        property <[length]> particle-y: [12px, -4px, 68px, -6px, 70px, -4px, 20px, 56px];
+        for particle in 8: Rectangle {
+            x: parent.particle-x[particle]; y: parent.particle-y[particle]; width: 3px; height: 3px;
+            background: root.tones[Math.mod(particle, 3)];
+            visible: Math.mod(Player.triple-tick + particle, 3) != 0;
+        }
+    }
+}

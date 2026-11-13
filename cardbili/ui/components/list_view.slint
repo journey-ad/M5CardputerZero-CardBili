@@ -1,24 +1,38 @@
-// 列表视图：单列标题 + 副标题，选中项高亮
+// 选中项到达可视区边缘时滚动列表
 import { Nav, ListModel } from "../state.slint";
+import { Icons } from "icons.slint";
+import { StatItem } from "stat_item.slint";
 
 export component ListView inherits Rectangle {
     clip: true;
-
-    for t[i] in ListModel.titles: Rectangle {
-        x: 0px; y: (i - Nav.sel) * 30px; width: parent.width; height: 30px;
+    for row[i] in ListModel.rows: Rectangle {
+        x: 0px; y: (i - ListModel.first-row) * 30px;
+        width: parent.width; height: 30px;
         background: i == Nav.sel ? #1f2b45 : transparent;
-        Rectangle { x: 0px; y: 29px; width: parent.width; height: 1px; background: #151d2c; }
+        Rectangle { y: 29px; width: parent.width; height: 1px; background: #151d2c; }
         Rectangle {
-            x: 8px; y: 1px; width: parent.width - 16px; height: 18px; clip: true;
-            if i == Nav.sel && ListModel.title-marquee: Text {
-                x: -ListModel.title-shift; y: 0px; height: 18px; text: t; color: #e6ebf5;
-                font-size: 12px; vertical-alignment: center;
-            }
-            if !(i == Nav.sel && ListModel.title-marquee): Text {
-                x: 0px; y: 0px; width: parent.width; height: 18px; text: t; color: #e6ebf5;
-                font-size: 12px; horizontal-alignment: left; vertical-alignment: center; overflow: elide;
+            x: 8px; y: 1px; width: parent.width - 16px; height: 17px; clip: true;
+            Text {
+                x: i == Nav.sel && ListModel.title-marquee ? -ListModel.title-shift : 0px;
+                width: i == Nav.sel && ListModel.title-marquee ? self.preferred-width : parent.width;
+                height: 17px; text: row.title; color: #e6ebf5;
+                font-size: 12px; vertical-alignment: center; overflow: elide;
             }
         }
-        Text { x: 8px; y: 18px; width: parent.width - 16px; height: 11px; text: ListModel.metas[i]; color: #6f7c92; font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px; horizontal-alignment: left; vertical-alignment: center; }
+        HorizontalLayout {
+            x: 8px; y: 17px; width: parent.width - 16px; height: 12px; spacing: 4px;
+            StatItem { icon: Icons.clock; value: row.duration; }
+            StatItem { icon: Icons.play; value: row.views; }
+            StatItem { icon: Icons.thumbs-up; value: row.likes; }
+            Rectangle {
+                horizontal-stretch: 1; min-width: 0px; preferred-width: 0px; clip: true;
+                Text {
+                    x: 0px; y: 0px; width: parent.width; height: 12px;
+                    text: row.author; color: #6f7c92;
+                    font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
+                    horizontal-alignment: right; vertical-alignment: center;
+                }
+            }
+        }
     }
 }
