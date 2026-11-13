@@ -19,7 +19,7 @@ pub enum Msg {
     QrReady(String),
     QrStatus(String),
     QrDone(String),
-    Cover(usize, usize, u32, u32, Vec<u8>),
+    Cover(usize, String, u32, u32, Vec<u8>),
     Acct(model::Account, Vec<u8>),
     Detail(model::Detail, u32, u32, Vec<u8>),
 }

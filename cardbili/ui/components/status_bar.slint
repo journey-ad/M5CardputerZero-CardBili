@@ -1,0 +1,28 @@
+// 浮动状态提示（toast）：覆盖在内容上方，不占页面高度，数秒后自动消失
+import { Status } from "../state.slint";
+
+export component StatusBar inherits Rectangle {
+    width: tb.preferred-width + 24px;
+    height: 18px;
+    border-radius: 9px;
+    background: #1c2434;
+    visible: Status.bar != "";
+
+    tb := Text {
+        x: 12px;
+        y: 0px;
+        height: parent.height;
+        text: Status.bar;
+        color: #cdd4e0;
+        font-size: 9px;
+        vertical-alignment: center;
+    }
+
+    Timer {
+        interval: 3s;
+        running: Status.bar != "" && !Status.bar-sticky;
+        triggered => {
+            Status.bar = "";
+        }
+    }
+}

@@ -144,7 +144,11 @@ fn read_cached(path: &Path, max_age: u64) -> Option<Value> {
 // 模式优先级：force（强制网络）> cached_only（仅读缓存，SWR 用）> 正常 TTL
 pub fn api_json(url: &str, cookies: Option<&str>, ttl: u64) -> Result<Value, String> {
     init();
-    let tag = if cookies.map(|c| !c.is_empty()).unwrap_or(false) { "u" } else { "a" };
+    // 缓存按账号隔离：登录时以 mid 作为业务标识，避免不同账号共用同一接口缓存
+    let tag = match cookies {
+        Some(c) if !c.is_empty() => format!("u:{}", crate::util::parse_mid(c)),
+        _ => "a".to_string(),
+    };
     let path = api_dir().join(format!("{}.json", key_of(&format!("{}\n{}", url, tag))));
     if !force_on() {
         let max_age = if cached_only_on() { STALE_MAX } else { ttl };

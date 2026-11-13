@@ -119,6 +119,7 @@ pub fn run() {
     let mut status = String::from("加载中...");
     let mut status_detail = String::new();
     let mut loading = true;
+    let mut prev_loading = false;
 
     // 详情页
     let mut detail_img: Option<slint::Image> = None;
@@ -204,6 +205,8 @@ pub fn run() {
                         }
                         loading = false;
                         status = if len == 0 { "暂无内容".to_string() } else { format!("{} 条", len) }; status_detail.clear();
+                        ui.set_bar(if len == 0 { String::new().into() } else { format!("已获取到 {} 条数据", len).into() });
+                        ui.set_bar_sticky(false);
                         if let Ok(v) = std::env::var("BILI_SEL") { if let Ok(v) = v.parse::<i32>() { sel = v; } }
                     }
                 }
@@ -228,7 +231,7 @@ pub fn run() {
                                 eprintln!("MORE tab={} page={} add={} total={}", t, pages[t], add.len(), lists[t].len());
                             }
                             tasks::spawn_covers(t, add, start, tx.clone());
-                            if t == tab { status = format!("{} 条", lists[t].len()); status_detail.clear(); }
+                            if t == tab { status = format!("{} 条", lists[t].len()); status_detail.clear(); ui.set_bar(format!("已获取到 {} 条数据", lists[t].len()).into()); ui.set_bar_sticky(false); }
                         }
                     }
                 }
@@ -238,7 +241,7 @@ pub fn run() {
                         None => (msg, String::new()),
                     };
                     if t == 9 || t == 10 { status = friendly; status_detail = tech; }
-                    else if t == tab { loading = false; status = friendly; status_detail = tech; }
+                    else if t == tab { loading = false; status = friendly; status_detail = tech; ui.set_bar("加载失败".into()); ui.set_bar_sticky(false); }
                 }
                 Msg::PlayReady(info) => {
                     if let Some(mut old) = player.take() { old.stop(); }
@@ -283,9 +286,11 @@ pub fn run() {
                     }
                     acct = Some(a);
                 }
-                Msg::Cover(t, i, w, h, raw) => {
-                    if t < 5 && i < covers[t].len() {
-                        covers[t][i] = Some(util::raw_to_image(w, h, &raw));
+                Msg::Cover(t, bvid, w, h, raw) => {
+                    if t < 5 {
+                        if let Some(idx) = lists[t].iter().position(|it| it.bvid == bvid) {
+                            if idx < covers[t].len() { covers[t][idx] = Some(util::raw_to_image(w, h, &raw)); }
+                        }
                     }
                 }
                 Msg::Detail(d, w, h, raw) => {
@@ -515,6 +520,10 @@ pub fn run() {
         ui.set_sel(sel);
         ui.set_status(status.as_str().into());
         ui.set_status_detail(status_detail.as_str().into());
+        if loading != prev_loading {
+            if loading { ui.set_bar("加载中…".into()); ui.set_bar_sticky(true); }
+            prev_loading = loading;
+        }
         ui.set_loading(loading);
         ui.set_view(view);
         ui.set_help(help);

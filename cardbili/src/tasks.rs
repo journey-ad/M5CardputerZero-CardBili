@@ -63,12 +63,12 @@ pub fn fetch_account(cookies: Option<String>, tx: Sender<Msg>) {
     });
 }
 
-pub fn spawn_covers(tab: usize, items: Vec<crate::model::Item>, start: usize, tx: Sender<Msg>) {
+pub fn spawn_covers(tab: usize, items: Vec<crate::model::Item>, _start: usize, tx: Sender<Msg>) {
     thread::spawn(move || {
-        for (i, it) in items.iter().enumerate() {
+        for (_i, it) in items.iter().enumerate() {
             if it.pic.is_empty() { continue; }
             if let Some((w, h, raw)) = util::fetch_cover(&it.pic) {
-                if tx.send(Msg::Cover(tab, start + i, w, h, raw)).is_err() { break; }
+                if tx.send(Msg::Cover(tab, it.bvid.clone(), w, h, raw)).is_err() { break; }
             }
         }
     });
@@ -81,7 +81,7 @@ pub fn spawn_covers_missing(tab: usize, items: Vec<crate::model::Item>, have: Ve
             if have.get(i).copied().unwrap_or(false) { continue; }
             if it.pic.is_empty() { continue; }
             if let Some((w, h, raw)) = util::fetch_cover(&it.pic) {
-                if tx.send(Msg::Cover(tab, i, w, h, raw)).is_err() { break; }
+                if tx.send(Msg::Cover(tab, it.bvid.clone(), w, h, raw)).is_err() { break; }
             }
         }
     });
