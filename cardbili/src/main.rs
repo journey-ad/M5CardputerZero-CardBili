@@ -1,5 +1,6 @@
 mod app;
 mod api;
+mod cache;
 mod model;
 mod net;
 mod player;

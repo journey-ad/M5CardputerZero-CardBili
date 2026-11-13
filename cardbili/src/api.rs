@@ -1,4 +1,5 @@
 use crate::net;
+use crate::cache;
 use crate::model::{self, Account, Comment, Detail, Item, PlayInfo, Seg};
 use serde_json::Value;
 
@@ -15,7 +16,7 @@ fn api_err(name: &str, v: &Value) -> String {
 
 pub fn popular(cookies: Option<&str>, pn: u32) -> Result<Vec<Item>, String> {
     let url = format!("https://api.bilibili.com/x/web-interface/popular?ps=20&pn={}", pn);
-    let v = net::get_json(&url, cookies)?;
+    let v = cache::api_json(&url, cookies, cache::TTL_LIST)?;
     if v["code"].as_i64() != Some(0) { return Err(api_err("热门推荐", &v)); }
     let mut out = Vec::new();
     if let Some(list) = v["data"]["list"].as_array() {
@@ -48,7 +49,7 @@ pub fn rcmd(mk: &str, cookies: Option<&str>, page: u32) -> Result<Vec<Item>, Str
     ];
     let signed = net::wbi_sign(&base, mk);
     let url = format!("https://api.bilibili.com/x/web-interface/wbi/index/top/feed/rcmd?{}", net::query_string(&signed));
-    let v = net::get_json(&url, cookies)?;
+    let v = cache::api_json(&url, cookies, cache::TTL_LIST)?;
     if v["code"].as_i64() != Some(0) { return Err(api_err("推荐", &v)); }
     let mut out = Vec::new();
     if let Some(list) = v["data"]["item"].as_array() {
@@ -66,7 +67,7 @@ pub fn rcmd(mk: &str, cookies: Option<&str>, page: u32) -> Result<Vec<Item>, Str
 }
 
 pub fn history(cookies: &str) -> Result<Vec<Item>, String> {
-    let v = net::get_json("https://api.bilibili.com/x/web-interface/history/cursor?max=0&view_at=0&business=", Some(cookies))?;
+    let v = cache::api_json("https://api.bilibili.com/x/web-interface/history/cursor?max=0&view_at=0&business=", Some(cookies), cache::TTL_LIST)?;
     if v["code"].as_i64() != Some(0) { return Err(api_err("历史记录", &v)); }
     let mut out = Vec::new();
     if let Some(list) = v["data"]["list"].as_array() {
@@ -86,7 +87,7 @@ pub fn history(cookies: &str) -> Result<Vec<Item>, String> {
 
 pub fn fav(cookies: &str, mid: &str) -> Result<Vec<Item>, String> {
     let furl = format!("https://api.bilibili.com/x/v3/fav/folder/created/list-all?up_mid={}&web_location=333.1387", mid);
-    let fv = net::get_json(&furl, Some(cookies))?;
+    let fv = cache::api_json(&furl, Some(cookies), cache::TTL_LIST)?;
     if fv["code"].as_i64() != Some(0) { return Err(api_err("收藏夹信息", &fv)); }
     let folders = fv["data"]["list"].as_array().cloned().unwrap_or_default();
     let fid = folders.iter()
@@ -95,7 +96,7 @@ pub fn fav(cookies: &str, mid: &str) -> Result<Vec<Item>, String> {
         .and_then(|f| f["id"].as_i64())
         .ok_or("无可用收藏夹")?;
     let lurl = format!("https://api.bilibili.com/x/v3/fav/resource/list?media_id={}&pn=1&ps=20&order=mtime&type=0&tid=0&platform=web", fid);
-    let lv = net::get_json(&lurl, Some(cookies))?;
+    let lv = cache::api_json(&lurl, Some(cookies), cache::TTL_LIST)?;
     if lv["code"].as_i64() != Some(0) { return Err(api_err("收藏列表", &lv)); }
     let mut out = Vec::new();
     if let Some(list) = lv["data"]["medias"].as_array() {
@@ -114,7 +115,7 @@ pub fn fav(cookies: &str, mid: &str) -> Result<Vec<Item>, String> {
 
 pub fn dynamic(cookies: &str) -> Result<Vec<Item>, String> {
     let url = "https://api.bilibili.com/x/polymer/web-dynamic/v1/feed/all?type=video&page=1&features=itemOpusStyle,listOnlyfans,opusBigCover,onlyfansVote";
-    let v = net::get_json(url, Some(cookies))?;
+    let v = cache::api_json(url, Some(cookies), cache::TTL_LIST)?;
     if v["code"].as_i64() != Some(0) { return Err(api_err("动态", &v)); }
     let mut out = Vec::new();
     if let Some(items) = v["data"]["items"].as_array() {
@@ -138,7 +139,7 @@ pub fn dynamic(cookies: &str) -> Result<Vec<Item>, String> {
 
 pub fn play_info(bvid: &str, cookies: Option<&str>) -> Result<PlayInfo, String> {
     let vurl = format!("https://api.bilibili.com/x/web-interface/view?bvid={}", bvid);
-    let v = net::get_json(&vurl, cookies)?;
+    let v = cache::api_json(&vurl, cookies, cache::TTL_DETAIL)?;
     if v["code"].as_i64() != Some(0) { return Err(api_err("视频信息", &v)); }
     let d = &v["data"];
     let cid = d["cid"].as_i64().ok_or("no cid")?;
@@ -149,7 +150,7 @@ pub fn play_info(bvid: &str, cookies: Option<&str>) -> Result<PlayInfo, String> 
         "https://api.bilibili.com/x/player/playurl?bvid={}&cid={}&qn=16&fnval=1&fourk=0&platform=html5&high_quality=1",
         bvid, cid
     );
-    let p = net::get_json(&purl, cookies)?;
+    let p = cache::api_json(&purl, cookies, cache::TTL_PLAYURL)?;
     if p["code"].as_i64() != Some(0) { return Err(api_err("播放地址", &p)); }
     let durl = p["data"]["durl"].as_array();
     let mut segs = Vec::new();
@@ -185,7 +186,7 @@ pub fn account(cookies: Option<&str>) -> Result<Account, String> {
 
 pub fn video_detail(bvid: &str, cookies: Option<&str>) -> Result<Detail, String> {
     let vurl = format!("https://api.bilibili.com/x/web-interface/view?bvid={}", bvid);
-    let v = net::get_json(&vurl, cookies)?;
+    let v = cache::api_json(&vurl, cookies, cache::TTL_DETAIL)?;
     if v["code"].as_i64() != Some(0) { return Err(api_err("视频信息", &v)); }
     let d = &v["data"];
     let aid = d["aid"].as_i64().unwrap_or(0);
@@ -201,7 +202,7 @@ pub fn video_detail(bvid: &str, cookies: Option<&str>) -> Result<Detail, String>
                 aid, pn
             );
             let mut got = 0usize;
-            if let Ok(rv) = net::get_json(&curl, cookies) {
+            if let Ok(rv) = cache::api_json(&curl, cookies, cache::TTL_REPLY) {
                 if let Some(arr) = rv["data"]["replies"].as_array() {
                     for r in arr {
                         let user = r["member"]["uname"].as_str().unwrap_or("").to_string();

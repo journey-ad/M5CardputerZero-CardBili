@@ -85,6 +85,8 @@ pub fn run() {
     let file = OpenOptions::new().read(true).write(true).open(&fb_path).expect("open fb");
     let mut fbmap = unsafe { MmapOptions::new().len(FB_BYTES).map_mut(&file).expect("mmap fb") };
 
+    crate::cache::init();
+
     let (tx, rx) = mpsc::channel::<Msg>();
     let (ktx, krx) = mpsc::channel::<String>();
     util::spawn_keys(kb_path, ktx);

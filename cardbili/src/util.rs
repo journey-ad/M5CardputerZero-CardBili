@@ -5,8 +5,6 @@ use std::thread;
 
 use slint::Rgb8Pixel;
 
-use crate::net;
-
 pub fn code_name(code: u16) -> Option<&'static str> {
     Some(match code {
         103 => "UP", 108 => "DOWN", 105 => "LEFT", 106 => "RIGHT",
@@ -66,15 +64,7 @@ pub fn decode_avatar(bytes: &[u8]) -> Option<slint::Image> {
 }
 
 pub fn fetch_cover(pic: &str) -> Option<(u32, u32, Vec<u8>)> {
-    let mut url = pic.to_string();
-    if let Some(p) = url.find('@') { url.truncate(p); }
-    if url.starts_with("//") { url = format!("https:{}", url); }
-    else if url.starts_with("http://") { url = url.replacen("http://", "https://", 1); }
-    let bytes = net::curl_bytes(&url).ok()?;
-    let img = image::load_from_memory(&bytes).ok()?;
-    let img = img.thumbnail(180, 120).to_rgb8();
-    let (w, h) = img.dimensions();
-    Some((w, h, img.into_raw()))
+    crate::cache::cover(pic)
 }
 
 pub fn make_qr(url: &str) -> Option<slint::Image> {
