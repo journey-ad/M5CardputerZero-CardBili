@@ -1,0 +1,14 @@
+// 首页底部操作栏：5 等分，按位置对应 4/5/6/7/8
+// 已登录时隐藏“登录”项
+import { Account } from "../state.slint";
+
+export component BottomBar inherits Rectangle {
+    height: 20px;
+    background: #121a2a;
+
+    Text { x: 22px; y: 0px; width: 54px; height: 20px; text: "刷新"; color: #7fb0ff; font-size: 12px; horizontal-alignment: center; vertical-alignment: center; }
+    if !Account.known: Text { x: 79px; y: 0px; width: 54px; height: 20px; text: "登录"; color: #7ee787; font-size: 12px; horizontal-alignment: center; vertical-alignment: center; }
+    Text { x: 135px; y: 0px; width: 54px; height: 20px; text: ""; font-size: 12px; }
+    Text { x: 190px; y: 0px; width: 54px; height: 20px; text: "说明"; color: #c9a0ff; font-size: 12px; horizontal-alignment: center; vertical-alignment: center; }
+    Text { x: 248px; y: 0px; width: 54px; height: 20px; text: "返回"; color: #ffcf6e; font-size: 12px; horizontal-alignment: center; vertical-alignment: center; }
+}

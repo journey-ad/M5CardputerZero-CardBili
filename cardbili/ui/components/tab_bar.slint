@@ -1,0 +1,22 @@
+// 顶部页签栏：4 等分，当前页签高亮
+import { Nav, Meta } from "../state.slint";
+
+export component TabBar inherits Rectangle {
+    height: 18px;
+    background: #121a2a;
+
+    HorizontalLayout {
+        spacing: 0px;
+        for name[i] in Meta.tab-names: Rectangle {
+            width: 80px;
+            height: 18px;
+            background: i == Nav.tab ? #1d3a6b : transparent;
+            Text {
+                x: 0px; y: 0px; width: parent.width; height: parent.height;
+                text: name;
+                color: i == Nav.tab ? #7fb0ff : #7d8798;
+                font-size: 12px; horizontal-alignment: center; vertical-alignment: center;
+            }
+        }
+    }
+}

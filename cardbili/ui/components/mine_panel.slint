@@ -1,0 +1,21 @@
+// 我的页：账号信息卡 + 历史/收藏/关于 入口
+import { Nav, ListModel, Account } from "../state.slint";
+
+export component MinePanel inherits Rectangle {
+    clip: true;
+
+    Rectangle { x: 6px; y: 4px; width: parent.width - 12px; height: 44px; background: #121a2a; border-radius: 6px; }
+    if Account.has-avatar: Image { x: 12px; y: 10px; width: 32px; height: 32px; source: Account.avatar; image-fit: cover; }
+    if !Account.has-avatar: Rectangle { x: 12px; y: 10px; width: 32px; height: 32px; background: #1d2740; border-radius: 16px; }
+    Text { x: 52px; y: 7px; width: parent.width - 60px; height: 16px; text: Account.logged ? Account.name : (Account.known ? "正在获取账号信息…" : "未登录"); color: #e6ebf5; font-size: 12px; vertical-alignment: center; overflow: elide; }
+    Text { x: 52px; y: 23px; width: parent.width - 60px; height: 12px; text: Account.logged ? "UID " + Account.mid : (Account.known ? "请稍候" : "按 登录 键扫码登录"); color: #8b95a7; font-size: 9px; vertical-alignment: center; }
+    if Account.logged: Text { x: 52px; y: 34px; width: parent.width - 60px; height: 11px; text: Account.level + "  " + Account.vip; color: #c9a0ff; font-size: 9px; vertical-alignment: center; }
+
+    for t[i] in ListModel.titles: Rectangle {
+        x: 6px; y: 50px + i * 22px; width: parent.width - 12px; height: 20px;
+        background: i == Nav.sel ? #1f2b45 : #0f1623;
+        border-radius: 4px;
+        Text { x: 10px; y: 0px; width: 160px; height: 20px; text: t; color: #e6ebf5; font-size: 12px; vertical-alignment: center; }
+        Text { x: parent.width - 80px; y: 0px; width: 70px; height: 20px; text: ListModel.metas[i]; color: #6f7c92; font-size: 9px; horizontal-alignment: right; vertical-alignment: center; }
+    }
+}

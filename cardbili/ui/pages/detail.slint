@@ -1,0 +1,57 @@
+// 详情页：封面 + 标题/统计 + 可滚动正文与评论
+import { Detail } from "../state.slint";
+
+export component DetailPage inherits Rectangle {
+    out property <length> content-height: body-lay.preferred-height;
+
+    background: #0b0f17;
+
+    Rectangle {
+        x: 0px; y: 0px; width: parent.width; height: 20px; background: #121a2a;
+        Text { x: 6px; y: 0px; width: 200px; height: 20px; text: "视频详情"; color: #7fb0ff; font-size: 12px; vertical-alignment: center; }
+        Text { x: parent.width - 76px; y: 0px; width: 70px; height: 20px; text: "ESC 返回"; color: #ffcf6e; font-size: 9px; horizontal-alignment: right; vertical-alignment: center; }
+    }
+    if Detail.has-cover: Image {
+        x: 6px; y: 24px; width: 104px; height: 58px; source: Detail.cover; image-fit: cover;
+    }
+    if !Detail.has-cover: Rectangle { x: 6px; y: 24px; width: 104px; height: 58px; background: #121a2a; }
+    Text {
+        x: 116px; y: 22px; width: parent.width - 122px; height: 34px;
+        text: Detail.title; color: #e6ebf5; font-size: 11px; wrap: word-wrap; overflow: elide;
+    }
+    Text {
+        x: 116px; y: 56px; width: parent.width - 122px; height: 26px;
+        text: Detail.stats; color: #8b95a7; font-size: 9px; wrap: word-wrap;
+    }
+    Rectangle {
+        x: 0px; y: 86px; width: parent.width; height: parent.height - 86px; clip: true;
+        Rectangle { x: 0px; y: 0px; width: parent.width; height: 1px; background: #1a2436; }
+        body-lay := VerticalLayout {
+            x: 8px; y: -Detail.scroll; width: parent.width - 20px; spacing: 4px;
+            Text { text: Detail.owner; color: #8b95a7; font-size: 10px; overflow: elide; }
+            Text { text: "简介"; color: #ffcf6e; font-size: 11px; }
+            Text { text: Detail.desc; color: #cfd8e6; font-size: 11px; wrap: word-wrap; }
+            Rectangle { height: 1px; background: #25314a; }
+            Text { text: "评论"; color: #ffcf6e; font-size: 11px; }
+            if Detail.comments.length == 0: Text { text: "（暂无评论）"; color: #8b95a7; font-size: 11px; }
+            for c[index] in Detail.comments: Rectangle {
+                width: parent.width;
+                background: Math.mod(index, 2) == 0 ? #101726 : #0d131f;
+                VerticalLayout {
+                    padding-left: 4px; padding-right: 4px; padding-top: 2px; padding-bottom: 2px; spacing: 1px;
+                    Text { text: c.user; color: #7fb0ff; font-size: 11px; overflow: elide; }
+                    Text { text: c.text; color: #cfd8e6; font-size: 11px; wrap: word-wrap; }
+                }
+            }
+            if Detail.comments.length >= 200: Rectangle {
+                width: parent.width; height: 26px;
+                Rectangle { x: 0px; y: 0px; width: parent.width; height: 1px; background: #3a4a66; }
+                Text { x: 0px; y: 1px; width: parent.width; height: 24px; text: "最大 200 条"; color: #8b95a7; font-size: 10px; horizontal-alignment: center; vertical-alignment: center; }
+            }
+        }
+    }
+    if Detail.thumb-h > 0px: Rectangle {
+        x: parent.width - 4px; y: 86px; width: 4px; height: parent.height - 86px; background: #10141c;
+        Rectangle { x: 0px; y: Detail.thumb-y; width: 4px; height: Detail.thumb-h; background: #3a4a66; border-radius: 2px; }
+    }
+}

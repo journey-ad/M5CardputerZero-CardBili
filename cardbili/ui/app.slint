@@ -1,0 +1,95 @@
+// 主窗口：global 状态与 Rust 接口用双向绑定，页面实例不再透传参数
+import "../fonts/zpix.ttf";
+import { Cmt } from "common.slint";
+import { Nav, ListModel, Status, Account, Player, Detail, Login, Meta } from "state.slint";
+import { HomePage } from "pages/home.slint";
+import { PlayPage } from "pages/play.slint";
+import { LoginPage } from "pages/login.slint";
+import { DetailPage } from "pages/detail.slint";
+import { AboutPage } from "pages/about.slint";
+
+export component AppWindow inherits Window {
+    width: 320px;
+    height: 170px;
+    background: #0b0f17;
+    default-font-family: "Zpix";
+
+    Rectangle { x: 0px; y: 0px; width: parent.width; height: parent.height; background: #0b0f17; }
+
+    // Rust 写入口：名称保持不变，双向绑定到 global
+    in-out property <int> page <=> Nav.page;
+    in-out property <int> tab <=> Nav.tab;
+    in-out property <int> sel <=> Nav.sel;
+    in-out property <int> view <=> Nav.view;
+    in-out property <bool> help <=> Nav.help;
+    in-out property <bool> mine-detail <=> Nav.mine-detail;
+
+    in-out property <int> cols <=> ListModel.cols;
+    in-out property <[string]> titles <=> ListModel.titles;
+    in-out property <[string]> metas <=> ListModel.metas;
+    in-out property <bool> loading <=> ListModel.loading;
+    in-out property <length> cell-w <=> ListModel.cell-w;
+    in-out property <length> cell-h <=> ListModel.cell-h;
+    in-out property <[image]> grid-covers <=> ListModel.grid-covers;
+    in-out property <[string]> grid-titles <=> ListModel.grid-titles;
+    in-out property <int> grid-active <=> ListModel.grid-active;
+    in-out property <bool> title-marquee <=> ListModel.title-marquee;
+    in-out property <length> title-shift <=> ListModel.title-shift;
+
+    in-out property <string> status <=> Status.status;
+
+    in-out property <bool> acct-logged <=> Account.logged;
+    in-out property <bool> acct-known <=> Account.known;
+    in-out property <string> acct-name <=> Account.name;
+    in-out property <string> acct-mid <=> Account.mid;
+    in-out property <string> acct-level <=> Account.level;
+    in-out property <string> acct-vip <=> Account.vip;
+    in-out property <image> avatar <=> Account.avatar;
+    in-out property <bool> has-avatar <=> Account.has-avatar;
+
+    in-out property <image> frame <=> Player.frame;
+    in-out property <bool> has-frame <=> Player.has-frame;
+    in-out property <string> ptitle <=> Player.ptitle;
+    in-out property <bool> ptitle-marquee <=> Player.ptitle-marquee;
+    in-out property <length> ptitle-shift <=> Player.ptitle-shift;
+    in-out property <float> progress <=> Player.progress;
+    in-out property <string> time-text <=> Player.time-text;
+    in-out property <bool> paused <=> Player.paused;
+    in-out property <string> play-state <=> Player.play-state;
+
+    in-out property <image> qr <=> Login.qr;
+    in-out property <bool> has-qr <=> Login.has-qr;
+    in-out property <string> qr-status <=> Login.qr-status;
+
+    in-out property <string> detail-title <=> Detail.title;
+    in-out property <string> detail-stats <=> Detail.stats;
+    in-out property <string> detail-desc <=> Detail.desc;
+    in-out property <string> detail-owner <=> Detail.owner;
+    in-out property <[Cmt]> comments <=> Detail.comments;
+    in-out property <image> detail-cover <=> Detail.cover;
+    in-out property <bool> has-detail-cover <=> Detail.has-cover;
+    in-out property <length> detail-scroll <=> Detail.scroll;
+    in-out property <length> detail-thumb-h <=> Detail.thumb-h;
+    in-out property <length> detail-thumb-y <=> Detail.thumb-y;
+
+    in-out property <string> about-text <=> Meta.about-text;
+
+    out property <length> detail-content-h: detail-page.content-height;
+
+    if page == 0: HomePage {
+        x: 0px; y: 0px; width: parent.width; height: parent.height;
+    }
+    if page == 1: PlayPage {
+        x: 0px; y: 0px; width: parent.width; height: parent.height;
+    }
+    if page == 2: LoginPage {
+        x: 0px; y: 0px; width: parent.width; height: parent.height;
+    }
+    detail-page := DetailPage {
+        x: 0px; y: 0px; width: parent.width; height: parent.height;
+        visible: page == 3;
+    }
+    if page == 4: AboutPage {
+        x: 0px; y: 0px; width: parent.width; height: parent.height;
+    }
+}

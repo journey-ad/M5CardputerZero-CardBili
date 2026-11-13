@@ -1,0 +1,15 @@
+// 关于页：标题 + 说明文本
+import { Meta } from "../state.slint";
+
+export component AboutPage inherits Rectangle {
+    background: #0b0f17;
+
+    Rectangle {
+        x: 0px; y: 0px; width: parent.width; height: 20px; background: #121a2a;
+        Text { x: 0px; y: 0px; width: parent.width; height: 20px; text: "关于"; color: #7fb0ff; font-size: 12px; horizontal-alignment: center; vertical-alignment: center; }
+    }
+    Text {
+        x: 0px; y: 26px; width: parent.width; height: parent.height - 26px;
+        text: Meta.about-text; color: #cfd8e6; font-size: 9px; horizontal-alignment: center; vertical-alignment: top;
+    }
+}
