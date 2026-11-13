@@ -1,6 +1,8 @@
 use std::fmt;
 use std::fs::OpenOptions;
 use std::io::{BufRead, BufReader, Write};
+use std::os::fd::{AsRawFd, OwnedFd};
+use std::os::unix::process::CommandExt;
 use std::process::{Child, Command, Stdio};
 use std::thread;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -28,6 +30,7 @@ pub(super) fn spawn(
     args: &[String],
     cookies: &str,
     stdout: Stdio,
+    audio: Option<OwnedFd>,
 ) -> Option<Child> {
     let redact = |text: &str| {
         if cookies.is_empty() {
@@ -38,13 +41,25 @@ pub(super) fn spawn(
     };
     let logged_args: Vec<_> = args.iter().map(|arg| redact(arg)).collect();
     write(format_args!("[{kind}] ffmpeg 参数: {logged_args:?}"));
-    match Command::new("ffmpeg")
+    let mut command = Command::new("ffmpeg");
+    command
         .args(args)
         .stdin(Stdio::null())
         .stdout(stdout)
-        .stderr(Stdio::piped())
-        .spawn()
-    {
+        .stderr(Stdio::piped());
+    if let Some(audio) = audio.as_ref() {
+        let fd = audio.as_raw_fd();
+        // 子进程的描述符 3 接收解码后的 PCM 音频
+        unsafe {
+            command.pre_exec(move || {
+                if libc::dup2(fd, 3) < 0 || libc::fcntl(3, libc::F_SETFD, 0) < 0 {
+                    return Err(std::io::Error::last_os_error());
+                }
+                Ok(())
+            });
+        }
+    }
+    match command.spawn() {
         Ok(mut child) => {
             let pid = child.id();
             write(format_args!("[{kind}] ffmpeg 已启动 pid={pid}"));

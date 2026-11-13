@@ -21,6 +21,7 @@ md-5 = "0.10"
 qrcodegen = "1"
 image = { version = "0.25", default-features = false, features = ["jpeg", "png"] }
 base64 = "0.22"
+libc = "0.2"
 
 [profile.release]
 opt-level = "z"

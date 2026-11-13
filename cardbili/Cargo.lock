@@ -225,6 +225,7 @@ dependencies = [
  "base64",
  "fontdue",
  "image 0.25.10",
+ "libc",
  "md-5",
  "memmap2",
  "minifb",

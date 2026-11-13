@@ -1,3 +1,5 @@
+#[cfg(target_os = "linux")]
+mod audio;
 mod diagnostics;
 mod frames;
 pub mod volume;
@@ -31,18 +33,16 @@ fn stop_child(c: &mut Option<Child>, kind: &str) {
     if let Some(mut ch) = c.take() {
         let pid = ch.id();
         if let Ok(Some(status)) = ch.try_wait() {
-            diagnostics::write(format_args!("[{kind} pid={pid}] ffmpeg 已退出: {status}"));
+            diagnostics::write(format_args!("[{kind} pid={pid}] 进程已退出: {status}"));
             return;
         }
         let _ = ch.kill();
         match ch.wait() {
             Ok(status) => {
-                diagnostics::write(format_args!("[{kind} pid={pid}] ffmpeg 已停止: {status}"));
+                diagnostics::write(format_args!("[{kind} pid={pid}] 进程已停止: {status}"));
             }
             Err(error) => {
-                diagnostics::write(format_args!(
-                    "[{kind} pid={pid}] 等待 ffmpeg 退出失败: {error}"
-                ));
+                diagnostics::write(format_args!("[{kind} pid={pid}] 等待进程退出失败: {error}"));
             }
         }
     }
@@ -78,6 +78,7 @@ pub struct Player {
     seg_idx: usize,
     cookies: String,
     child: Option<Child>,
+    audio: Option<Child>,
     tx: Sender<Msg>,
     frames: Arc<frames::Frames>,
 }
@@ -103,6 +104,7 @@ impl Player {
             seg_idx: 0,
             cookies,
             child: None,
+            audio: None,
             tx,
             frames: Arc::new(frames::Frames::default()),
         };
@@ -113,9 +115,23 @@ impl Player {
 
     fn spawn(&mut self, ss: f64) {
         stop_child(&mut self.child, "音视频");
+        stop_child(&mut self.audio, "音频");
         self.frames.stop();
         self.frames = Arc::new(frames::Frames::default());
         self.frames.pause(self.paused);
+        #[cfg(target_os = "linux")]
+        let audio_pipe = match audio::start(self.frames.clone()) {
+            Ok((child, pipe)) => {
+                self.audio = Some(child);
+                Some(pipe)
+            }
+            Err(error) => {
+                diagnostics::write(format_args!("音频输出启动失败: {error}"));
+                return;
+            }
+        };
+        #[cfg(not(target_os = "linux"))]
+        let audio_pipe = None;
         self.ready = false;
         self.finished = false;
         diagnostics::write(format_args!(
@@ -170,26 +186,23 @@ impl Player {
         args.extend([
             "-map".into(),
             "0:a:0".into(),
-            "-af".into(),
-            format!("atempo={}", self.rate),
             "-ac".into(),
             "2".into(),
             "-ar".into(),
             "44100".into(),
         ]);
-        if cfg!(target_os = "macos") {
-            args.extend(["-f".into(), "audiotoolbox".into()]);
-        } else {
-            args.extend([
-                "-f".into(),
-                "pulse".into(),
-                "-buffer_duration".into(),
-                "80".into(),
-            ]);
+        if self.rate != 1.0 {
+            args.extend(["-af".into(), format!("atempo={}", self.rate)]);
         }
-        args.push("default".into());
+        if cfg!(target_os = "linux") {
+            args.extend(["-f".into(), "s16le".into(), "pipe:3".into()]);
+        } else {
+            args.extend(["-f".into(), "audiotoolbox".into()]);
+            args.push("default".into());
+        }
 
-        if let Some(mut ch) = diagnostics::spawn("音视频", &args, &self.cookies, Stdio::piped())
+        if let Some(mut ch) =
+            diagnostics::spawn("音视频", &args, &self.cookies, Stdio::piped(), audio_pipe)
         {
             let pid = ch.id();
             if let Some(mut so) = ch.stdout.take() {
@@ -219,7 +232,7 @@ impl Player {
                                 }
                             }
                             Some(false) => {}
-                            None => return,
+                            None => break,
                         }
                     }
                     let _ = tx.send(Msg::SegEnd(gen));
@@ -230,7 +243,7 @@ impl Player {
     }
 
     pub fn position(&self, frames_in_seg: u64) -> f64 {
-        (self.base + frames_in_seg as f64 / FPS * self.rate).min(self.duration)
+        (self.base + self.frames.position(frames_in_seg) * self.rate).min(self.duration)
     }
 
     pub fn cycle_rate(&mut self, position: f64) {
@@ -249,6 +262,7 @@ impl Player {
         let signal = if self.paused { "-STOP" } else { "-CONT" };
         if self.ready {
             Self::signal_child(&self.child, signal);
+            Self::signal_child(&self.audio, signal);
         }
     }
 
@@ -260,6 +274,7 @@ impl Player {
         // 加载期间的暂停在首帧就绪后执行
         if self.paused {
             Self::signal_child(&self.child, "-STOP");
+            Self::signal_child(&self.audio, "-STOP");
         }
     }
 
@@ -315,5 +330,6 @@ impl Player {
     pub fn stop(&mut self) {
         self.frames.stop();
         stop_child(&mut self.child, "音视频");
+        stop_child(&mut self.audio, "音频");
     }
 }

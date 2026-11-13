@@ -39,7 +39,9 @@ pub fn run() {
         let _ = ktx.send(key.to_string());
     });
     let mut app = App::new(ui, tx);
+    let mut pending = None;
     while !app.quit {
+        let tick_end = Instant::now() + Duration::from_millis(16);
         if app
             .deadline
             .is_some_and(|deadline| Instant::now() >= deadline)
@@ -49,6 +51,9 @@ pub fn run() {
         app.settings_changed = false;
         app.go_back = false;
         app.tick();
+        if let Some(message) = pending.take() {
+            app.handle_message(message);
+        }
         while let Ok(message) = rx.try_recv() {
             app.handle_message(message);
         }
@@ -61,7 +66,9 @@ pub fn run() {
         if !display.render() {
             break;
         }
-        thread::sleep(Duration::from_millis(16));
+        pending = rx
+            .recv_timeout(tick_end.saturating_duration_since(Instant::now()))
+            .ok();
     }
     app.report_history(true, false);
     if let Some(mut player) = app.player.take() {
