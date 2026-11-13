@@ -24,12 +24,26 @@ pub fn spawn_keys(path: String, tx: mpsc::Sender<String>) {
     thread::spawn(move || {
         let mut f = match File::open(&path) { Ok(f) => f, Err(_) => return };
         let mut buf = [0u8; 24];
+        let mut esc_down: Option<std::time::Instant> = None;
         loop {
             if f.read_exact(&mut buf).is_err() { break; }
             let ty = u16::from_le_bytes([buf[16], buf[17]]);
             let code = u16::from_le_bytes([buf[18], buf[19]]);
             let value = i32::from_le_bytes([buf[20], buf[21], buf[22], buf[23]]);
-            if ty == 1 && value == 1 {
+            if ty != 1 { continue; }
+            // ESC 单独处理：短按返回，长按退出
+            if code == 1 {
+                if value == 1 {
+                    esc_down = Some(std::time::Instant::now());
+                } else if value == 0 {
+                    if let Some(t) = esc_down.take() {
+                        let name = if t.elapsed().as_millis() >= 600 { "ESC_HOLD" } else { "ESC" };
+                        if tx.send(name.to_string()).is_err() { break; }
+                    }
+                }
+                continue;
+            }
+            if value == 1 {
                 if let Some(n) = code_name(code) {
                     if tx.send(n.to_string()).is_err() { break; }
                 }

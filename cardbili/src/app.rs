@@ -150,8 +150,21 @@ pub fn run() {
 
     let mut buffer = vec![slint::platform::software_renderer::Rgb565Pixel(0); FB_BYTES / 2];
     let mut quit = false;
+    let mut seek_pending: Option<f64> = None;
+    let mut seek_deadline: Option<Instant> = None;
     while !quit {
         if let Some(d) = deadline { if Instant::now() >= d { quit = true; } }
+        // 左右调整结束（停止按键 300ms）后才真正跳转，此时展示加载中
+        if let Some(dl) = seek_deadline {
+            if Instant::now() >= dl {
+                seek_deadline = None;
+                if let (Some(pp), Some(t)) = (player.as_mut(), seek_pending.take()) {
+                    pp.seek(t); frames_in_seg = 0;
+                    ui.set_status("加载中…".into());
+                    ui.set_has_frame(false);
+                }
+            }
+        }
         let mut latest: Option<Vec<u8>> = None;
 
         // --- 后台消息 ---
@@ -204,7 +217,7 @@ pub fn run() {
                             sel = if len == 0 { 0 } else { len as i32 - 1 };
                         }
                         loading = false;
-                        status = if len == 0 { "暂无内容".to_string() } else { format!("{} 条", len) }; status_detail.clear();
+                        if page == 0 { status = if len == 0 { "暂无内容".to_string() } else { format!("{} 条", len) }; } status_detail.clear();
                         ui.set_bar(if len == 0 { String::new().into() } else { format!("已获取到 {} 条数据", len).into() });
                         ui.set_bar_sticky(false);
                         if let Ok(v) = std::env::var("BILI_SEL") { if let Ok(v) = v.parse::<i32>() { sel = v; } }
@@ -231,7 +244,7 @@ pub fn run() {
                                 eprintln!("MORE tab={} page={} add={} total={}", t, pages[t], add.len(), lists[t].len());
                             }
                             tasks::spawn_covers(t, add, start, tx.clone());
-                            if t == tab { status = format!("{} 条", lists[t].len()); status_detail.clear(); ui.set_bar(format!("已获取到 {} 条数据", lists[t].len()).into()); ui.set_bar_sticky(false); }
+                            if t == tab && page == 0 { status = format!("{} 条", lists[t].len()); status_detail.clear(); ui.set_bar(format!("已获取到 {} 条数据", lists[t].len()).into()); ui.set_bar_sticky(false); }
                         }
                     }
                 }
@@ -241,7 +254,7 @@ pub fn run() {
                         None => (msg, String::new()),
                     };
                     if t == 9 || t == 10 { status = friendly; status_detail = tech; }
-                    else if t == tab { loading = false; status = friendly; status_detail = tech; ui.set_bar("加载失败".into()); ui.set_bar_sticky(false); }
+                    else if t == tab { loading = false; if page == 0 { status = friendly; status_detail = tech; ui.set_bar("加载失败".into()); ui.set_bar_sticky(false); } }
                 }
                 Msg::PlayReady(info) => {
                     if let Some(mut old) = player.take() { old.stop(); }
@@ -253,7 +266,9 @@ pub fn run() {
                     );
                     player = Some(p);
                     page = 1;
-                    status.clear(); status_detail.clear();
+                    seek_pending = None; seek_deadline = None;
+                    ui.set_has_frame(false);
+                    status = "加载中…".into(); status_detail.clear();
                 }
                 Msg::QrReady(url) => {
                     if let Some(img) = util::make_qr(&url) { ui.set_qr(img); ui.set_has_qr(true); }
@@ -342,11 +357,11 @@ pub fn run() {
                     continue;
                 }
                 if help {
-                    if matches!(k.as_str(), "7" | "ESC" | "BACKSPACE" | "q") { help = false; }
+                    if matches!(k.as_str(), "7" | "ESC" | "BACKSPACE") { help = false; }
                 } else if tab == 3 {
                     if mine_detail < 0 {
                         match k.as_str() {
-                            "7" | "h" => { help = true; }
+                            "7" | "8" | "h" => { help = true; }
                             "UP" | "f" | "w" | "LEFT" | "z" => { sel = (sel - 1).max(0); }
                             "DOWN" | "x" | "s" | "RIGHT" | "c" => { if sel < 2 { sel += 1; } }
                             "ENTER" => {
@@ -362,7 +377,7 @@ pub fn run() {
                             }
                             "r" | "4" => { acct_loaded = false; }
                             "l" | "5" => { page = 2; ui.set_has_qr(false); ui.set_qr_status("正在生成二维码...".into()); tasks::start_login(tx.clone()); }
-                            "8" | "q" | "ESC" => { tab = 0; sel = 0; mine_detail = -1; }
+                            "ESC" | "BACKSPACE" => { tab = 0; sel = 0; mine_detail = -1; }
                             _ => {}
                         }
                     } else {
@@ -383,7 +398,7 @@ pub fn run() {
                                 }
                             }
                             "r" | "4" => { loaded[src] = false; loading = true; status = "刷新中...".into(); status_detail.clear(); tasks::load_list(src, cookies.clone(), mid.clone(), tx.clone(), true); }
-                            "ESC" | "8" | "BACKSPACE" | "q" => { mine_detail = -1; sel = 0; }
+                            "ESC" | "BACKSPACE" => { mine_detail = -1; sel = 0; }
                             _ => {}
                         }
                     }
@@ -391,7 +406,7 @@ pub fn run() {
                     let n = lists[tab].len() as i32;
                     let cols: i32 = if view == 2 { 2 } else if view == 1 { 3 } else { 1 };
                     match k.as_str() {
-                        "7" | "h" => { help = true; }
+                        "7" | "8" | "h" => { help = true; }
                         "v" => { view = (view + 1) % 3; }
                         "UP" | "f" | "w" => { let st = if view > 0 { cols } else { 1 }; sel = (sel - st).max(0); }
                         "DOWN" | "x" | "s" => { let st = if view > 0 { cols } else { 1 }; if sel + st < n { sel += st; } }
@@ -410,7 +425,7 @@ pub fn run() {
                         }
                         "r" | "4" => { loaded[tab] = false; loading = true; status = "刷新中...".into(); status_detail.clear(); tasks::load_list(tab, cookies.clone(), mid.clone(), tx.clone(), true); }
                         "l" | "5" => { page = 2; ui.set_has_qr(false); ui.set_qr_status("正在生成二维码...".into()); tasks::start_login(tx.clone()); }
-                        "8" | "q" => { quit = true; }
+                        "ESC_HOLD" => { quit = true; }
                         _ => {}
                     }
                 }
@@ -418,19 +433,34 @@ pub fn run() {
                 if let Some(p) = player.as_mut() {
                     match k.as_str() {
                         "SPACE" | "ENTER" => { p.pause_toggle(); }
-                        "LEFT" | "z" => { let t = p.position(frames_in_seg) - 10.0; p.seek(t.max(0.0)); frames_in_seg = 0; }
-                        "RIGHT" | "c" => { let t = p.position(frames_in_seg) + 10.0; p.seek(t); frames_in_seg = 0; }
+                        "LEFT" | "z" => {
+                            let base = seek_pending.unwrap_or_else(|| p.position(frames_in_seg));
+                            let t = (base - 10.0).max(0.0);
+                            ui.set_progress(if p.duration > 0.0 { (t / p.duration) as f32 } else { 0.0 });
+                            ui.set_time_text(format!("{} / {}", model::mmss(t), model::mmss(p.duration)).as_str().into());
+                            seek_pending = Some(t);
+                            seek_deadline = Some(Instant::now() + Duration::from_millis(300));
+                        }
+                        "RIGHT" | "c" => {
+                            let base = seek_pending.unwrap_or_else(|| p.position(frames_in_seg));
+                            let t = (base + 10.0).min(p.duration.max(0.0));
+                            ui.set_progress(if p.duration > 0.0 { (t / p.duration) as f32 } else { 0.0 });
+                            ui.set_time_text(format!("{} / {}", model::mmss(t), model::mmss(p.duration)).as_str().into());
+                            seek_pending = Some(t);
+                            seek_deadline = Some(Instant::now() + Duration::from_millis(300));
+                        }
                         "UP" | "f" | "w" => { p.vol_up(); }
                         "DOWN" | "x" | "s" => { p.vol_down(); }
-                        "ESC" | "BACKSPACE" | "q" => { p.stop(); player = None; page = 0; frames_in_seg = 0; }
+                        "ESC" | "BACKSPACE" => { p.stop(); player = None; page = 0; frames_in_seg = 0; seek_pending = None; seek_deadline = None; ui.set_has_frame(false); }
                         _ => {}
                     }
-                } else if matches!(k.as_str(), "ESC" | "BACKSPACE" | "q") {
+                } else if matches!(k.as_str(), "ESC" | "BACKSPACE") {
                     page = 0;
+                    ui.set_has_frame(false);
                 }
             } else if page == 2 {
                 match k.as_str() {
-                    "ESC" | "BACKSPACE" | "q" | "8" => { page = 0; }
+                    "ESC" | "BACKSPACE" => { page = 0; }
                     "r" | "4" => { ui.set_has_qr(false); ui.set_qr_status("正在刷新二维码...".into()); tasks::start_login(tx.clone()); }
                     _ => {}
                 }
@@ -441,12 +471,12 @@ pub fn run() {
                     "ENTER" => {
                         if !detail_bvid.is_empty() { status = "正在加载视频...".into(); status_detail.clear(); tasks::start_play(detail_bvid.clone(), cookies.clone(), tx.clone()); }
                     }
-                    "ESC" | "BACKSPACE" | "q" | "8" => { page = 0; }
+                    "ESC" | "BACKSPACE" => { page = 0; }
                     _ => {}
                 }
             } else if page == 4 {
                 match k.as_str() {
-                    "ESC" | "BACKSPACE" | "q" | "8" | "ENTER" => { page = 0; }
+                    "ESC" | "BACKSPACE" | "ENTER" => { page = 0; }
                     _ => {}
                 }
             }

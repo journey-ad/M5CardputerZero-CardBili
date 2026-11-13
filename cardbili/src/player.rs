@@ -143,9 +143,13 @@ impl Player {
         if let Ok(ch) = Command::new("ffmpeg").args(&aargs).stdout(Stdio::null()).stderr(Stdio::null()).stdin(Stdio::null()).spawn() {
             self.achild = Some(ch);
         }
-        thread::sleep(std::time::Duration::from_millis(400));
         if let Some(a) = &self.achild {
-            pactl_vol(a.id(), self.vol);
+            let pid = a.id();
+            let vol = self.vol;
+            thread::spawn(move || {
+                thread::sleep(std::time::Duration::from_millis(400));
+                pactl_vol(pid, vol);
+            });
         }
         if self.paused {
             if let Some(v) = &self.vchild { let _ = Command::new("kill").args(["-STOP", &v.id().to_string()]).output(); }
