@@ -1,16 +1,18 @@
 // 按键说明弹窗
+import { Icon, Icons } from "icons.slint";
+
 export component HelpOverlay inherits Rectangle {
     background: #0b0f17f5; border-width: 1px; border-color: #3a4a6b; border-radius: 6px;
 
     Text { x: 0px; y: 4px; width: parent.width; height: 16px; text: "按键说明"; color: #7fb0ff; font-size: 12px; horizontal-alignment: center; vertical-alignment: center; }
-    Image { x: 40px; y: 30px; width: 14px; height: 14px; source: @image-url("../../assets/tri_up.png"); }
-    Image { x: 24px; y: 46px; width: 14px; height: 14px; source: @image-url("../../assets/tri_left.png"); }
-    Image { x: 56px; y: 46px; width: 14px; height: 14px; source: @image-url("../../assets/tri_right.png"); }
-    Image { x: 40px; y: 62px; width: 14px; height: 14px; source: @image-url("../../assets/tri_down.png"); }
-    Text { x: 92px; y: 24px; width: parent.width - 100px; height: 13px; text: "方向键  选择卡片"; color: #cfd8e6; font-size: 9px; vertical-alignment: center; }
-    Text { x: 92px; y: 38px; width: parent.width - 100px; height: 13px; text: "Tab  切换页签"; color: #cfd8e6; font-size: 9px; vertical-alignment: center; }
-    Text { x: 92px; y: 52px; width: parent.width - 100px; height: 13px; text: "V  切换视图"; color: #cfd8e6; font-size: 9px; vertical-alignment: center; }
-    Text { x: 92px; y: 66px; width: parent.width - 100px; height: 13px; text: "回车  播放"; color: #cfd8e6; font-size: 9px; vertical-alignment: center; }
-    Text { x: 92px; y: 80px; width: parent.width - 100px; height: 13px; text: "空格  视频详情"; color: #cfd8e6; font-size: 9px; vertical-alignment: center; }
-    Text { x: 92px; y: 94px; width: parent.width - 100px; height: 13px; text: "ESC  返回（长按退出）"; color: #cfd8e6; font-size: 9px; vertical-alignment: center; }
+    Icon { x: 40px; y: 30px; width: 14px; height: 14px; source: Icons.arrow-up; }
+    Icon { x: 24px; y: 46px; width: 14px; height: 14px; source: Icons.arrow-left; }
+    Icon { x: 56px; y: 46px; width: 14px; height: 14px; source: Icons.arrow-right; }
+    Icon { x: 40px; y: 62px; width: 14px; height: 14px; source: Icons.arrow-down; }
+    Text { x: 92px; y: 24px; width: parent.width - 100px; height: 13px; text: "方向键  选择 / 滚动"; color: #cfd8e6; font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px; vertical-alignment: center; }
+    Text { x: 92px; y: 38px; width: parent.width - 100px; height: 13px; text: "Tab  切换页签"; color: #cfd8e6; font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px; vertical-alignment: center; }
+    Text { x: 92px; y: 52px; width: parent.width - 100px; height: 13px; text: "V  切换视图"; color: #cfd8e6; font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px; vertical-alignment: center; }
+    Text { x: 92px; y: 66px; width: parent.width - 100px; height: 13px; text: "回车  播放"; color: #cfd8e6; font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px; vertical-alignment: center; }
+    Text { x: 92px; y: 80px; width: parent.width - 100px; height: 13px; text: "空格  视频详情"; color: #cfd8e6; font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px; vertical-alignment: center; }
+    Text { x: 92px; y: 94px; width: parent.width - 100px; height: 13px; text: "ESC  返回（长按退出）"; color: #cfd8e6; font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px; vertical-alignment: center; }
 }

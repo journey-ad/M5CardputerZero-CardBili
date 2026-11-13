@@ -3,3 +3,13 @@ export struct Cmt {
     user: string,
     text: string,
 }
+
+// 弹幕行：位置由 Rust 每帧算好
+export struct DmRow {
+    text: string,
+    x: length,
+    y: length,
+    w: length,
+    color: color,
+    img: image,
+}

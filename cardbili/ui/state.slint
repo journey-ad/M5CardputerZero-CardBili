@@ -1,5 +1,5 @@
-// 全局共享状态：跨页面与组件直接引用，避免逐层透传
-import { Cmt } from "common.slint";
+// 页面与组件共用的全局状态
+import { Cmt, DmRow } from "common.slint";
 
 // 导航与交互态
 export global Nav {
@@ -60,8 +60,22 @@ export global Player {
     in-out property <bool> controls-visible: true;
 }
 
+// 弹幕：Rust 每帧写入当前可见弹幕
+export global Danmaku {
+    in-out property <[DmRow]> rows: [];
+    // 外部字体可用时显示描边位图
+    in-out property <bool> baked: false;
+}
+
+// 应用设置
+export global Preferences {
+    in-out property <int> danmaku-transparency: 10;
+}
+
 // 详情
 export global Detail {
+    in-out property <bool> loading: false;
+    in-out property <string> error: "";
     in-out property <string> title: "";
     in-out property <string> stats: "";
     in-out property <string> desc: "";
@@ -84,5 +98,6 @@ export global Login {
 // 静态文案
 export global Meta {
     in-out property <string> about-text: "";
-    in-out property <[string]> tab-names: ["推荐", "热门", "动态", "我的"];
+    in-out property <[string]> tab-names: ["推荐", "热门", "动态", "我的", "设置"];
+    in-out property <string> version: "";
 }

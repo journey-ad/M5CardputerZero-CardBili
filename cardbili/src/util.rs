@@ -1,10 +1,26 @@
+#[cfg(not(feature = "desktop"))]
 use std::fs::File;
+#[cfg(not(feature = "desktop"))]
 use std::io::Read;
+#[cfg(not(feature = "desktop"))]
 use std::sync::mpsc;
+#[cfg(not(feature = "desktop"))]
 use std::thread;
 
 use slint::Rgb8Pixel;
 
+pub fn key_release(name: &str) -> Option<&'static str> {
+    match name {
+        "LEFT" | "z" => Some("LEFT_UP"),
+        "RIGHT" | "c" => Some("RIGHT_UP"),
+        "UP" | "f" | "w" => Some("UP_UP"),
+        "DOWN" | "x" | "s" => Some("DOWN_UP"),
+        _ => None,
+    }
+}
+
+#[cfg(not(feature = "desktop"))]
+#[rustfmt::skip]
 pub fn code_name(code: u16) -> Option<&'static str> {
     Some(match code {
         103 => "UP", 108 => "DOWN", 105 => "LEFT", 106 => "RIGHT",
@@ -20,39 +36,58 @@ pub fn code_name(code: u16) -> Option<&'static str> {
     })
 }
 
+#[cfg(not(feature = "desktop"))]
 pub fn spawn_keys(path: String, tx: mpsc::Sender<String>) {
     thread::spawn(move || {
-        let mut f = match File::open(&path) { Ok(f) => f, Err(_) => return };
+        let mut f = match File::open(&path) {
+            Ok(f) => f,
+            Err(_) => return,
+        };
         let mut buf = [0u8; 24];
         let mut esc_down: Option<std::time::Instant> = None;
         loop {
-            if f.read_exact(&mut buf).is_err() { break; }
+            if f.read_exact(&mut buf).is_err() {
+                break;
+            }
             let ty = u16::from_le_bytes([buf[16], buf[17]]);
             let code = u16::from_le_bytes([buf[18], buf[19]]);
             let value = i32::from_le_bytes([buf[20], buf[21], buf[22], buf[23]]);
-            if ty != 1 { continue; }
+            if ty != 1 {
+                continue;
+            }
             // ESC 单独处理：短按返回，长按退出
             if code == 1 {
                 if value == 1 {
                     esc_down = Some(std::time::Instant::now());
-                    if tx.send("ESC_DOWN".to_string()).is_err() { break; }
+                    if tx.send("ESC_DOWN".to_string()).is_err() {
+                        break;
+                    }
                 } else if value == 0 {
-                    let held = esc_down.take().map(|t| t.elapsed().as_millis()).unwrap_or(0);
-                    if tx.send("ESC_UP".to_string()).is_err() { break; }
+                    let held = esc_down
+                        .take()
+                        .map(|t| t.elapsed().as_millis())
+                        .unwrap_or(0);
+                    if tx.send("ESC_UP".to_string()).is_err() {
+                        break;
+                    }
                     let name = if held >= 2000 { "ESC_HOLD" } else { "ESC" };
-                    if tx.send(name.to_string()).is_err() { break; }
+                    if tx.send(name.to_string()).is_err() {
+                        break;
+                    }
                 }
                 continue;
             }
             if value == 1 {
                 if let Some(n) = code_name(code) {
-                    if tx.send(n.to_string()).is_err() { break; }
+                    if tx.send(n.to_string()).is_err() {
+                        break;
+                    }
                 }
             } else if value == 0 {
                 // 方向键松开事件，供长按连续调整进度使用
-                if let Some(n) = code_name(code) {
-                    if n == "LEFT" || n == "RIGHT" {
-                        if tx.send(format!("{}_UP", n)).is_err() { break; }
+                if let Some(release) = code_name(code).and_then(key_release) {
+                    if tx.send(release.to_string()).is_err() {
+                        break;
                     }
                 }
             }
@@ -62,25 +97,33 @@ pub fn spawn_keys(path: String, tx: mpsc::Sender<String>) {
 
 pub fn raw_to_image(w: u32, h: u32, raw: &[u8]) -> slint::Image {
     let mut pb = slint::SharedPixelBuffer::<Rgb8Pixel>::new(w, h);
-    {
-        let sl = pb.make_mut_slice();
-        if sl.len() >= (w * h) as usize {
-            for (dst, src) in sl.iter_mut().zip(raw.chunks_exact(3)) {
-                *dst = Rgb8Pixel { r: src[0], g: src[1], b: src[2] };
-            }
-        }
+    for (pixel, channels) in pb.make_mut_slice().iter_mut().zip(raw.chunks_exact(3)) {
+        *pixel = Rgb8Pixel {
+            r: channels[0],
+            g: channels[1],
+            b: channels[2],
+        };
     }
     slint::Image::from_rgb8(pb)
 }
 
 pub fn make_placeholder() -> slint::Image {
     let mut pb = slint::SharedPixelBuffer::<Rgb8Pixel>::new(2, 2);
-    for p in pb.make_mut_slice() { *p = Rgb8Pixel { r: 26, g: 33, b: 46 }; }
+    for p in pb.make_mut_slice() {
+        *p = Rgb8Pixel {
+            r: 26,
+            g: 33,
+            b: 46,
+        };
+    }
     slint::Image::from_rgb8(pb)
 }
 
 pub fn decode_avatar(bytes: &[u8]) -> Option<slint::Image> {
-    let img = image::load_from_memory(bytes).ok()?.thumbnail(64, 64).to_rgb8();
+    let img = image::load_from_memory(bytes)
+        .ok()?
+        .thumbnail(64, 64)
+        .to_rgb8();
     let (w, h) = img.dimensions();
     Some(raw_to_image(w, h, img.as_raw()))
 }
@@ -100,7 +143,13 @@ pub fn make_qr(url: &str) -> Option<slint::Image> {
     let mut pb = slint::SharedPixelBuffer::<Rgb8Pixel>::new(dim, dim);
     {
         let sl = pb.make_mut_slice();
-        for p in sl.iter_mut() { *p = Rgb8Pixel { r: 255, g: 255, b: 255 }; }
+        for p in sl.iter_mut() {
+            *p = Rgb8Pixel {
+                r: 255,
+                g: 255,
+                b: 255,
+            };
+        }
         for y in 0..n {
             for x in 0..n {
                 if code.get_module(x, y) {
@@ -124,7 +173,9 @@ pub fn parse_mid(cookies: &str) -> String {
     for kv in cookies.split(';') {
         let kv = kv.trim();
         if let Some(v) = kv.strip_prefix("DedeUserID=") {
-            if !v.is_empty() { return v.to_string(); }
+            if !v.is_empty() {
+                return v.to_string();
+            }
         }
     }
     String::new()
@@ -135,7 +186,9 @@ pub fn cookie_path() -> String {
     format!("{}/.config/cardbili/cookie.txt", home)
 }
 
-/// 估算 zpix 字体下一行文字的像素宽度（CJK 约等于字号，ASCII 约 0.55 字号）。
+/// 估算单行文字宽度，ASCII 字符按字号的 0.55 倍计算，其余字符按字号计算
 pub fn est_w(s: &str, fs: f64) -> f64 {
-    s.chars().map(|c| if (c as u32) < 128 { fs * 0.55 } else { fs }).sum()
+    s.chars()
+        .map(|c| if (c as u32) < 128 { fs * 0.55 } else { fs })
+        .sum()
 }

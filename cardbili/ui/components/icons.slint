@@ -1,0 +1,20 @@
+// Pixelarticons，MIT 许可，来源版本 c9ecc2da61afde85dbe539025e3d931c6152ad75
+// https://github.com/halfmage/pixelarticons
+export global Icons {
+    out property <image> play: @image-url("../../assets/pixelarticons/play.svg");
+    out property <image> pause: @image-url("../../assets/pixelarticons/pause-solid.svg");
+    out property <image> left: @image-url("../../assets/pixelarticons/chevron-left.svg");
+    out property <image> right: @image-url("../../assets/pixelarticons/chevron-right.svg");
+    out property <image> arrow-up: @image-url("../../assets/pixelarticons/arrow-up.svg");
+    out property <image> arrow-down: @image-url("../../assets/pixelarticons/arrow-down.svg");
+    out property <image> arrow-left: @image-url("../../assets/pixelarticons/arrow-left.svg");
+    out property <image> arrow-right: @image-url("../../assets/pixelarticons/arrow-right.svg");
+}
+
+export component Icon inherits Image {
+    width: 12px;
+    height: 12px;
+    colorize: #cfd8e6;
+    image-fit: contain;
+    image-rendering: pixelated;
+}

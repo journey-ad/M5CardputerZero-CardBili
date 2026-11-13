@@ -1,13 +1,17 @@
-// 首页底部操作栏：刷新/登录/说明，说明在最右（按键 4/5/8）
+// 首页底部操作栏：刷新、登录、说明分别对应按键 4、5、8
 // 已登录时隐藏“登录”项
-import { Account } from "../state.slint";
+import { Account, Nav } from "../state.slint";
 
 export component BottomBar inherits Rectangle {
     height: 20px;
     background: #121a2a;
 
-    Text { x: 22px; y: 0px; width: 54px; height: 20px; text: "刷新"; color: #7fb0ff; font-size: 12px; horizontal-alignment: center; vertical-alignment: center; }
-    if !Account.known: Text { x: 79px; y: 0px; width: 54px; height: 20px; text: "登录"; color: #7ee787; font-size: 12px; horizontal-alignment: center; vertical-alignment: center; }
-    Text { x: 135px; y: 0px; width: 54px; height: 20px; text: ""; font-size: 12px; }
+    if Nav.tab < 4: Text { x: 22px; y: 0px; width: 54px; height: 20px; text: "刷新"; color: #7fb0ff; font-size: 12px; horizontal-alignment: center; vertical-alignment: center; }
+    if Nav.tab < 4 && !Account.known: Text { x: 79px; y: 0px; width: 54px; height: 20px; text: "登录"; color: #7ee787; font-size: 12px; horizontal-alignment: center; vertical-alignment: center; }
+    if Nav.tab == 4: Text {
+        x: 10px; height: 20px; text: "上下选择  左右调整  回车打开";
+        color: #8b95a7; font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
+        vertical-alignment: center;
+    }
     Text { x: 248px; y: 0px; width: 54px; height: 20px; text: "说明"; color: #c9a0ff; font-size: 12px; horizontal-alignment: center; vertical-alignment: center; }
 }

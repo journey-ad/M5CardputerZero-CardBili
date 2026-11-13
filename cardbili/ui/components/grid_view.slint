@@ -17,7 +17,7 @@ export component GridView inherits Rectangle {
         Rectangle { x: 1px; y: parent.height - 15px; width: parent.width - 2px; height: 14px; background: #000000b8; }
         Text {
             x: 3px; y: parent.height - 15px; width: parent.width - 6px; height: 14px;
-            text: ListModel.grid-titles[i]; color: #e6ebf5; font-size: 9px;
+            text: ListModel.grid-titles[i]; color: #e6ebf5; font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
             vertical-alignment: center; overflow: elide;
         }
         if i == ListModel.grid-active: Rectangle {

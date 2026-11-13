@@ -17,6 +17,7 @@ pub struct PlayInfo {
     pub title: String,
     pub segs: Vec<Seg>,
     pub duration: f64,
+    pub cid: i64,
 }
 
 #[derive(Clone, Default)]
@@ -49,15 +50,25 @@ pub struct Detail {
 }
 
 pub fn mmss(sec: f64) -> String {
-    let s = if sec.is_finite() && sec > 0.0 { sec as i64 } else { 0 };
+    let s = if sec.is_finite() && sec > 0.0 {
+        sec as i64
+    } else {
+        0
+    };
     let h = s / 3600;
     let m = (s % 3600) / 60;
     let ss = s % 60;
-    if h > 0 { format!("{}:{:02}:{:02}", h, m, ss) } else { format!("{}:{:02}", m, ss) }
+    if h > 0 {
+        format!("{}:{:02}:{:02}", h, m, ss)
+    } else {
+        format!("{}:{:02}", m, ss)
+    }
 }
 
 pub fn dur_of(v: &serde_json::Value) -> f64 {
-    v.as_f64().or_else(|| v.as_str().and_then(|s| s.parse::<f64>().ok())).unwrap_or(0.0)
+    v.as_f64()
+        .or_else(|| v.as_str().and_then(|s| s.parse::<f64>().ok()))
+        .unwrap_or(0.0)
 }
 
 pub fn fmt_num(n: i64) -> String {

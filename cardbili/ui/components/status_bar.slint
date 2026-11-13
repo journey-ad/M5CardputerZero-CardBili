@@ -1,4 +1,4 @@
-// 浮动状态提示（toast）：覆盖在内容上方，不占页面高度，数秒后自动消失
+// 浮动状态提示显示在内容上方，数秒后自动消失
 import { Status } from "../state.slint";
 
 export component StatusBar inherits Rectangle {
@@ -14,7 +14,7 @@ export component StatusBar inherits Rectangle {
         height: parent.height;
         text: Status.bar;
         color: #cdd4e0;
-        font-size: 9px;
+        font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
         vertical-alignment: center;
     }
 

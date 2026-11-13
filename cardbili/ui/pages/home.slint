@@ -1,5 +1,6 @@
 // 首页：页签 + 列表/网格/我的 三态 + 空状态 + 底部栏 + 按键说明
 import { Nav, ListModel, Status } from "../state.slint";
+import { SettingsPanel } from "../components/settings_panel.slint";
 import { TabBar } from "../components/tab_bar.slint";
 import { ListView } from "../components/list_view.slint";
 import { GridView } from "../components/grid_view.slint";
@@ -26,13 +27,17 @@ export component HomePage inherits Rectangle {
         x: 0px; y: 18px; width: parent.width; height: parent.height - 38px;
     }
 
-    // 我的：账号信息 + 历史/收藏/关于
+    // 我的：账号信息与历史、收藏入口
     if Nav.tab == 3 && !Nav.mine-detail: MinePanel {
         x: 0px; y: 18px; width: parent.width; height: parent.height - 38px;
     }
 
+    if Nav.tab == 4: SettingsPanel {
+        x: 0px; y: 18px; width: parent.width; height: parent.height - 38px;
+    }
+
     // 空状态：列表无数据
-    if Nav.view == 0 && ListModel.titles.length == 0: EmptyState {
+    if ((Nav.tab < 3 && Nav.view == 0) || (Nav.tab == 3 && Nav.mine-detail)) && ListModel.titles.length == 0: EmptyState {
         x: 0px; y: 18px; width: parent.width; height: parent.height - 38px;
     }
     // 空状态：网格无数据
@@ -40,7 +45,7 @@ export component HomePage inherits Rectangle {
         x: 0px; y: 18px; width: parent.width; height: parent.height - 38px;
     }
 
-    // 浮动状态提示（toast）：不占页面高度，浮在内容上方，数秒后自动消失
+    // 浮动状态提示显示在内容上方，数秒后自动消失
     StatusBar {
         x: (parent.width - self.width) / 2;
         y: parent.height - 46px;

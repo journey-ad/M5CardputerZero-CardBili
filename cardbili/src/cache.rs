@@ -7,7 +7,7 @@ use serde_json::Value;
 
 use crate::net;
 
-// 接口数据缓存有效期（秒）
+// 接口数据缓存有效期，单位为秒
 pub const TTL_LIST: u64 = 60;
 pub const TTL_DETAIL: u64 = 120;
 pub const TTL_PLAYURL: u64 = 120;
@@ -21,10 +21,10 @@ const API_MAX: usize = 512;
 static SEQ: AtomicUsize = AtomicUsize::new(0);
 
 thread_local! {
-    static FORCE: std::cell::Cell<bool> = std::cell::Cell::new(false);
+    static FORCE: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
 }
 
-// 当前线程是否强制跳过缓存读取（手动刷新用）
+// 当前线程的强制刷新开关
 pub fn set_force(v: bool) {
     FORCE.with(|f| f.set(v));
 }
@@ -33,14 +33,14 @@ fn force_on() -> bool {
     FORCE.with(|f| f.get())
 }
 
-// SWR 预取阶段可接受的旧数据上限（秒）
+// 缓存预览阶段可接受的数据最大年龄，单位为秒
 const STALE_MAX: u64 = 86400;
 
 thread_local! {
-    static CACHED_ONLY: std::cell::Cell<bool> = std::cell::Cell::new(false);
+    static CACHED_ONLY: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
 }
 
-// 仅读缓存、不请求网络（SWR 先展示旧数据的阶段）
+// 当前线程读取缓存预览数据的开关
 pub fn set_cached_only(v: bool) {
     CACHED_ONLY.with(|f| f.set(v));
 }
@@ -75,7 +75,10 @@ fn key_of(input: &str) -> String {
 }
 
 fn now() -> u64 {
-    SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0)
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0)
 }
 
 fn mtime(path: &Path) -> u64 {
@@ -87,17 +90,23 @@ fn mtime(path: &Path) -> u64 {
         .unwrap_or(0)
 }
 
-// 原子写入：先写临时文件再改名，避免并发读到半截内容
+// 原子写入：完整写入临时文件后再重命名
 fn write_atomic(path: &Path, data: &[u8]) {
-    let name = path.file_name().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
+    let name = path
+        .file_name()
+        .map(|s| s.to_string_lossy().into_owned())
+        .unwrap_or_default();
     let n = SEQ.fetch_add(1, Ordering::Relaxed);
     let tmp = path.with_file_name(format!(".{}.{}.tmp", name, n));
-    if fs::write(&tmp, data).is_ok() && fs::rename(&tmp, path).is_err() {
+    if fs::write(&tmp, data)
+        .and_then(|_| fs::rename(&tmp, path))
+        .is_err()
+    {
         let _ = fs::remove_file(&tmp);
     }
 }
 
-// 命中缓存时刷新修改时间，作为 LRU 依据
+// 图片缓存以最后访问时间决定淘汰顺序
 fn touch(path: &Path) {
     if let Ok(f) = fs::OpenOptions::new().write(true).open(path) {
         let _ = f.set_modified(SystemTime::now());
@@ -110,7 +119,10 @@ fn enforce_limit(dir: &Path, max: usize) {
     if let Ok(rd) = fs::read_dir(dir) {
         for e in rd.flatten() {
             let p = e.path();
-            let is_data = matches!(p.extension().and_then(|x| x.to_str()), Some("json") | Some("raw"));
+            let is_data = matches!(
+                p.extension().and_then(|x| x.to_str()),
+                Some("json") | Some("raw")
+            );
             if is_data {
                 let t = mtime(&p);
                 items.push((p, t));
@@ -127,29 +139,38 @@ fn enforce_limit(dir: &Path, max: usize) {
     }
 }
 
-// 读取本地缓存 JSON（不请求网络）；超过 max_age 秒视为未命中
+// JSON 缓存以写入时间计算有效期
 fn read_cached(path: &Path, max_age: u64) -> Option<Value> {
-    if let Ok(s) = fs::read_to_string(path) {
-        if now().saturating_sub(mtime(path)) <= max_age {
-            if let Ok(v) = serde_json::from_str::<Value>(&s) {
-                touch(path);
-                return Some(v);
-            }
-        }
+    if now().saturating_sub(mtime(path)) > max_age {
+        return None;
     }
-    None
+    let data = fs::read(path).ok()?;
+    serde_json::from_slice(&data).ok()
 }
 
 // 带缓存的接口请求
-// 模式优先级：force（强制网络）> cached_only（仅读缓存，SWR 用）> 正常 TTL
 pub fn api_json(url: &str, cookies: Option<&str>, ttl: u64) -> Result<Value, String> {
+    api_json_with(url, cookies, ttl, || net::curl_get(url, cookies))
+}
+
+// 缓存键使用业务参数，请求签名在缓存未命中时生成
+pub fn api_json_with(
+    cache_key: &str,
+    cookies: Option<&str>,
+    ttl: u64,
+    fetch: impl FnOnce() -> Result<String, String>,
+) -> Result<Value, String> {
     init();
     // 缓存按账号隔离：登录时以 mid 作为业务标识，避免不同账号共用同一接口缓存
     let tag = match cookies {
         Some(c) if !c.is_empty() => format!("u:{}", crate::util::parse_mid(c)),
         _ => "a".to_string(),
     };
-    let path = api_dir().join(format!("{}.json", key_of(&format!("{}\n{}", url, tag))));
+    let path = api_dir().join(format!(
+        "{}.json",
+        key_of(&format!("{}\n{}", cache_key, tag))
+    ));
+    // 强制刷新优先于缓存预览，普通请求按有效期读取
     if !force_on() {
         let max_age = if cached_only_on() { STALE_MAX } else { ttl };
         if let Some(v) = read_cached(&path, max_age) {
@@ -159,9 +180,13 @@ pub fn api_json(url: &str, cookies: Option<&str>, ttl: u64) -> Result<Value, Str
             return Err("缓存未命中".to_string());
         }
     }
-    let s = net::curl_get(url, cookies)?;
-    let v: Value = serde_json::from_str(&s)
-        .map_err(|e| format!("数据解析失败（{e}）：{}", s.chars().take(200).collect::<String>()))?;
+    let s = fetch()?;
+    let v: Value = serde_json::from_str(&s).map_err(|e| {
+        format!(
+            "数据解析失败（{e}）：{}",
+            s.chars().take(200).collect::<String>()
+        )
+    })?;
     write_atomic(&path, s.as_bytes());
     enforce_limit(&api_dir(), API_MAX);
     Ok(v)
@@ -171,10 +196,17 @@ pub fn api_json(url: &str, cookies: Option<&str>, ttl: u64) -> Result<Value, Str
 pub fn cover(pic: &str) -> Option<(u32, u32, Vec<u8>)> {
     init();
     let mut url = pic.to_string();
-    if let Some(p) = url.find('@') { url.truncate(p); }
-    if url.starts_with("//") { url = format!("https:{}", url); }
-    else if url.starts_with("http://") { url = url.replacen("http://", "https://", 1); }
-    if url.is_empty() { return None; }
+    if let Some(p) = url.find('@') {
+        url.truncate(p);
+    }
+    if url.starts_with("//") {
+        url = format!("https:{}", url);
+    } else if url.starts_with("http://") {
+        url = url.replacen("http://", "https://", 1);
+    }
+    if url.is_empty() {
+        return None;
+    }
     let path = img_dir().join(format!("{}.raw", key_of(&url)));
     if let Ok(data) = fs::read(&path) {
         if data.len() >= 8 {

@@ -1,7 +1,8 @@
-// 主窗口：global 状态与 Rust 接口用双向绑定，页面实例不再透传参数
-import "../fonts/zpix.ttf";
-import { Cmt } from "common.slint";
-import { Nav, ListModel, Status, Account, Player, Detail, Login, Meta } from "state.slint";
+// 主窗口通过双向绑定向 Rust 暴露全局状态
+import "../fonts/fusion10.ttf";
+import "../fonts/fusion12.ttf";
+import { Cmt, DmRow } from "common.slint";
+import { Nav, ListModel, Status, Account, Player, Danmaku, Detail, Login, Meta, Preferences } from "state.slint";
 import { HomePage } from "pages/home.slint";
 import { PlayPage } from "pages/play.slint";
 import { LoginPage } from "pages/login.slint";
@@ -12,11 +13,11 @@ export component AppWindow inherits Window {
     width: 320px;
     height: 170px;
     background: #0b0f17;
-    default-font-family: "Zpix";
+    default-font-family: "Fusion Pixel 12px Prop zh-Hans";
 
     Rectangle { x: 0px; y: 0px; width: parent.width; height: parent.height; background: #0b0f17; }
 
-    // Rust 写入口：名称保持不变，双向绑定到 global
+    // Rust 读写属性与全局状态双向绑定
     in-out property <int> page <=> Nav.page;
     in-out property <int> tab <=> Nav.tab;
     in-out property <int> sel <=> Nav.sel;
@@ -60,10 +61,17 @@ export component AppWindow inherits Window {
     in-out property <bool> paused <=> Player.paused;
     in-out property <string> play-state <=> Player.play-state;
     in-out property <bool> controls-visible <=> Player.controls-visible;
+    in-out property <[DmRow]> dm-rows <=> Danmaku.rows;
+    in-out property <bool> dm-baked <=> Danmaku.baked;
 
     in-out property <image> qr <=> Login.qr;
     in-out property <bool> has-qr <=> Login.has-qr;
     in-out property <string> qr-status <=> Login.qr-status;
+
+    in-out property <int> danmaku-transparency <=> Preferences.danmaku-transparency;
+    in-out property <bool> detail-loading <=> Detail.loading;
+    in-out property <string> detail-error <=> Detail.error;
+    in-out property <string> version <=> Meta.version;
 
     in-out property <string> detail-title <=> Detail.title;
     in-out property <string> detail-stats <=> Detail.stats;
@@ -80,7 +88,7 @@ export component AppWindow inherits Window {
 
     out property <length> detail-content-h: detail-page.content-height;
 
-    // 各页面组件自填父级尺寸，实例处不再逐层透传位置与尺寸
+    // 页面组件根据父级尺寸布局
     if page == 0: HomePage {}
     if page == 1: PlayPage {}
     if page == 2: LoginPage {}
