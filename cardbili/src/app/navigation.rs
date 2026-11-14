@@ -21,7 +21,7 @@ pub(super) struct CollectionState {
     pub(super) loading: bool,
     pub(super) error: String,
     pub(super) selection: i32,
-    pub(super) first_row: usize,
+    pub(super) list_scroll: f64,
     pub(super) grid_scroll: f64,
 }
 
@@ -31,7 +31,7 @@ pub(super) enum BackTarget {
         mine_detail: i32,
         selected_bvid: Option<String>,
         selection: i32,
-        first_row: usize,
+        list_scroll: f64,
         grid_scroll: f64,
     },
     Detail {
@@ -112,7 +112,7 @@ impl App {
                         .and_then(|source| self.lists[source].get(self.sel as usize))
                         .map(|item| item.bvid.clone()),
                     selection: self.sel,
-                    first_row: self.first_row,
+                    list_scroll: self.list_scroll,
                     grid_scroll: self.grid_scroll,
                 }),
                 Page::Detail => Some(BackTarget::Detail {
@@ -134,7 +134,7 @@ impl App {
                 Page::Following => Some(BackTarget::Following(std::mem::take(&mut self.following))),
                 Page::Collection => {
                     self.collection.selection = self.sel;
-                    self.collection.first_row = self.first_row;
+                    self.collection.list_scroll = self.list_scroll;
                     self.collection.grid_scroll = self.grid_scroll;
                     Some(BackTarget::Collection(std::mem::take(&mut self.collection)))
                 }
@@ -199,7 +199,7 @@ impl App {
             self.page = Page::Home;
             self.mine_detail = source as i32;
             self.sel = 0;
-            self.first_row = 0;
+            self.list_scroll = 0.0;
             self.grid_scroll = 0.0;
             self.loading = !self.loaded[source];
             self.home_dirty = true;
@@ -313,7 +313,7 @@ impl App {
                 ..Default::default()
             };
             self.sel = 0;
-            self.first_row = 0;
+            self.list_scroll = 0.0;
             self.grid_scroll = 0.0;
             self.collection_dirty = true;
             tasks::load_collection(
@@ -332,7 +332,7 @@ impl App {
                     mine_detail,
                     selected_bvid,
                     selection,
-                    first_row: first,
+                    list_scroll: scroll_y,
                     grid_scroll: scroll,
                 }) => {
                     self.page = Page::Home;
@@ -346,7 +346,7 @@ impl App {
                         })
                         .map(|index| index as i32)
                         .unwrap_or(selection);
-                    self.first_row = first;
+                    self.list_scroll = scroll_y;
                     self.grid_scroll = scroll;
                     self.home_dirty = true;
                     self.status.clear();
@@ -430,7 +430,7 @@ impl App {
                     self.page = Page::Collection;
                     self.collection = previous;
                     self.sel = self.collection.selection;
-                    self.first_row = self.collection.first_row;
+                    self.list_scroll = self.collection.list_scroll;
                     self.grid_scroll = self.collection.grid_scroll;
                     self.collection.loading = false;
                     self.collection_dirty = true;
@@ -523,7 +523,7 @@ impl App {
             self.mine_detail = -1;
             self.help = false;
             self.sel = 0;
-            self.first_row = 0;
+            self.list_scroll = 0.0;
             self.grid_scroll = 0.0;
             self.home_dirty = true;
             self.loading = !self.loaded[0];

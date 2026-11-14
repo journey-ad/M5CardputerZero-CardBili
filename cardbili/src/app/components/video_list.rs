@@ -9,6 +9,19 @@ pub(in crate::app) fn video_columns(view: VideoLayout) -> usize {
     }
 }
 
+pub(in crate::app) fn scroll_to_visible(
+    scroll: f64,
+    item_top: f64,
+    item_bottom: f64,
+    viewport_height: f64,
+    content_height: f64,
+) -> f64 {
+    scroll
+        .min(item_top)
+        .max(item_bottom - viewport_height)
+        .clamp(0.0, (content_height - viewport_height).max(0.0))
+}
+
 pub(in crate::app) fn video_row(item: &model::Item) -> VideoRow {
     VideoRow {
         title: item.title.as_str().into(),
@@ -37,13 +50,11 @@ pub(in crate::app) fn sync_list(
     rows: Vec<VideoRow>,
     headers: Vec<crate::HistoryHeader>,
     tops: Vec<f32>,
-    offsets: Vec<f32>,
 ) {
     let list_model = ui.global::<crate::ListModel>();
     list_model.set_rows(ModelRc::new(VecModel::from(rows)));
     list_model.set_headers(ModelRc::new(VecModel::from(headers)));
     list_model.set_row_tops(ModelRc::new(VecModel::from(tops)));
-    list_model.set_row_offsets(ModelRc::new(VecModel::from(offsets)));
 }
 
 pub(in crate::app) fn list_source(tab: HomeTab, mine_detail: i32) -> Option<usize> {
@@ -93,7 +104,7 @@ impl App {
             self.settings_changed = true;
             return true;
         }
-        let layout = if self.tab == HomeTab::Mine && self.mine_detail == 3 {
+        let layout = if self.page == Page::Home && self.tab == HomeTab::Mine && self.mine_detail == 3 {
             VideoLayout::List
         } else {
             self.view

@@ -1,8 +1,8 @@
 import "../fonts/fusion12.ttf";
 export { HomeTab, Page, VideoLayout, MenuPosition, SettingsItem } from "types.slint";
 export { VideoRow, HistoryHeader } from "common.slint";
-export { Nav, ListModel, Status, Account, Player, Danmaku, Detail, Login, Meta, Preferences, Collection, Menu, Comments, Favorite, Following, Confirm, Cdn, Sections } from "state.slint";
-import { Confirm, Nav, Sections } from "state.slint";
+export { Nav, Layout, ListModel, Status, Account, Player, Danmaku, Detail, Login, Meta, Preferences, Collection, Menu, Comments, Favorite, Following, Confirm, Cdn, Sections } from "state.slint";
+import { Confirm, Nav, Sections, Layout } from "state.slint";
 import { Page } from "types.slint";
 import { StatusBar } from "components/status_bar.slint";
 import { BottomBar } from "components/bottom_bar.slint";
@@ -11,8 +11,8 @@ import { PanelHost } from "components/panel_host.slint";
 import { ConfirmDialog } from "components/confirm_dialog.slint";
 
 export component AppWindow inherits Window {
-    width: 320px;
-    height: 170px;
+    width <=> Layout.window-width;
+    height <=> Layout.window-height;
     background: #0b0f17;
     default-font-family: "Fusion Pixel 12px Prop zh-Hans";
 
@@ -21,6 +21,7 @@ export component AppWindow inherits Window {
     Router {}
     PanelHost {}
     BottomBar {
+        height: Layout.bottom-bar-height;
         x: 0px;
         y: parent.height - self.height;
         width: parent.width;

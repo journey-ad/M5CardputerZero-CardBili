@@ -1,4 +1,4 @@
-import { Collection } from "../state.slint";
+import { Collection, Layout } from "../state.slint";
 import { VideoList } from "../components/video_list.slint";
 import { Icon, Icons } from "../components/icons.slint";
 
@@ -6,15 +6,15 @@ export component CollectionPage inherits Rectangle {
     width: 100%; height: 100%; background: #0b0f17;
     header := Rectangle {
         x: 0px; y: 0px; width: parent.width;
-        height: Collection.is-author ? 36px : 24px;
+        height: Layout.video-y;
         background: #121a2a;
         if Collection.is-author: Rectangle {
-            x: 6px; y: 4px; width: 28px; height: 28px; background: #1f2b45;
+            x: 6px; y: 3px; width: 24px; height: 24px; background: #1f2b45;
             if Collection.has-avatar: Image { width: 100%; height: 100%; source: Collection.avatar; image-fit: cover; }
-            if !Collection.has-avatar: Icon { x: 6px; y: 6px; width: 16px; height: 16px; source: Icons.user; colorize: #7fb0ff; }
+            if !Collection.has-avatar: Icon { x: 5px; y: 4px; width: 16px; height: 16px; source: Icons.user; colorize: #7fb0ff; }
         }
         if Collection.is-author: HorizontalLayout {
-            x: 42px; y: 2px; width: parent.width - 48px; height: 16px;
+            x: 42px; y: 0px; width: parent.width - 48px; height: 16px;
             spacing: 4px; alignment: start;
             Text {
                 max-width: parent.width - 34px; text: Collection.name;
@@ -27,7 +27,7 @@ export component CollectionPage inherits Rectangle {
             }
         }
         if Collection.is-author: Text {
-            x: 42px; y: 18px; width: parent.width - 48px; height: 16px;
+            x: 42px; y: 16px; width: parent.width - 48px; height: 14px;
             text: "UID " + Collection.uid + (Collection.followers == "" ? "" : "  " + Collection.followers);
             color: #9aa6ba; font-size: 10px; font-family: "Fusion Pixel 10px Prop zh-Hans";
             vertical-alignment: center; overflow: elide;
@@ -39,7 +39,7 @@ export component CollectionPage inherits Rectangle {
         }
     }
     videos := VideoList {
-        x: 0px; y: header.height; width: parent.width; height: parent.height - header.height - 20px;
+        x: 0px; y: header.height; width: Layout.video-width; height: Layout.video-height;
         show-author: !Collection.is-author;
     }
     if videos.empty: Text {

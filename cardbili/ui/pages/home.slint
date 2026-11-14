@@ -1,6 +1,6 @@
 import { HomeTab, MenuPosition } from "../types.slint";
 // 首页：页签 + 列表/网格/我的 三态 + 空状态 + 底部栏 + 按键说明
-import { Nav, Preferences } from "../state.slint";
+import { Nav, Preferences, Layout } from "../state.slint";
 import { SettingsPanel } from "../components/settings_panel.slint";
 import { TabBar } from "../components/tab_bar.slint";
 import { VideoList } from "../components/video_list.slint";
@@ -13,20 +13,15 @@ export component HomePage inherits Rectangle {
     height: 100%;
     background: #0b0f17;
 
-    property <length> content-x: Preferences.menu-position == MenuPosition.left ? 56px : 0px;
-    property <length> content-y: Preferences.menu-position == MenuPosition.top ? 24px : 0px;
-    property <length> content-width: root.width - (Preferences.menu-position == MenuPosition.top ? 0px : 56px);
-    property <length> content-height: root.height - root.content-y - 20px;
-
     TabBar {
-        x: Preferences.menu-position == MenuPosition.right ? parent.width - 56px : 0px;
+        x: Preferences.menu-position == MenuPosition.right ? parent.width - Layout.sidebar-width : 0px;
         y: 0px;
-        width: Preferences.menu-position == MenuPosition.top ? parent.width : 56px;
-        height: Preferences.menu-position == MenuPosition.top ? 24px : parent.height - 20px;
+        width: Preferences.menu-position == MenuPosition.top ? parent.width : Layout.sidebar-width;
+        height: Preferences.menu-position == MenuPosition.top ? Layout.video-y : Layout.video-height;
     }
     Rectangle {
-        x: root.content-x; y: root.content-y;
-        width: root.content-width; height: root.content-height;
+        x: Layout.video-x; y: Layout.video-y;
+        width: Layout.video-width; height: Layout.video-height;
         videos := VideoList {
             x: 0px; y: 0px; width: parent.width; height: parent.height;
             visible: (Nav.tab != HomeTab.mine && Nav.tab != HomeTab.settings) || (Nav.tab == HomeTab.mine && Nav.mine-detail);

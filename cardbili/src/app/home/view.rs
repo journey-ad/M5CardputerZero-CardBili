@@ -97,20 +97,11 @@ impl App {
         } else {
             return;
         };
-        let content_width = if collection || self.settings.menu_position == MenuPosition::Top {
-            320.0
-        } else {
-            264.0
-        };
-        let content_height =
-            if collection && matches!(self.collection.source, model::VideoSource::Author(_)) {
-                114.0
-            } else if collection || self.settings.menu_position == MenuPosition::Top {
-                126.0
-            } else {
-                150.0
-            };
-        let history = self.tab == HomeTab::Mine && self.mine_detail == 3;
+        let geometry = self.ui.global::<crate::Layout>();
+        let content_width = geometry.get_video_width() as f64;
+        let content_height = geometry.get_video_height() as f64;
+        let row_height = list_model.get_row_height() as f64;
+        let history = !collection && self.tab == HomeTab::Mine && self.mine_detail == 3;
         let layout = if history { VideoLayout::List } else { self.view };
         let columns = video_columns(layout);
         let mut cell_height = if layout == VideoLayout::TwoColumns {
@@ -126,9 +117,10 @@ impl App {
         );
         if self.scroll_context != Some(context) {
             if !self.go_back {
-                self.first_row = 0;
+                self.list_scroll = 0.0;
                 self.grid_scroll = 0.0;
             }
+            self.row_tops.clear();
             self.scroll_context = Some(context);
         }
         let (items, covers) = if collection {
@@ -145,32 +137,53 @@ impl App {
         }
         self.sel = self.sel.clamp(0, (items.len() as i32 - 1).max(0));
         let selected = self.sel as usize;
+        let dirty = if collection {
+            self.collection_dirty
+        } else {
+            self.home_dirty
+        };
         let (start, end, visible_count) = if layout == VideoLayout::List {
-            let rows = ((content_height - if history { 24.0f64 } else { 0.0f64 }) / 30.0f64).max(1.0f64) as usize;
-            if selected < self.first_row {
-                self.first_row = selected;
-            }
-            if selected >= self.first_row + rows {
-                self.first_row = selected + 1 - rows;
-            }
-            self.first_row = self.first_row.min(items.len().saturating_sub(rows));
-            (
-                self.first_row,
-                (self.first_row + rows + 1).min(items.len()),
-                rows,
-            )
+            let tops: Vec<f64> = if !dirty && self.row_tops.len() == items.len() {
+                self.row_tops.iter().map(|v| *v as f64).collect()
+            } else if history {
+                build_history_rows(items, row_height as f32)
+                    .tops
+                    .iter()
+                    .map(|v| *v as f64)
+                    .collect()
+            } else {
+                (0..items.len()).map(|i| i as f64 * row_height).collect()
+            };
+            // 分组首项的可见范围包含前面的日期标题
+            let sel_top = selected
+                .checked_sub(1)
+                .map(|i| tops[i] + row_height)
+                .unwrap_or(0.0);
+            let sel_bottom = tops
+                .get(selected)
+                .map(|top| top + row_height)
+                .unwrap_or(0.0);
+            let total = tops.last().map(|v| v + row_height).unwrap_or(0.0);
+            self.list_scroll = scroll_to_visible(
+                self.list_scroll,
+                sel_top,
+                sel_bottom,
+                content_height,
+                total,
+            );
+            list_model.set_content_height(total as f32);
+            list_model.set_scroll_y(self.list_scroll as f32);
+            let rows = ((content_height / row_height).ceil() as usize + 1).min(items.len().max(1));
+            (0, items.len(), rows)
         } else {
             let selected_y = (selected / columns) as f64 * cell_height;
-            if selected_y < self.grid_scroll {
-                self.grid_scroll = selected_y;
-            }
-            if selected_y + cell_height > self.grid_scroll + content_height {
-                self.grid_scroll = selected_y + cell_height - content_height;
-            }
             let total_rows = items.len().div_ceil(columns);
-            self.grid_scroll = self.grid_scroll.clamp(
-                0.0,
-                (total_rows as f64 * cell_height - content_height).max(0.0),
+            self.grid_scroll = scroll_to_visible(
+                self.grid_scroll,
+                selected_y,
+                selected_y + cell_height,
+                content_height,
+                total_rows as f64 * cell_height,
             );
             let first_row = (self.grid_scroll / cell_height) as usize;
             let start = first_row * columns;
@@ -179,7 +192,6 @@ impl App {
             list_model.set_grid_offset((self.grid_scroll - first_row as f64 * cell_height) as f32);
             (start, end, rows * columns)
         };
-        list_model.set_first_row(self.first_row as i32);
 
         if collection {
             if !self.collection.loading
@@ -223,11 +235,6 @@ impl App {
             grid_start,
             self.settings.menu_position,
         );
-        let dirty = if collection {
-            self.collection_dirty
-        } else {
-            self.home_dirty
-        };
         if dirty || self.home_view != Some(current_view) {
             self.home_view = Some(current_view);
             if collection {
@@ -237,12 +244,16 @@ impl App {
             }
             if layout == VideoLayout::List {
                 if history {
-                    let prepared = build_history_rows(items);
-                    sync_list(&self.ui, prepared.rows, prepared.headers, prepared.tops, prepared.offsets);
+                    let prepared = build_history_rows(items, row_height as f32);
+                    self.row_tops = prepared.tops.clone();
+                    sync_list(&self.ui, prepared.rows, prepared.headers, prepared.tops);
                 } else {
                     let rows: Vec<VideoRow> = items.iter().map(video_row).collect();
-                    let tops: Vec<f32> = (0..items.len()).map(|i| i as f32 * 30.0).collect();
-                    sync_list(&self.ui, rows, Vec::new(), tops.clone(), tops);
+                    let tops: Vec<f32> = (0..items.len())
+                        .map(|i| i as f32 * row_height as f32)
+                        .collect();
+                    self.row_tops = tops.clone();
+                    sync_list(&self.ui, rows, Vec::new(), tops.clone());
                 }
             } else {
                 let mut rows = Vec::with_capacity(end - start);

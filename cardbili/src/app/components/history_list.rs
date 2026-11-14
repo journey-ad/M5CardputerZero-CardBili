@@ -5,43 +5,37 @@ pub(in crate::app) struct HistoryRows {
     pub rows: Vec<VideoRow>,
     pub headers: Vec<crate::HistoryHeader>,
     pub tops: Vec<f32>,
-    pub offsets: Vec<f32>,
 }
 
-pub(in crate::app) fn build_history_rows(items: &[model::Item]) -> HistoryRows {
+pub(in crate::app) fn build_history_rows(items: &[model::Item], row_height: f32) -> HistoryRows {
     let mut rows = Vec::with_capacity(items.len());
     let mut headers = Vec::new();
     let mut tops = Vec::with_capacity(items.len());
-    let mut offsets = Vec::with_capacity(items.len());
     let mut extra = 0.0f32;
     let mut last_day = None;
     for (index, item) in items.iter().enumerate() {
-        let mut day_start = false;
         if item.view_at > 0 {
             let day = (item.view_at + 8 * 3600).div_euclid(86400);
             if last_day != Some(day) {
                 headers.push(crate::HistoryHeader {
                     title: model::history_day_label(item.view_at).into(),
-                    top: index as f32 * 30.0 + extra,
+                    top: index as f32 * row_height + extra,
                 });
-                extra += 24.0;
+                extra += row_height;
                 last_day = Some(day);
-                day_start = true;
             }
         }
         let mut row = video_row(item);
         row.progress = progress_text(item);
         row.watched = model::watch_time(item.view_at).into();
         rows.push(row);
-        let top = index as f32 * 30.0 + extra;
+        let top = index as f32 * row_height + extra;
         tops.push(top);
-        offsets.push(if day_start { top - 24.0 } else { top });
     }
     HistoryRows {
         rows,
         headers,
         tops,
-        offsets,
     }
 }
 

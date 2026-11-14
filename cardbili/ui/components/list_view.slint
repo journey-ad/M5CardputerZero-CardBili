@@ -6,18 +6,19 @@ import { StatItem } from "stat_item.slint";
 export component ListView inherits Rectangle {
     in property <bool> show-author: true;
     clip: true;
-    property <length> top: ListModel.row-offsets.length > ListModel.first-row ? ListModel.row-offsets[ListModel.first-row] * 1px : 0px;
+    property <length> max-top: max(0px, ListModel.content-height * 1px - root.height);
+    property <length> top: min(ListModel.scroll-y * 1px, self.max-top);
     for header in ListModel.headers: Text {
-        x: 8px; y: header.top * 1px - root.top; width: parent.width - 16px; height: 24px;
+        x: 8px; y: header.top * 1px - root.top; width: parent.width - 16px; height: ListModel.row-height;
         text: header.title; color: #8b95a7;
         font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
         vertical-alignment: center;
     }
     for row[i] in ListModel.rows: Rectangle {
         x: 0px; y: ListModel.row-tops[i] * 1px - root.top;
-        width: parent.width; height: 30px;
+        width: parent.width; height: ListModel.row-height;
         background: i == Nav.sel ? #1f2b45 : transparent;
-        Rectangle { y: 29px; width: parent.width; height: 1px; background: #151d2c; }
+        Rectangle { y: parent.height - 1px; width: parent.width; height: 1px; background: #151d2c; }
         Rectangle {
             x: 8px; y: 1px; width: parent.width - 16px; height: 17px; clip: true;
             Text {

@@ -82,7 +82,7 @@ impl App {
         g_status.set_status(status.into());
         g_status.set_detail(self.status_detail.as_str().into());
         self.ui.global::<crate::ListModel>().set_loading(self.loading);
-        let layout = if self.tab == HomeTab::Mine && self.mine_detail == 3 {
+        let layout = if self.page == Page::Home && self.tab == HomeTab::Mine && self.mine_detail == 3 {
             VideoLayout::List
         } else {
             self.view

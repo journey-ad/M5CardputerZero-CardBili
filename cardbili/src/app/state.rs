@@ -81,7 +81,8 @@ pub(super) struct App {
     pub(super) collection_request: u64,
     pub(super) collection_dirty: bool,
     pub(super) back_stack: Vec<BackTarget>,
-    pub(super) first_row: usize,
+    pub(super) row_tops: Vec<f32>,
+    pub(super) list_scroll: f64,
     pub(super) grid_scroll: f64,
     pub(super) scroll_context: Option<(i32, VideoLayout, Page, MenuPosition)>,
     pub(super) about_scroll: f64,
@@ -184,7 +185,8 @@ impl App {
         let collection_request = 0u64;
         let collection_dirty = false;
         let back_stack: Vec<BackTarget> = Vec::new();
-        let first_row = 0usize;
+        let row_tops = Vec::new();
+        let list_scroll = 0.0f64;
         let grid_scroll = 0.0f64;
         let scroll_context = None;
         let about_scroll = 0.0f64;
@@ -322,7 +324,8 @@ impl App {
             collection_request,
             collection_dirty,
             back_stack,
-            first_row,
+            row_tops,
+            list_scroll,
             grid_scroll,
             scroll_context,
             about_scroll,

@@ -12,13 +12,26 @@ export global Nav {
     in-out property <bool> mine-detail: false;
 }
 
+// 页面可视区域由窗口、页头、侧栏和底栏共同确定
+export global Layout {
+    in-out property <length> window-width: 320px;
+    in-out property <length> window-height: 170px;
+    out property <length> bottom-bar-height: 20px;
+    out property <length> sidebar-width: Nav.page == Page.home && Preferences.menu-position != MenuPosition.top ? 56px : 0px;
+    out property <length> video-x: Preferences.menu-position == MenuPosition.left ? self.sidebar-width : 0px;
+    out property <length> video-y: Nav.page == Page.collection ? 30px : (Preferences.menu-position == MenuPosition.top ? 24px : 0px);
+    out property <length> video-width: self.window-width - self.sidebar-width;
+    out property <length> video-height: self.window-height - self.video-y - self.bottom-bar-height;
+}
+
 // 列表数据与状态
 export global ListModel {
     in-out property <[VideoRow]> rows: [];
     in-out property <[HistoryHeader]> headers: [];
     in-out property <[float]> row-tops: [];
-    in-out property <[float]> row-offsets: [];
-    in-out property <int> first-row: 0;
+    in-out property <float> scroll-y: 0;
+    in-out property <float> content-height: 0;
+    out property <length> row-height: 30px;
     in-out property <length> grid-offset: 0px;
     in-out property <string> history-count: "";
     in-out property <string> favorite-count: "";
