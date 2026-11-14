@@ -5,7 +5,7 @@ import { Nav, ListModel, Account } from "../state.slint";
 export component MinePanel inherits Rectangle {
     clip: true;
     Rectangle {
-    y: -max(0px, 52px + (Nav.sel + 1) * 36px - root.height);
+    y: -max(0px, 52px + (Nav.sel + 1) * 28px - root.height);
     width: parent.width; height: 160px;
 
     Rectangle { x: 6px; y: 4px; width: parent.width - 12px; height: 44px; background: #121a2a; border-radius: 6px; }
@@ -16,13 +16,12 @@ export component MinePanel inherits Rectangle {
     if Account.logged: Text { x: 52px; y: 34px; width: parent.width - 60px; height: 11px; text: Account.level + "  " + Account.vip; color: #c9a0ff; font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px; vertical-alignment: center; }
 
     for t[i] in ["我的关注", "历史观看", "我的收藏"]: Rectangle {
-        x: 6px; y: 52px + i * 36px; width: parent.width - 12px; height: 32px;
+        x: 6px; y: 52px + i * 28px; width: parent.width - 12px; height: 26px;
         background: i == Nav.sel ? #1f2b45 : #0f1623;
         border-radius: 4px;
-        Icon { x: 8px; y: 4px; width: 24px; height: 24px; source: [Icons.user, Icons.clock, Icons.bookmark][i]; colorize: #7fb0ff; }
-        Text { x: 40px; y: 0px; width: 112px; height: 32px; text: t; color: #e6ebf5; font-size: 12px; vertical-alignment: center; }
-        Icon { x: parent.width - 22px; y: 10px; source: Icons.right; colorize: #6f7c92; }
-        Text { x: parent.width - 100px; y: 0px; width: 70px; height: 32px; text: i == 0 ? "" : (i == 1 ? ListModel.history-count : ListModel.favorite-count); color: #6f7c92; font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px; horizontal-alignment: right; vertical-alignment: center; }
+        Icon { x: 8px; y: 7px; width: 12px; height: 12px; source: [Icons.user, Icons.clock, Icons.bookmark][i]; colorize: #7fb0ff; }
+        Text { x: 26px; y: 0px; width: 112px; height: 26px; text: t; color: #e6ebf5; font-size: 12px; vertical-alignment: center; }
+        Icon { x: parent.width - 22px; y: 7px; source: Icons.right; colorize: #6f7c92; }
     }
 }
 }
