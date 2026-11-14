@@ -1,5 +1,6 @@
+use crate::diagnostics;
 use std::process::Command;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 pub const UA: &str = "Mozilla/5.0 (X11; Linux aarch64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 pub const REFERER: &str = "https://www.bilibili.com/";
@@ -62,7 +63,7 @@ pub fn curl_get_with_headers(
     cookies: Option<&str>,
     headers: &RequestHeaders<'_>,
 ) -> Result<String, String> {
-    curl_text(curl_args(url, cookies, headers))
+    curl_text(url, curl_args(url, cookies, headers))
 }
 
 pub fn post_form_json(
@@ -93,15 +94,29 @@ pub fn post_form_json_timeout(
         "--data".into(),
         query_string(params),
     ]);
-    let body = curl_text(args)?;
-    serde_json::from_str(&body).map_err(|error| format!("数据解析失败\n{error}"))
+    let body = curl_text(url, args)?;
+    parse_json(url, &body).map_err(|error| format!("数据解析失败\n{error}"))
 }
 
-fn curl_text(args: Vec<String>) -> Result<String, String> {
-    let out = Command::new("curl")
-        .args(args)
-        .output()
-        .map_err(|e| format!("网络请求启动失败\n{e}"))?;
+fn curl_output(url: &str, args: Vec<String>) -> Result<Vec<u8>, String> {
+    let endpoint = url.split(['?', '#']).next().unwrap_or(url);
+    let method = if args.iter().any(|arg| arg == "--data") {
+        "POST"
+    } else {
+        "GET"
+    };
+    let started = Instant::now();
+    diagnostics::write(format_args!("[请求] {method} {endpoint} 开始"));
+    let out = Command::new("curl").args(args).output().map_err(|error| {
+        diagnostics::write(format_args!("[请求] {method} {endpoint} 启动失败: {error}"));
+        format!("网络请求启动失败\n{error}")
+    })?;
+    diagnostics::write(format_args!(
+        "[请求] {method} {endpoint} 完成 进程状态={} 字节={} 耗时={}ms",
+        out.status,
+        out.stdout.len(),
+        started.elapsed().as_millis()
+    ));
     if !out.status.success() {
         let code = out
             .status
@@ -116,7 +131,11 @@ fn curl_text(args: Vec<String>) -> Result<String, String> {
         };
         return Err(format!("网络连接失败\nexit {}{}", code, tail));
     }
-    Ok(String::from_utf8_lossy(&out.stdout).into_owned())
+    Ok(out.stdout)
+}
+
+fn curl_text(url: &str, args: Vec<String>) -> Result<String, String> {
+    curl_output(url, args).map(|bytes| String::from_utf8_lossy(&bytes).into_owned())
 }
 
 pub fn curl_get(url: &str, cookies: Option<&str>) -> Result<String, String> {
@@ -124,24 +143,25 @@ pub fn curl_get(url: &str, cookies: Option<&str>) -> Result<String, String> {
 }
 
 pub fn curl_bytes(url: &str) -> Result<Vec<u8>, String> {
-    let out = Command::new("curl")
-        .args(curl_args(url, None, &DEFAULT_HEADERS))
-        .output()
-        .map_err(|e| format!("网络请求启动失败\n{e}"))?;
-    if !out.status.success() {
-        let code = out
-            .status
-            .code()
-            .map(|c| c.to_string())
-            .unwrap_or_else(|| "?".into());
-        return Err(format!("网络连接失败\nexit {}", code));
-    }
-    Ok(out.stdout)
+    curl_output(url, curl_args(url, None, &DEFAULT_HEADERS))
 }
 
 pub fn get_json(url: &str, cookies: Option<&str>) -> Result<serde_json::Value, String> {
     let s = curl_get(url, cookies)?;
-    serde_json::from_str(&s).map_err(|e| format!("数据解析失败\n{e}"))
+    parse_json(url, &s).map_err(|e| format!("数据解析失败\n{e}"))
+}
+
+pub fn parse_json(url: &str, body: &str) -> Result<serde_json::Value, serde_json::Error> {
+    let endpoint = url.split(['?', '#']).next().unwrap_or(url);
+    let result = serde_json::from_str::<serde_json::Value>(body);
+    match &result {
+        Ok(value) => diagnostics::write(format_args!(
+            "[接口] {endpoint} 业务码={:?}",
+            value["code"].as_i64()
+        )),
+        Err(error) => diagnostics::write(format_args!("[接口] {endpoint} JSON 解析失败: {error}")),
+    }
+    result
 }
 
 fn pct(s: &str) -> String {
@@ -182,5 +202,5 @@ pub fn get_with_cookie_jar(
         "-D".into(),
         headers_path.into(),
     ]);
-    curl_text(args)
+    curl_text(url, args)
 }

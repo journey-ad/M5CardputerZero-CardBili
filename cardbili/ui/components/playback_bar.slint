@@ -6,7 +6,7 @@ export component PlaybackBar inherits Rectangle {
     Rectangle { x: 6px; y: 3px; width: parent.width - 12px; height: 3px; background: #2a3346; border-radius: 2px; }
     Rectangle { x: 6px; y: 3px; width: (parent.width - 12px) * Player.progress; height: 3px; background: #6ea8ff; border-radius: 2px; }
     // 控制项依次对应实体 4–8 键
-    Icon { x: 6px; y: 11px; source: Player.paused ? Icons.play : Icons.pause; }
+    Icon { x: 6px; y: 11px; source: Player.paused || Player.finished ? Icons.play : Icons.pause; }
     Text {
         x: 20px; y: 11px; width: 68px; height: 12px;
         text: Player.time-text; color: #cfd8e6;

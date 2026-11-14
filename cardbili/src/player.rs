@@ -1,9 +1,9 @@
 #[cfg(target_os = "linux")]
 mod audio;
-mod diagnostics;
 mod frames;
 pub mod volume;
 
+use crate::diagnostics;
 use crate::model::PlayInfo;
 use crate::net::{REFERER, UA};
 use crate::Msg;
@@ -211,7 +211,6 @@ impl Player {
         {
             let pid = ch.id();
             if let Some(mut so) = ch.stdout.take() {
-                let tx = self.tx.clone();
                 let gen = self.gen;
                 let pending = self.frames.clone();
                 thread::spawn(move || {
@@ -230,14 +229,19 @@ impl Player {
                                 "[视频 pid={pid} gen={gen}] 首帧已就绪"
                             ));
                         }
-                        match pending.publish(frames, buf.clone()) {
-                            Some(true) => {
-                                if tx.send(Msg::Frame(gen)).is_err() {
-                                    break;
-                                }
-                            }
-                            Some(false) => {}
-                            None => break,
+                        if !pending.publish(frames, buf.clone()) {
+                            break;
+                        }
+                    }
+                    pending.finish_video();
+                });
+                let tx = self.tx.clone();
+                let pending = self.frames.clone();
+                thread::spawn(move || {
+                    while let Some(notify) = pending.present() {
+                        if notify && tx.send(Msg::Frame(gen)).is_err() {
+                            pending.stop();
+                            return;
                         }
                     }
                     let _ = tx.send(Msg::PlaybackEnded(gen));
@@ -294,6 +298,7 @@ impl Player {
 
     pub fn pause_toggle(&mut self) {
         self.paused = !self.paused;
+        diagnostics::write(format_args!("[播放] gen={} 暂停={}", self.gen, self.paused));
         self.frames.pause(self.paused);
         let signal = if self.paused { "-STOP" } else { "-CONT" };
         if self.ready {
@@ -327,6 +332,7 @@ impl Player {
     }
 
     pub fn seek(&mut self, target: f64) -> f64 {
+        diagnostics::write(format_args!("[播放] gen={} 跳转到={target:.3}s", self.gen));
         self.base = target.clamp(0.0, self.duration);
         self.gen += 1;
         self.spawn(self.base);
@@ -334,6 +340,7 @@ impl Player {
     }
 
     pub fn stop(&mut self) {
+        diagnostics::write(format_args!("[播放] 停止 gen={}", self.gen));
         self.frames.stop();
         stop_child(&mut self.child, "音视频");
         stop_child(&mut self.audio, "音频");

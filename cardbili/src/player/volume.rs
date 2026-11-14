@@ -32,6 +32,7 @@ pub fn worker(tx: Sender<crate::Msg>) -> SyncSender<i32> {
     thread::spawn(move || {
         for step in steps {
             let result = adjust(step);
+            crate::diagnostics::write(format_args!("[音量] 调整={step} 结果={result:?}"));
             if tx.send(crate::Msg::Volume(result)).is_err() {
                 break;
             }

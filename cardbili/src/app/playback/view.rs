@@ -34,6 +34,7 @@ impl App {
             if let Some(p) = self.player.as_ref() {
                 self.ui.set_ptitle(p.title.as_str().into());
                 self.ui.set_paused(p.paused);
+                self.ui.set_finished(p.finished);
                 self.ui.set_speed_text(format!("{}X", p.rate).into());
                 // 待提交的跳转使用预览位置
                 let pos = self

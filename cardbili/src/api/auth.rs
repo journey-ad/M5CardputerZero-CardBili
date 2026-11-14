@@ -109,12 +109,13 @@ pub fn qr_poll(key: &str, jar: &str) -> Poll {
         Ok(body) => body,
         Err(error) => return Poll::Err(error),
     };
-    let v: serde_json::Value = match serde_json::from_str(&body) {
+    let v = match net::parse_json(&url, &body) {
         Ok(v) => v,
         Err(e) => return Poll::Err(format!("登录状态解析失败\n{e}")),
     };
     let d = &v["data"];
     let code = d["code"].as_i64().unwrap_or(-1);
+    crate::diagnostics::write(format_args!("[登录] 二维码状态 code={code}"));
     match code {
         0 => {
             let mut map: Vec<(String, String)> = Vec::new();

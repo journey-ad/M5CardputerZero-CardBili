@@ -1,12 +1,20 @@
+use std::collections::VecDeque;
 use std::sync::{Condvar, Mutex};
 use std::time::{Duration, Instant};
+
+// 30fps 下缓存 500ms 的解码帧
+const CAPACITY: usize = (super::FPS * 0.5) as usize;
 
 #[derive(Default)]
 struct State {
     paused: bool,
     stopped: bool,
+    video_ended: bool,
+    #[cfg(target_os = "linux")]
+    audio_ended: bool,
     #[cfg(not(target_os = "linux"))]
     next: Option<Instant>,
+    pending: VecDeque<(u64, Vec<u8>)>,
     latest: Option<(u64, Vec<u8>)>,
     audio_sample: Option<(f64, Instant)>,
     position: f64,
@@ -17,7 +25,13 @@ impl State {
         if !self.paused {
             if let Some((time, sampled)) = self.audio_sample {
                 // 插值覆盖两次音频采样之间的时间，断流时最多推进 100ms
-                let elapsed = now.duration_since(sampled).as_secs_f64().min(0.1);
+                let elapsed = now.duration_since(sampled).as_secs_f64();
+                #[cfg(target_os = "linux")]
+                let elapsed = if self.audio_ended {
+                    elapsed
+                } else {
+                    elapsed.min(0.1)
+                };
                 self.position = self.position.max(time + elapsed);
             }
         }
@@ -37,6 +51,10 @@ impl Frames {
         state.position(Instant::now());
         state.paused = paused;
         state.audio_sample = None;
+        #[cfg(target_os = "linux")]
+        if state.audio_ended && !paused {
+            state.audio_sample = Some((state.position, Instant::now()));
+        }
         #[cfg(not(target_os = "linux"))]
         {
             state.next = None;
@@ -72,12 +90,54 @@ impl Frames {
         self.changed.notify_all();
     }
 
-    pub fn publish(&self, index: u64, pixels: Vec<u8>) -> Option<bool> {
+    pub fn finish_video(&self) {
+        self.state.lock().unwrap().video_ended = true;
+        self.changed.notify_all();
+    }
+
+    #[cfg(target_os = "linux")]
+    pub fn finish_audio(&self) {
+        let mut state = self.state.lock().unwrap();
+        let now = Instant::now();
+        let position = state.position(now);
+        // 音频排空后，剩余视频帧沿用当前时钟播放
+        state.audio_sample = Some((position, now));
+        state.audio_ended = true;
+        self.changed.notify_all();
+    }
+
+    pub fn publish(&self, index: u64, pixels: Vec<u8>) -> bool {
+        let mut state = self.state.lock().unwrap();
+        while !state.stopped && state.pending.len() >= CAPACITY {
+            state = self.changed.wait(state).unwrap();
+        }
+        if state.stopped {
+            return false;
+        }
+        state.pending.push_back((index, pixels));
+        self.changed.notify_all();
+        true
+    }
+
+    pub fn present(&self) -> Option<bool> {
         let mut state = self.state.lock().unwrap();
         loop {
             if state.stopped {
                 return None;
             }
+            let Some(&(index, _)) = state.pending.front() else {
+                #[cfg(target_os = "linux")]
+                let ended = state.video_ended && state.audio_ended;
+                #[cfg(not(target_os = "linux"))]
+                let ended = state.video_ended;
+                if ended {
+                    state.position(Instant::now());
+                    state.audio_sample = None;
+                    return None;
+                }
+                state = self.changed.wait(state).unwrap();
+                continue;
+            };
             // 首帧可在加载中暂停时作为预览
             if state.paused && index > 1 {
                 state = self.changed.wait(state).unwrap();
@@ -95,8 +155,10 @@ impl Frames {
                     state = self.changed.wait_timeout(state, wait).unwrap().0;
                     continue;
                 }
-                if ahead < -1.0 / super::FPS {
-                    return Some(false);
+                if ahead < -1.0 / super::FPS && state.pending.len() > 1 {
+                    state.pending.pop_front();
+                    self.changed.notify_all();
+                    continue;
                 }
                 break;
             }
@@ -115,7 +177,8 @@ impl Frames {
             state.next = Some(state.next.unwrap_or_else(Instant::now) + interval);
         }
         let notify = state.latest.is_none();
-        state.latest = Some((index, pixels));
+        state.latest = state.pending.pop_front();
+        self.changed.notify_all();
         Some(notify)
     }
 

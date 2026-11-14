@@ -107,9 +107,16 @@ impl App {
     pub(super) fn new(ui: AppWindow, tx: mpsc::Sender<Msg>) -> Self {
         let cpath = util::cookie_path();
         let cookies: Option<String> = std::fs::read_to_string(&cpath)
+            .inspect_err(|error| {
+                crate::diagnostics::write(format_args!("[登录] 读取登录态失败: {error}"));
+            })
             .ok()
             .map(|s| s.trim().to_string())
             .filter(|s| !s.is_empty());
+        crate::diagnostics::write(format_args!(
+            "[登录] 已读取登录态 登录={}",
+            cookies.is_some()
+        ));
         let mid = cookies.as_deref().map(util::parse_mid).unwrap_or_default();
 
         ui.set_version(format!("V{}", env!("CARGO_PKG_VERSION")).into());

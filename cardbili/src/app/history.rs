@@ -37,7 +37,7 @@ impl History {
                             report.progress,
                             &report.cookies,
                         ) {
-                            eprintln!("观看历史上报失败: {error}");
+                            crate::diagnostics::write(format_args!("[历史] 上报失败: {error}"));
                         }
                     }
                     Request::Flush(done) => {

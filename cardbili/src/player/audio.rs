@@ -1,4 +1,5 @@
-use super::{diagnostics, frames::Frames};
+use super::frames::Frames;
+use crate::diagnostics;
 use std::io::{BufRead, BufReader};
 use std::os::fd::OwnedFd;
 use std::process::{Child, Command, Stdio};
@@ -13,7 +14,7 @@ pub(super) fn start(frames: Arc<Frames>) -> std::io::Result<(Child, OwnedFd)> {
             "--format=s16le",
             "--rate=44100",
             "--channels=2",
-            "--latency-msec=60",
+            "--latency-msec=300",
             "--process-time-msec=10",
             "--verbose",
             "--client-name=CardBili",
@@ -28,25 +29,27 @@ pub(super) fn start(frames: Arc<Frames>) -> std::io::Result<(Child, OwnedFd)> {
     let stderr = child.stderr.take().unwrap();
     let pid = child.id();
     diagnostics::write(format_args!(
-        "[音频 pid={pid}] 使用实际播放时间同步，每 50ms 更新"
+        "[音频 pid={pid}] 目标缓冲 300ms，使用实际播放时间同步，每 50ms 更新"
     ));
     thread::spawn(move || {
         let mut reader = BufReader::new(stderr);
         let mut line = Vec::new();
         while reader.read_until(b'\r', &mut line).is_ok_and(|len| len > 0) {
             let text = String::from_utf8_lossy(&line);
-            if let Some(time) = text
-                .rsplit_once("Time: ")
-                .and_then(|(_, value)| value.split_whitespace().next())
-                .and_then(|value| value.parse::<f64>().ok())
-            {
-                frames.update_audio_clock(time);
-            } else if !text.trim().is_empty() {
-                diagnostics::write(format_args!("[音频 pid={pid}] {}", text.trim()));
+            for line in text.lines().map(str::trim).filter(|line| !line.is_empty()) {
+                if let Some(time) = line
+                    .rsplit_once("Time: ")
+                    .and_then(|(_, value)| value.split_whitespace().next())
+                    .and_then(|value| value.parse::<f64>().ok())
+                {
+                    frames.update_audio_clock(time);
+                } else {
+                    diagnostics::write(format_args!("[音频 pid={pid}] {line}"));
+                }
             }
             line.clear();
         }
-        frames.stop();
+        frames.finish_audio();
     });
     Ok((child, input))
 }

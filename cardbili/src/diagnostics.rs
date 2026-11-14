@@ -9,7 +9,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 const LOG_PATH: &str = "/tmp/cardbili-player.log";
 
-pub(super) fn write(message: fmt::Arguments<'_>) {
+pub(crate) fn write(message: fmt::Arguments<'_>) {
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default();
@@ -21,11 +21,11 @@ pub(super) fn write(message: fmt::Arguments<'_>) {
         .open(LOG_PATH)
         .and_then(|mut file| file.write_all(line.as_bytes()));
     if let Err(error) = result {
-        eprintln!("写入播放日志失败 {LOG_PATH}: {error}");
+        eprintln!("写入诊断日志失败 {LOG_PATH}: {error}");
     }
 }
 
-pub(super) fn spawn(
+pub(crate) fn spawn(
     kind: &'static str,
     args: &[String],
     cookies: &str,

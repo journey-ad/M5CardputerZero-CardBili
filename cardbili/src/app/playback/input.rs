@@ -39,7 +39,15 @@ impl App {
         if let Some(p) = self.player.as_mut() {
             match k {
                 "SPACE" | "ENTER" => {
-                    p.pause_toggle();
+                    if p.finished {
+                        // 播放结束后再次触发播放，从头开始
+                        p.paused = false;
+                        self.seek_pending = Some(0.0);
+                        self.seek_deadline = Some(Instant::now());
+                        crate::diagnostics::write(format_args!("[播放] 重播 gen={}", p.gen));
+                    } else {
+                        p.pause_toggle();
+                    }
                 }
                 "LEFT" | "RIGHT" => {
                     let step = if repeat { 2.0 } else { 10.0 };

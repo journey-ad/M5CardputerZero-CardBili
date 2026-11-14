@@ -2,6 +2,7 @@ mod api;
 mod app;
 mod cache;
 mod danmaku;
+mod diagnostics;
 mod fonts;
 mod menu;
 mod model;
@@ -48,5 +49,7 @@ pub enum Msg {
 }
 
 fn main() {
+    diagnostics::write(format_args!("[应用] 启动 pid={}", std::process::id()));
     app::run();
+    diagnostics::write(format_args!("[应用] 已退出"));
 }

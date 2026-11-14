@@ -1,9 +1,9 @@
-use crate::{MenuPosition, VideoLayout};
+use crate::{diagnostics, MenuPosition, VideoLayout};
 use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(default)]
 pub struct Settings {
     pub list_view: VideoLayout,
@@ -28,28 +28,37 @@ impl Default for Settings {
 impl Settings {
     pub fn load() -> Self {
         let mut settings: Self = std::fs::read(Self::path())
-            .ok()
+            .map_err(|error| error.to_string())
             .and_then(|data| {
-                let mut value: serde_json::Value = serde_json::from_slice(&data).ok()?;
+                let mut value: serde_json::Value =
+                    serde_json::from_slice(&data).map_err(|error| error.to_string())?;
                 if value.get("danmaku_opacity").is_none() {
                     if let Some(transparency) = value["danmaku_transparency"].as_i64() {
                         value["danmaku_opacity"] = (100 - transparency.clamp(0, 100)).into();
                     }
                 }
-                serde_json::from_value(value).ok()
+                serde_json::from_value(value).map_err(|error| error.to_string())
             })
-            .unwrap_or_default();
+            .unwrap_or_else(|error| {
+                diagnostics::write(format_args!("[设置] 使用默认值，读取失败: {error}"));
+                Self::default()
+            });
         settings.danmaku_opacity = settings.danmaku_opacity.clamp(0, 100);
+        diagnostics::write(format_args!("[设置] 已加载 {settings:?}"));
         settings
     }
 
     pub fn save(&self) -> Result<(), String> {
-        let path = Self::path();
-        if let Some(directory) = path.parent() {
-            std::fs::create_dir_all(directory).map_err(|error| error.to_string())?;
-        }
-        let data = serde_json::to_vec_pretty(self).map_err(|error| error.to_string())?;
-        std::fs::write(path, data).map_err(|error| error.to_string())
+        let result = (|| {
+            let path = Self::path();
+            if let Some(directory) = path.parent() {
+                std::fs::create_dir_all(directory).map_err(|error| error.to_string())?;
+            }
+            let data = serde_json::to_vec_pretty(self).map_err(|error| error.to_string())?;
+            std::fs::write(path, data).map_err(|error| error.to_string())
+        })();
+        diagnostics::write(format_args!("[设置] 保存 {self:?} 结果={result:?}"));
+        result
     }
 
     fn path() -> PathBuf {

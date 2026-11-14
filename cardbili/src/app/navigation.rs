@@ -61,8 +61,7 @@ impl App {
     pub(super) fn navigate(&mut self) {
         if self.settings_changed {
             self.settings.list_view = self.view;
-            if let Err(error) = self.settings.save() {
-                eprintln!("设置保存失败: {error}");
+            if self.settings.save().is_err() {
                 self.ui.set_bar("设置保存失败".into());
                 self.ui.set_bar_sticky(false);
             }
@@ -192,6 +191,7 @@ impl App {
             self.scroll_tap = None;
             self.ui.set_has_frame(false);
             self.ui.set_paused(false);
+            self.ui.set_finished(false);
             self.danmaku_view.clear();
         }
         if let Some(source) = self.requested_home_list.take() {

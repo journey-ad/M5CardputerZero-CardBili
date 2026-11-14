@@ -32,12 +32,13 @@ impl App {
         }
 
         // --- 同步 UI ---
-        // 播放中 3 秒无操作隐藏控件；暂停或正在长按调进度时保持显示
+        // 播放中 3 秒无操作隐藏控件；暂停、播放结束或正在长按调进度时保持显示
         let controls_show = if self.page == Page::Player {
             self.player
                 .as_ref()
                 .map(|p| {
                     p.paused
+                        || p.finished
                         || self.controls.like_hold.is_some()
                         || self.direction_hold.is_some()
                         || self.last_input.elapsed() < Duration::from_millis(3000)

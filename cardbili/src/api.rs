@@ -15,6 +15,7 @@ use std::io::Read;
 fn api_err(name: &str, v: &Value) -> String {
     let code = v["code"].as_i64().unwrap_or(-1);
     let msg = v["message"].as_str().unwrap_or("");
+    crate::diagnostics::write(format_args!("[接口] {name} 失败 code={code} message={msg}"));
     if msg.is_empty() {
         format!("{}加载失败\ncode={}", name, code)
     } else {

@@ -151,8 +151,7 @@ impl App {
                 if self.page == Page::Player {
                     match result {
                         Ok(volume) => self.toast(&format!("系统音量 {volume}%")),
-                        Err(error) => {
-                            eprintln!("系统音量调整失败: {error}");
+                        Err(_) => {
                             self.toast("系统音量调整失败");
                         }
                     }
@@ -185,6 +184,11 @@ impl App {
                 if let Some(p) = self.player.as_mut() {
                     if g == p.gen {
                         p.finished = true;
+                        crate::diagnostics::write(format_args!(
+                            "[播放] 已结束 gen={g} 位置={:.3}s 帧数={}",
+                            p.position(self.frames_in_seg),
+                            self.frames_in_seg
+                        ));
                         self.status = "播放结束，按 ESC 返回".into();
                         self.status_detail.clear();
                     }
@@ -365,9 +369,16 @@ impl App {
                 }
                 if !ck.is_empty() {
                     if let Some(dir) = std::path::Path::new(&self.cpath).parent() {
-                        let _ = std::fs::create_dir_all(dir);
+                        if let Err(error) = std::fs::create_dir_all(dir) {
+                            crate::diagnostics::write(format_args!(
+                                "[登录] 创建登录态目录失败: {error}"
+                            ));
+                        }
                     }
-                    let _ = std::fs::write(&self.cpath, &ck);
+                    let saved = std::fs::write(&self.cpath, &ck);
+                    crate::diagnostics::write(format_args!(
+                        "[登录] 登录成功 保存登录态结果={saved:?}"
+                    ));
                     self.mid = util::parse_mid(&ck);
                     self.cookies = Some(ck);
                     self.account_dirty = true;

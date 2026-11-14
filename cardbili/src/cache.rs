@@ -5,7 +5,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde_json::Value;
 
-use crate::net;
+use crate::{diagnostics, net};
 
 // 接口数据缓存有效期，单位为秒
 pub const TTL_LIST: u64 = 60;
@@ -30,6 +30,7 @@ thread_local! {
 // 当前线程的强制刷新开关
 pub fn set_force(v: bool) {
     FORCE.with(|f| f.set(v));
+    diagnostics::write(format_args!("[缓存] 强制刷新={v}"));
 }
 
 fn force_on() -> bool {
@@ -46,6 +47,7 @@ thread_local! {
 // 当前线程读取缓存预览数据的开关
 pub fn set_cached_only(v: bool) {
     CACHED_ONLY.with(|f| f.set(v));
+    diagnostics::write(format_args!("[缓存] 缓存预览={v}"));
 }
 
 fn cached_only_on() -> bool {
@@ -65,8 +67,14 @@ fn img_dir() -> PathBuf {
 }
 
 pub fn init() {
-    let _ = fs::create_dir_all(api_dir());
-    let _ = fs::create_dir_all(img_dir());
+    for directory in [api_dir(), img_dir()] {
+        if let Err(error) = fs::create_dir_all(&directory) {
+            diagnostics::write(format_args!(
+                "[缓存] 创建目录失败 {}: {error}",
+                directory.display()
+            ));
+        }
+    }
 }
 
 // 缓存键：对原始字符串取 MD5
@@ -101,11 +109,16 @@ fn write_atomic(path: &Path, data: &[u8]) {
         .unwrap_or_default();
     let n = SEQ.fetch_add(1, Ordering::Relaxed);
     let tmp = path.with_file_name(format!(".{}.{}.tmp", name, n));
-    if fs::write(&tmp, data)
-        .and_then(|_| fs::rename(&tmp, path))
-        .is_err()
-    {
-        let _ = fs::remove_file(&tmp);
+    match fs::write(&tmp, data).and_then(|_| fs::rename(&tmp, path)) {
+        Ok(()) => diagnostics::write(format_args!(
+            "[缓存] 已写入 {} 字节={}",
+            path.display(),
+            data.len()
+        )),
+        Err(error) => {
+            diagnostics::write(format_args!("[缓存] 写入失败 {}: {error}", path.display()));
+            let _ = fs::remove_file(&tmp);
+        }
     }
 }
 
@@ -138,7 +151,8 @@ fn enforce_limit(dir: &Path, max: usize) {
     items.sort_by_key(|(_, t)| *t);
     let remove = items.len() - max;
     for (p, _) in items.into_iter().take(remove) {
-        let _ = fs::remove_file(p);
+        let result = fs::remove_file(&p);
+        diagnostics::write(format_args!("[缓存] 淘汰 {} 结果={result:?}", p.display()));
     }
 }
 
@@ -147,8 +161,19 @@ fn read_cached(path: &Path, max_age: u64) -> Option<Value> {
     if now().saturating_sub(mtime(path)) > max_age {
         return None;
     }
-    let data = fs::read(path).ok()?;
-    serde_json::from_slice(&data).ok()
+    let data = fs::read(path)
+        .map_err(|error| {
+            diagnostics::write(format_args!("[缓存] 读取失败 {}: {error}", path.display()));
+        })
+        .ok()?;
+    serde_json::from_slice(&data)
+        .map_err(|error| {
+            diagnostics::write(format_args!(
+                "[缓存] JSON 解析失败 {}: {error}",
+                path.display()
+            ));
+        })
+        .ok()
 }
 
 // 带缓存的接口请求
@@ -173,18 +198,32 @@ pub fn api_json_with(
         "{}.json",
         key_of(&format!("{}\n{}", cache_key, tag))
     ));
+    let endpoint = cache_key.split(['?', '#']).next().unwrap_or(cache_key);
     // 强制刷新优先于缓存预览，普通请求按有效期读取
     if !force_on() {
         let max_age = if cached_only_on() { STALE_MAX } else { ttl };
         if let Some(v) = read_cached(&path, max_age) {
+            diagnostics::write(format_args!(
+                "[缓存] 接口命中 {endpoint} {} 有效期={max_age}s",
+                path.display()
+            ));
             return Ok(v);
         }
+        diagnostics::write(format_args!(
+            "[缓存] 接口未命中 {endpoint} {} 有效期={max_age}s",
+            path.display()
+        ));
         if cached_only_on() {
             return Err("缓存未命中".to_string());
         }
+    } else {
+        diagnostics::write(format_args!(
+            "[缓存] 接口强制刷新 {endpoint} {}",
+            path.display()
+        ));
     }
     let s = fetch()?;
-    let v: Value = serde_json::from_str(&s).map_err(|e| {
+    let v = net::parse_json(cache_key, &s).map_err(|e| {
         format!(
             "数据解析失败（{e}）：{}",
             s.chars().take(200).collect::<String>()
@@ -229,11 +268,26 @@ fn cached_image(pic: &str, width: u32, height: u32) -> Option<Pixels> {
             let w = u32::from_le_bytes([data[0], data[1], data[2], data[3]]);
             let h = u32::from_le_bytes([data[4], data[5], data[6], data[7]]);
             touch(&path);
+            diagnostics::write(format_args!(
+                "[缓存] 图片命中 {} 尺寸={w}x{h}",
+                path.display()
+            ));
             return Some((w, h, data[8..].to_vec()));
         }
     }
+    diagnostics::write(format_args!(
+        "[缓存] 图片未命中 {} 尺寸={width}x{height}",
+        path.display()
+    ));
     let bytes = net::curl_bytes(&url).ok()?;
-    let img = image::load_from_memory(&bytes).ok()?;
+    let img = image::load_from_memory(&bytes)
+        .map_err(|error| {
+            diagnostics::write(format_args!(
+                "[缓存] 图片解码失败 {}: {error}",
+                path.display()
+            ));
+        })
+        .ok()?;
     let img = img.thumbnail(width, height).to_rgb8();
     let (w, h) = img.dimensions();
     let raw = img.into_raw();
@@ -249,5 +303,9 @@ fn cached_image(pic: &str, width: u32, height: u32) -> Option<Pixels> {
 pub fn invalidate_api(url: &str, cookies: &str) {
     let tag = format!("u:{}", crate::util::parse_mid(cookies));
     let path = api_dir().join(format!("{}.json", key_of(&format!("{url}\n{tag}"))));
-    let _ = fs::remove_file(path);
+    let result = fs::remove_file(&path);
+    diagnostics::write(format_args!(
+        "[缓存] 失效 {} 结果={result:?}",
+        path.display()
+    ));
 }

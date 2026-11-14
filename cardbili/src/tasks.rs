@@ -115,6 +115,9 @@ pub fn start_play(
     request: u64,
     tx: Sender<Msg>,
 ) {
+    crate::diagnostics::write(format_args!(
+        "[播放] 获取播放信息 request={request} bvid={bvid} cid={cid:?}"
+    ));
     thread::spawn(move || {
         let result = api::play_info(&bvid, cid, cookies.as_deref());
         let _ = tx.send(Msg::PlayReady(request, result));

@@ -13,6 +13,12 @@ pub fn liked(bvid: &str, cookies: &str) -> Result<bool, String> {
 }
 
 pub fn react(bvid: &str, cookies: &str, action: VideoAction) -> Result<ReactionResult, String> {
+    let name = match action {
+        VideoAction::Like(true) => "点赞",
+        VideoAction::Like(false) => "取消点赞",
+        VideoAction::Triple => "一键三连",
+    };
+    crate::diagnostics::write(format_args!("[互动] {name} bvid={bvid}"));
     let csrf = csrf(cookies)?;
     let mut params = vec![("bvid".into(), bvid.into()), ("csrf".into(), csrf.into())];
     let endpoint = match action {
@@ -123,6 +129,9 @@ fn csrf(cookies: &str) -> Result<&str, String> {
 }
 
 pub fn heartbeat(bvid: &str, cid: i64, progress: i64, cookies: &str) -> Result<(), String> {
+    crate::diagnostics::write(format_args!(
+        "[历史] 上报 bvid={bvid} cid={cid} 进度={progress}s"
+    ));
     let params = vec![
         ("bvid".into(), bvid.into()),
         ("cid".into(), cid.to_string()),
