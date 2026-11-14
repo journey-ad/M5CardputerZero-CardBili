@@ -3,9 +3,10 @@ use super::*;
 
 impl App {
     pub(super) fn sync_cache(&mut self) {
+        let preferences = self.ui.global::<crate::Preferences>();
         if self.page != Page::Home
             || self.tab != HomeTab::Settings
-            || self.ui.global::<crate::Preferences>().get_cache_busy()
+            || preferences.get_cache_busy()
             || self.confirmation.is_some()
         {
             return;
@@ -17,7 +18,7 @@ impl App {
             return;
         }
         self.cache_checked = Some(Instant::now());
-        self.ui.global::<crate::Preferences>().set_cache_busy(true);
+        preferences.set_cache_busy(true);
         let tx = self.tx.clone();
         thread::spawn(move || {
             let result = crate::cache::usage().map_err(|error| error.to_string());
@@ -26,7 +27,8 @@ impl App {
     }
 
     pub(super) fn cache_usage(&self, result: Result<u64, String>) {
-        self.ui.global::<crate::Preferences>().set_cache_busy(false);
+        let preferences = self.ui.global::<crate::Preferences>();
+        preferences.set_cache_busy(false);
         let text = match result {
             Ok(bytes) => format!("{:.1} MB / 1 GB", bytes as f64 / 1024.0 / 1024.0),
             Err(error) => {
@@ -34,15 +36,16 @@ impl App {
                 "统计失败".into()
             }
         };
-        self.ui.global::<crate::Preferences>().set_cache_size(text.into());
+        preferences.set_cache_size(text.into());
     }
 
     pub(super) fn clear_cache(&self) {
-        if self.ui.global::<crate::Preferences>().get_cache_busy() {
+        let preferences = self.ui.global::<crate::Preferences>();
+        if preferences.get_cache_busy() {
             return;
         }
-        self.ui.global::<crate::Preferences>().set_cache_busy(true);
-        self.ui.global::<crate::Preferences>().set_cache_size("清理中…".into());
+        preferences.set_cache_busy(true);
+        preferences.set_cache_size("清理中…".into());
         let tx = self.tx.clone();
         thread::spawn(move || {
             let result = crate::cache::clear().map_err(|error| error.to_string());
@@ -51,11 +54,12 @@ impl App {
     }
 
     pub(super) fn cache_cleared(&mut self, result: Result<(), String>) {
-        self.ui.global::<crate::Preferences>().set_cache_busy(false);
+        let preferences = self.ui.global::<crate::Preferences>();
+        preferences.set_cache_busy(false);
         self.cache_checked = None;
         match result {
             Ok(()) => {
-                self.ui.global::<crate::Preferences>().set_cache_size("0.0 MB / 1 GB".into());
+                preferences.set_cache_size("0.0 MB / 1 GB".into());
                 self.toast("缓存已清理");
             }
             Err(error) => {

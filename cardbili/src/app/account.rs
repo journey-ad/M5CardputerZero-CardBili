@@ -15,17 +15,18 @@ impl App {
                 self.account_dirty = true;
             }
         }
+        let account = self.ui.global::<crate::Account>();
         if self.account_dirty {
-            self.ui.global::<crate::Account>().set_known(self.cookies.is_some());
-            self.ui.global::<crate::Account>().set_logged(self.acct.as_ref().map(|a| a.logged).unwrap_or(false));
-            self.ui.global::<crate::Account>().set_name(
+            account.set_known(self.cookies.is_some());
+            account.set_logged(self.acct.as_ref().map(|a| a.logged).unwrap_or(false));
+            account.set_name(
                 self.acct
                     .as_ref()
                     .map(|a| a.name.as_str())
                     .unwrap_or_default()
                     .into(),
             );
-            self.ui.global::<crate::Account>().set_mid(
+            account.set_mid(
                 self.acct
                     .as_ref()
                     .map(|a| a.mid.as_str())
@@ -33,7 +34,7 @@ impl App {
                     .into(),
             );
             let lv = self.acct.as_ref().map(|a| a.level).unwrap_or(0);
-            self.ui.global::<crate::Account>().set_level(
+            account.set_level(
                 if lv > 0 {
                     format!("Lv{}", lv)
                 } else {
@@ -42,16 +43,16 @@ impl App {
                 .as_str()
                 .into(),
             );
-            self.ui.global::<crate::Account>().set_vip(
+            account.set_vip(
                 self.acct
                     .as_ref()
                     .map(|a| a.vip.as_str())
                     .unwrap_or_default()
                     .into(),
             );
-            self.ui.global::<crate::Account>().set_has_avatar(self.avatar_img.is_some());
+            account.set_has_avatar(self.avatar_img.is_some());
             if let Some(im) = self.avatar_img.clone() {
-                self.ui.global::<crate::Account>().set_avatar(im);
+                account.set_avatar(im);
             }
 
             self.account_dirty = false;

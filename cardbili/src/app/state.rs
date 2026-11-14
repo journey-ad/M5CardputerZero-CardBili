@@ -109,6 +109,8 @@ pub(super) struct App {
 
 impl App {
     pub(super) fn new(ui: AppWindow, tx: mpsc::Sender<Msg>, settings: Settings) -> Self {
+        let meta = ui.global::<crate::Meta>();
+        let login = ui.global::<crate::Login>();
         let cpath = util::cookie_path();
         let cookies: Option<String> = std::fs::read_to_string(&cpath)
             .inspect_err(|error| {
@@ -123,8 +125,8 @@ impl App {
         ));
         let mid = cookies.as_deref().map(util::parse_mid).unwrap_or_default();
 
-        ui.global::<crate::Meta>().set_version(format!("V{}", env!("CARGO_PKG_VERSION")).into());
-        ui.global::<crate::Meta>().set_about_text("作者  journey-ad\n\n项目地址\ngithub.com/journey-ad/CardBili\n\n字体\nFusion Pixel Font\ngithub.com/TakWolf/fusion-pixel-font\n\n接口参考\nPiliPlus\ngithub.com/bggRGjQaUbCoE/PiliPlus\n\n图标\nPixelarticons\ngithub.com/halfmage/pixelarticons".into());
+        meta.set_version(format!("V{}", env!("CARGO_PKG_VERSION")).into());
+        meta.set_about_text("作者  journey-ad\n\n项目地址\ngithub.com/journey-ad/CardBili\n\n字体\nFusion Pixel Font\ngithub.com/TakWolf/fusion-pixel-font\n\n接口参考\nPiliPlus\ngithub.com/bggRGjQaUbCoE/PiliPlus\n\n图标\nPixelarticons\ngithub.com/halfmage/pixelarticons".into());
 
         let ph = util::make_placeholder();
         let mut page = Page::Home;
@@ -217,8 +219,8 @@ impl App {
         if std::env::var("BILI_TEST_LOGIN").is_ok() {
             page = Page::Login;
             view = VideoLayout::List;
-            ui.global::<crate::Login>().set_has_qr(false);
-            ui.global::<crate::Login>().set_qr_status("正在生成二维码…".into());
+            login.set_has_qr(false);
+            login.set_qr_status("正在生成二维码…".into());
             login_request += 1;
             tasks::start_login(login_request, tx.clone());
         }

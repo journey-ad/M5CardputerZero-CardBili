@@ -42,6 +42,7 @@ impl App {
         if matches!(k, "SPACE" | "ENTER" | "LEFT" | "z" | "RIGHT" | "c") {
             self.report_history(true, false);
         }
+        let g_player = self.ui.global::<crate::Player>();
         if let Some(p) = self.player.as_mut() {
             match k {
                 "SPACE" | "ENTER" => {
@@ -62,12 +63,12 @@ impl App {
                         .seek_pending
                         .unwrap_or_else(|| p.position(self.frames_in_seg));
                     let position = (base + step).clamp(0.0, p.duration.max(0.0));
-                    self.ui.global::<crate::Player>().set_progress(if p.duration > 0.0 {
+                    g_player.set_progress(if p.duration > 0.0 {
                         (position / p.duration) as f32
                     } else {
                         0.0
                     });
-                    self.ui.global::<crate::Player>().set_time_text(
+                    g_player.set_time_text(
                         format!("{} / {}", model::mmss(position), model::mmss(p.duration)).into(),
                     );
                     self.seek_pending = Some(position);

@@ -63,6 +63,7 @@ impl App {
         if !self.favorites.loaded && self.favorites.error.is_empty() {
             self.load_favorites(false);
         }
+        let favorite = self.ui.global::<crate::Favorite>();
         if self.favorites.dirty {
             let total: u64 = self
                 .favorites
@@ -81,7 +82,7 @@ impl App {
                 .first
                 .min(selected)
                 .max(selected.saturating_sub(3));
-            self.ui.global::<crate::Favorite>().set_folders(ModelRc::new(VecModel::from(
+            favorite.set_folders(ModelRc::new(VecModel::from(
                 self.favorites
                     .folders
                     .iter()
@@ -101,10 +102,10 @@ impl App {
                     })
                     .collect::<Vec<_>>(),
             )));
-            self.ui.global::<crate::Favorite>().set_selected((selected - self.favorites.first) as i32);
+            favorite.set_selected((selected - self.favorites.first) as i32);
             self.favorites.dirty = false;
         }
-        self.ui.global::<crate::Favorite>().set_loading(self.favorites.loading);
-        self.ui.global::<crate::Favorite>().set_error(self.favorites.error.as_str().into());
+        favorite.set_loading(self.favorites.loading);
+        favorite.set_error(self.favorites.error.as_str().into());
     }
 }

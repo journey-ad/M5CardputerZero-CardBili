@@ -10,9 +10,10 @@ impl App {
         }
         if self.tab.is_video() && !self.help && (k == "ESC_DOWN" || k == "ESC_UP") {
             if k == "ESC_DOWN" {
+                let g_status = self.ui.global::<crate::Status>();
                 self.esc_press = Some(Instant::now());
-                self.ui.global::<crate::Status>().set_bar("长按 2 秒退出".into());
-                self.ui.global::<crate::Status>().set_bar_sticky(true);
+                g_status.set_bar("长按 2 秒退出".into());
+                g_status.set_bar_sticky(true);
                 self.bar_until = None;
             } else {
                 self.esc_press = None;
@@ -30,8 +31,9 @@ impl App {
             self.tab = HomeTab::from_index((self.tab.index() + step) % 5);
             self.back_stack.clear();
             self.direction_hold = None;
-            self.ui.global::<crate::Status>().set_bar("".into());
-            self.ui.global::<crate::Status>().set_bar_sticky(false);
+            let g_status = self.ui.global::<crate::Status>();
+            g_status.set_bar("".into());
+            g_status.set_bar_sticky(false);
             self.sel = 0;
             self.cache_checked = None;
             self.mine_detail = -1;

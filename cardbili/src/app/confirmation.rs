@@ -8,25 +8,27 @@ pub(super) enum Action {
 
 impl App {
     pub(super) fn confirm(&mut self, action: Action, title: &str, message: &str, label: &str) {
+        let confirm = self.ui.global::<crate::Confirm>();
         crate::diagnostics::write(format_args!("[确认] 打开 {action:?}"));
         self.confirmation = Some(action);
         self.direction_hold = None;
         self.return_hold = None;
-        self.ui.global::<crate::Confirm>().set_title(title.into());
-        self.ui.global::<crate::Confirm>().set_message(message.into());
-        self.ui.global::<crate::Confirm>().set_label(label.into());
-        self.ui.global::<crate::Confirm>().set_selected(false);
-        self.ui.global::<crate::Confirm>().set_open(true);
+        confirm.set_title(title.into());
+        confirm.set_message(message.into());
+        confirm.set_label(label.into());
+        confirm.set_selected(false);
+        confirm.set_open(true);
     }
 
     pub(super) fn confirmation_key(&mut self, key: &str) {
+        let confirm = self.ui.global::<crate::Confirm>();
         match key {
-            "LEFT" | "z" => self.ui.global::<crate::Confirm>().set_selected(false),
-            "RIGHT" | "c" => self.ui.global::<crate::Confirm>().set_selected(true),
+            "LEFT" | "z" => confirm.set_selected(false),
+            "RIGHT" | "c" => confirm.set_selected(true),
             "TAB" | "BACKTAB" => {
-                self.ui.global::<crate::Confirm>().set_selected(!self.ui.global::<crate::Confirm>().get_selected());
+                confirm.set_selected(!confirm.get_selected());
             }
-            "ENTER" => self.finish_confirmation(self.ui.global::<crate::Confirm>().get_selected()),
+            "ENTER" => self.finish_confirmation(confirm.get_selected()),
             "ESC" | "ESC_HOLD" | "BACKSPACE" | "8" => self.finish_confirmation(false),
             _ => {}
         }

@@ -99,7 +99,8 @@ impl App {
     }
 
     pub(super) fn sync_sections(&mut self) {
-        self.ui.global::<crate::Sections>().set_open(self.sections.open);
+        let g_sections = self.ui.global::<crate::Sections>();
+        g_sections.set_open(self.sections.open);
         if !self.sections.open {
             return;
         }
@@ -123,17 +124,17 @@ impl App {
                 user: chapter.title.as_str().into(),
                 text: model::mmss(chapter.start).into(),
             });
-            self.ui.global::<crate::Sections>().set_rows(ModelRc::new(VecModel::from(
+            g_sections.set_rows(ModelRc::new(VecModel::from(
                 parts
                     .chain(chapters)
                     .skip(self.sections.first)
                     .take(5)
                     .collect::<Vec<_>>(),
             )));
-            self.ui.global::<crate::Sections>().set_selected((self.sections.selection - self.sections.first) as i32);
+            g_sections.set_selected((self.sections.selection - self.sections.first) as i32);
             self.sections.dirty = false;
         }
-        self.ui.global::<crate::Sections>().set_loading(self.sections.loading);
-        self.ui.global::<crate::Sections>().set_error(self.sections.error.as_str().into());
+        g_sections.set_loading(self.sections.loading);
+        g_sections.set_error(self.sections.error.as_str().into());
     }
 }

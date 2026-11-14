@@ -5,8 +5,9 @@ use slint::Model;
 
 impl App {
     pub(in crate::app) fn settings_key(&mut self, key: &str) {
-        let appearance = self.ui.global::<crate::Preferences>().get_appearance_items();
-        let general = self.ui.global::<crate::Preferences>().get_general_items();
+        let preferences = self.ui.global::<crate::Preferences>();
+        let appearance = preferences.get_appearance_items();
+        let general = preferences.get_general_items();
         let appearance_len = appearance.row_count() as i32;
         let total = appearance_len + general.row_count() as i32;
         let row = if self.sel < appearance_len {
@@ -48,7 +49,7 @@ impl App {
                 SettingsItem::DebugLog => self.toggle_debug_log(),
                 SettingsItem::Cdn => self.open_cdn(),
                 SettingsItem::Cache => {
-                    if !self.ui.global::<crate::Preferences>().get_cache_busy() {
+                    if !preferences.get_cache_busy() {
                         self.confirm(
                             confirmation::Action::ClearCache,
                             "清理缓存",

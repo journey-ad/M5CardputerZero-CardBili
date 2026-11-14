@@ -12,8 +12,9 @@ pub(in crate::app) struct Controls {
 
 impl App {
     pub(in crate::app) fn toast(&self, text: &str) {
-        self.ui.global::<crate::Status>().set_bar(text.into());
-        self.ui.global::<crate::Status>().set_bar_sticky(false);
+        let status = self.ui.global::<crate::Status>();
+        status.set_bar(text.into());
+        status.set_bar_sticky(false);
     }
 
     pub(in crate::app) fn refresh_liked(&mut self) {
@@ -51,10 +52,11 @@ impl App {
     }
 
     pub(in crate::app) fn like_release(&mut self, cancel: bool) {
+        let status = self.ui.global::<crate::Status>();
         if let Some((since, submitted)) = self.controls.like_hold.take() {
             if !submitted {
-                self.ui.global::<crate::Status>().set_bar("".into());
-                self.ui.global::<crate::Status>().set_bar_sticky(false);
+                status.set_bar("".into());
+                status.set_bar_sticky(false);
                 if !cancel && since.elapsed() < TRIPLE_HOLD_DELAY {
                     self.react(model::VideoAction::Like(
                         !self.controls.liked.unwrap_or(false),
@@ -81,6 +83,7 @@ impl App {
     }
 
     pub(in crate::app) fn tick_like(&mut self) {
+        let status = self.ui.global::<crate::Status>();
         if self.page != Page::Player {
             return;
         }
@@ -88,8 +91,8 @@ impl App {
             if !*submitted && since.elapsed() >= TRIPLE_HOLD_DELAY + Duration::from_secs(2) {
                 *submitted = true;
                 self.controls.triple = Some(TripleFeedback::Pending(Instant::now()));
-                self.ui.global::<crate::Status>().set_bar("".into());
-                self.ui.global::<crate::Status>().set_bar_sticky(false);
+                status.set_bar("".into());
+                status.set_bar_sticky(false);
                 self.react(model::VideoAction::Triple);
             }
         }

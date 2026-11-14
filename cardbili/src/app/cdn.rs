@@ -4,25 +4,28 @@ use std::sync::atomic::Ordering;
 
 impl App {
     pub(super) fn open_cdn(&mut self) {
-        self.ui.global::<crate::Cdn>().set_open(true);
-        self.ui.global::<crate::Cdn>().set_selected(crate::cdn::index(&self.settings.cdn) as i32);
+        let g_cdn = self.ui.global::<crate::Cdn>();
+        g_cdn.set_open(true);
+        g_cdn.set_selected(crate::cdn::index(&self.settings.cdn) as i32);
         self.test_cdns();
     }
 
     pub(super) fn close_cdn(&self) {
+        let cdn = self.ui.global::<crate::Cdn>();
         self.cdn_request.fetch_add(1, Ordering::Relaxed);
-        self.ui.global::<crate::Cdn>().set_open(false);
-        self.ui.global::<crate::Cdn>().set_testing(false);
+        cdn.set_open(false);
+        cdn.set_testing(false);
     }
 
     fn test_cdns(&self) {
-        if self.ui.global::<crate::Cdn>().get_testing() {
+        let g_cdn = self.ui.global::<crate::Cdn>();
+        if g_cdn.get_testing() {
             return;
         }
         let request = self.cdn_request.fetch_add(1, Ordering::Relaxed) + 1;
         let active = self.cdn_request.clone();
-        self.ui.global::<crate::Cdn>().set_testing(true);
-        self.ui.global::<crate::Cdn>().set_rows(ModelRc::new(VecModel::from(
+        g_cdn.set_testing(true);
+        g_cdn.set_rows(ModelRc::new(VecModel::from(
             crate::cdn::OPTIONS
                 .iter()
                 .map(|cdn| Cmt {
@@ -68,14 +71,15 @@ impl App {
     }
 
     pub(super) fn cdn_result(&self, request: u64, index: usize, result: String) {
+        let g_cdn = self.ui.global::<crate::Cdn>();
         use slint::Model;
         if self.cdn_request.load(Ordering::Relaxed) != request {
             return;
         }
         if index == crate::cdn::OPTIONS.len() {
-            self.ui.global::<crate::Cdn>().set_testing(false);
+            g_cdn.set_testing(false);
         } else {
-            self.ui.global::<crate::Cdn>().get_rows().set_row_data(
+            g_cdn.get_rows().set_row_data(
                 index,
                 Cmt {
                     user: crate::cdn::OPTIONS[index].name.into(),
@@ -86,13 +90,14 @@ impl App {
     }
 
     pub(super) fn cdn_key(&mut self, key: &str) {
-        let selected = self.ui.global::<crate::Cdn>().get_selected();
+        let g_cdn = self.ui.global::<crate::Cdn>();
+        let selected = g_cdn.get_selected();
         let last = crate::cdn::OPTIONS.len() as i32 - 1;
         match key {
-            "UP" => self.ui.global::<crate::Cdn>().set_selected((selected - 1).max(0)),
-            "DOWN" => self.ui.global::<crate::Cdn>().set_selected((selected + 1).min(last)),
-            "LEFT" => self.ui.global::<crate::Cdn>().set_selected((selected - 3).max(0)),
-            "RIGHT" => self.ui.global::<crate::Cdn>().set_selected((selected + 3).min(last)),
+            "UP" => g_cdn.set_selected((selected - 1).max(0)),
+            "DOWN" => g_cdn.set_selected((selected + 1).min(last)),
+            "LEFT" => g_cdn.set_selected((selected - 3).max(0)),
+            "RIGHT" => g_cdn.set_selected((selected + 3).min(last)),
             "ENTER" | "SPACE" => {
                 self.settings.cdn = crate::cdn::OPTIONS[selected as usize].id.into();
                 self.settings_changed = true;

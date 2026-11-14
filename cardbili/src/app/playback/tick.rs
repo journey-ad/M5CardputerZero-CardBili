@@ -33,10 +33,11 @@ impl App {
                 }
             }
         }
+        let g_status = self.ui.global::<crate::Status>();
         if let Some(t) = self.bar_until {
             if Instant::now() >= t {
-                self.ui.global::<crate::Status>().set_bar("".into());
-                self.ui.global::<crate::Status>().set_bar_sticky(false);
+                g_status.set_bar("".into());
+                g_status.set_bar_sticky(false);
                 self.bar_until = None;
                 self.back_hint = false;
             }

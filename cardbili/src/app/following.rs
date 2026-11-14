@@ -128,13 +128,14 @@ impl App {
         {
             self.load_following();
         }
+        let g_following = self.ui.global::<crate::Following>();
         if self.following.dirty {
             self.following.first = self
                 .following
                 .first
                 .min(selected)
                 .max(selected.saturating_sub(3));
-            self.ui.global::<crate::Following>().set_rows(ModelRc::new(VecModel::from(
+            g_following.set_rows(ModelRc::new(VecModel::from(
                 self.following
                     .items
                     .iter()
@@ -157,10 +158,10 @@ impl App {
                     })
                     .collect::<Vec<_>>(),
             )));
-            self.ui.global::<crate::Following>().set_selected((selected - self.following.first) as i32);
+            g_following.set_selected((selected - self.following.first) as i32);
             self.following.dirty = false;
         }
-        self.ui.global::<crate::Following>().set_loading(self.following.loading);
-        self.ui.global::<crate::Following>().set_error(self.following.error.as_str().into());
+        g_following.set_loading(self.following.loading);
+        g_following.set_error(self.following.error.as_str().into());
     }
 }

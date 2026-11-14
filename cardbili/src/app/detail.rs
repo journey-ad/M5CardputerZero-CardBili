@@ -3,24 +3,26 @@ use super::*;
 
 /// 根据可视高度与滚动范围更新详情页滚动条
 pub(in crate::app) fn sync_thumb(ui: &AppWindow, scroll: f64, maxv: f64) {
+    let detail = ui.global::<crate::Detail>();
     let vh = ui.get_detail_viewport_h() as f64;
     if maxv <= 0.5 {
-        ui.global::<crate::Detail>().set_thumb_h(0.0);
-        ui.global::<crate::Detail>().set_thumb_y(0.0);
+        detail.set_thumb_h(0.0);
+        detail.set_thumb_y(0.0);
         return;
     }
     let h = (vh * (vh / (maxv + vh))).max(14.0);
     let y = (scroll / maxv) * (vh - h);
-    ui.global::<crate::Detail>().set_thumb_h(h as f32);
-    ui.global::<crate::Detail>().set_thumb_y(y as f32);
+    detail.set_thumb_h(h as f32);
+    detail.set_thumb_y(y as f32);
 }
 
 pub(in crate::app) fn show_detail(ui: &AppWindow, display: &DetailDisplay) {
+    let g_detail = ui.global::<crate::Detail>();
     let detail = &display.data;
-    ui.global::<crate::Detail>().set_loading(false);
-    ui.global::<crate::Detail>().set_error("".into());
-    ui.global::<crate::Detail>().set_title(detail.title.as_str().into());
-    ui.global::<crate::Detail>().set_owner(
+    g_detail.set_loading(false);
+    g_detail.set_error("".into());
+    g_detail.set_title(detail.title.as_str().into());
+    g_detail.set_owner(
         if detail.owner.name.is_empty() {
             "未知用户"
         } else {
@@ -28,7 +30,7 @@ pub(in crate::app) fn show_detail(ui: &AppWindow, display: &DetailDisplay) {
         }
         .into(),
     );
-    ui.global::<crate::Detail>().set_desc(
+    g_detail.set_desc(
         if detail.desc.trim().is_empty() {
             "（无简介）"
         } else {
@@ -44,30 +46,31 @@ pub(in crate::app) fn show_detail(ui: &AppWindow, display: &DetailDisplay) {
         model::fmt_num(detail.favorites),
         model::fmt_num(detail.danmaku),
     ];
-    ui.global::<crate::Detail>().set_metrics(ModelRc::new(VecModel::from(
+    g_detail.set_metrics(ModelRc::new(VecModel::from(
         metrics
             .into_iter()
             .map(slint::SharedString::from)
             .collect::<Vec<_>>(),
     )));
-    ui.global::<crate::Detail>().set_has_cover(display.cover.is_some());
+    g_detail.set_has_cover(display.cover.is_some());
     if let Some(cover) = &display.cover {
-        ui.global::<crate::Detail>().set_cover(cover.clone());
+        g_detail.set_cover(cover.clone());
     }
 }
 
 pub(in crate::app) fn show_detail_loading(ui: &AppWindow, title: &str) {
-    ui.global::<crate::Detail>().set_loading(true);
-    ui.global::<crate::Detail>().set_error("".into());
-    ui.global::<crate::Detail>().set_title(title.into());
-    ui.global::<crate::Detail>().set_metrics(ModelRc::new(VecModel::from(
+    let detail = ui.global::<crate::Detail>();
+    detail.set_loading(true);
+    detail.set_error("".into());
+    detail.set_title(title.into());
+    detail.set_metrics(ModelRc::new(VecModel::from(
         Vec::<slint::SharedString>::new(),
     )));
-    ui.global::<crate::Detail>().set_desc("".into());
-    ui.global::<crate::Detail>().set_owner("".into());
-    ui.global::<crate::Detail>().set_has_cover(false);
-    ui.global::<crate::Detail>().set_scroll(0.0);
-    ui.global::<crate::Detail>().set_thumb_h(0.0);
+    detail.set_desc("".into());
+    detail.set_owner("".into());
+    detail.set_has_cover(false);
+    detail.set_scroll(0.0);
+    detail.set_thumb_h(0.0);
 }
 
 impl App {

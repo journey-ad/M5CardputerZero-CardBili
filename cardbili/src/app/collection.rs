@@ -14,8 +14,9 @@ impl App {
     }
 
     pub(super) fn sync_collection_header(&self) {
+        let g_collection = self.ui.global::<crate::Collection>();
         let model::VideoSource::Author(owner) = &self.collection.source else {
-            self.ui.global::<crate::Collection>().set_is_author(false);
+            g_collection.set_is_author(false);
             let title = match &self.collection.source {
                 model::VideoSource::Related(_) => "相关推荐".to_string(),
                 model::VideoSource::Favorites(folder) => {
@@ -23,8 +24,8 @@ impl App {
                 }
                 model::VideoSource::Author(_) => unreachable!(),
             };
-            self.ui.global::<crate::Collection>().set_title(title.into());
-            self.ui.global::<crate::Collection>().set_empty(
+            g_collection.set_title(title.into());
+            g_collection.set_empty(
                 if matches!(self.collection.source, model::VideoSource::Favorites(_)) {
                     "暂无收藏视频"
                 } else {
@@ -34,30 +35,30 @@ impl App {
             );
             return;
         };
-        self.ui.global::<crate::Collection>().set_is_author(true);
+        g_collection.set_is_author(true);
         let profile = self.collection.profile.as_ref();
-        self.ui.global::<crate::Collection>().set_name(
+        g_collection.set_name(
             profile
                 .map(|profile| profile.name.as_str())
                 .unwrap_or(&owner.name)
                 .into(),
         );
-        self.ui.global::<crate::Collection>().set_uid(owner.mid.as_str().into());
-        self.ui.global::<crate::Collection>().set_level(
+        g_collection.set_uid(owner.mid.as_str().into());
+        g_collection.set_level(
             profile
                 .map(|profile| format!("Lv{}", profile.level))
                 .unwrap_or_default()
                 .into(),
         );
-        self.ui.global::<crate::Collection>().set_followers(
+        g_collection.set_followers(
             profile
                 .map(|profile| format!("粉丝 {}", model::fmt_num(profile.followers)))
                 .unwrap_or_default()
                 .into(),
         );
-        self.ui.global::<crate::Collection>().set_has_avatar(self.collection.avatar.is_some());
+        g_collection.set_has_avatar(self.collection.avatar.is_some());
         if let Some(avatar) = &self.collection.avatar {
-            self.ui.global::<crate::Collection>().set_avatar(avatar.clone());
+            g_collection.set_avatar(avatar.clone());
         }
     }
 

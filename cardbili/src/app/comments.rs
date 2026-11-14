@@ -91,11 +91,12 @@ impl App {
     }
 
     pub(super) fn sync_comments(&mut self) {
+        let comments = self.ui.global::<crate::Comments>();
         if !matches!(self.page, Page::Comments | Page::Detail) {
             return;
         }
         if self.comment_page.dirty {
-            self.ui.global::<crate::Comments>().set_rows(ModelRc::new(VecModel::from(
+            comments.set_rows(ModelRc::new(VecModel::from(
                 self.comment_page
                     .items
                     .iter()
@@ -107,9 +108,9 @@ impl App {
             )));
             self.comment_page.dirty = false;
         }
-        self.ui.global::<crate::Comments>().set_finished(self.comment_page.page > 0 && !self.comment_page.has_more);
-        self.ui.global::<crate::Comments>().set_loading(self.comment_page.loading);
-        self.ui.global::<crate::Comments>().set_error(self.comment_page.error.as_str().into());
-        self.ui.global::<crate::Comments>().set_scroll(self.comment_page.scroll as f32);
+        comments.set_finished(self.comment_page.page > 0 && !self.comment_page.has_more);
+        comments.set_loading(self.comment_page.loading);
+        comments.set_error(self.comment_page.error.as_str().into());
+        comments.set_scroll(self.comment_page.scroll as f32);
     }
 }

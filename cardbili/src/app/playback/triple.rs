@@ -15,6 +15,8 @@ impl App {
     }
 
     pub(in crate::app) fn sync_triple(&mut self) {
+        let player = self.ui.global::<crate::Player>();
+        let status = self.ui.global::<crate::Status>();
         let (phase, charge, tick) = match self.controls.triple {
             Some(TripleFeedback::Complete(since))
                 if since.elapsed() >= Duration::from_millis(700) =>
@@ -32,12 +34,12 @@ impl App {
                 _ => (0, 0, 0),
             },
         };
-        if phase == 1 && self.ui.global::<crate::Player>().get_triple_phase() != 1 {
-            self.ui.global::<crate::Status>().set_bar("长按一键三连".into());
-            self.ui.global::<crate::Status>().set_bar_sticky(true);
+        if phase == 1 && player.get_triple_phase() != 1 {
+            status.set_bar("长按一键三连".into());
+            status.set_bar_sticky(true);
         }
-        self.ui.global::<crate::Player>().set_triple_phase(phase);
-        self.ui.global::<crate::Player>().set_triple_charge(charge);
-        self.ui.global::<crate::Player>().set_triple_tick((tick % 12) as i32);
+        player.set_triple_phase(phase);
+        player.set_triple_charge(charge);
+        player.set_triple_tick((tick % 12) as i32);
     }
 }
