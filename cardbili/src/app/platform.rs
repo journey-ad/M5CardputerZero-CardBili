@@ -93,6 +93,8 @@ pub(super) struct Display {
     #[cfg(feature = "desktop")]
     pointer_position: Option<(f32, f32)>,
     #[cfg(feature = "desktop")]
+    mouse_slot: Option<&'static str>,
+    #[cfg(feature = "desktop")]
     hold_key: Option<String>,
     #[cfg(feature = "desktop")]
     hold_ms: u64,
@@ -208,6 +210,8 @@ impl Display {
             #[cfg(feature = "desktop")]
             pointer_position: None,
             #[cfg(feature = "desktop")]
+            mouse_slot: None,
+            #[cfg(feature = "desktop")]
             hold_key,
             #[cfg(feature = "desktop")]
             hold_ms,
@@ -231,6 +235,14 @@ impl Display {
             }
             let down = self.win.get_mouse_down(minifb::MouseButton::Left);
             if down != self.pointer_down {
+                if down {
+                    if let Some(key) = crate::desktop_shim::bottom_bar_key(x, y, HEIGHT as f32) {
+                        self.mouse_slot = Some(key);
+                        let _ = self.ktx.send(key.to_string());
+                    }
+                } else if let Some(key) = self.mouse_slot.take() {
+                    let _ = self.ktx.send(format!("{}_UP", key));
+                }
                 let _ = self.ktx.send("POINTER".into());
                 let event = if down {
                     WindowEvent::PointerPressed {

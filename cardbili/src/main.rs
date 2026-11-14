@@ -1,5 +1,7 @@
 mod api;
 mod app;
+#[cfg(feature = "desktop")]
+mod desktop_shim;
 mod cache;
 mod cdn;
 mod danmaku;
