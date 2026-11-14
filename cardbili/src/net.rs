@@ -1,5 +1,5 @@
 use crate::diagnostics;
-use std::sync::OnceLock;
+use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 pub const UA: &str = "Mozilla/5.0 (X11; Linux aarch64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
@@ -31,6 +31,40 @@ fn agent() -> &'static ureq::Agent {
     AGENT.get_or_init(new_agent)
 }
 
+fn session_agent(uri: &ureq::http::Uri, cookies: &str) -> Result<ureq::Agent, ureq::Error> {
+    struct Session {
+        host: String,
+        cookies: String,
+        client: ureq::Agent,
+    }
+    static SESSION: Mutex<Option<Session>> = Mutex::new(None);
+    let host = uri
+        .host()
+        .ok_or_else(|| ureq::Error::BadUri("missing host".into()))?;
+    let mut session = SESSION.lock().unwrap();
+    if let Some(saved) = session.as_ref() {
+        if saved.host == host && saved.cookies == cookies {
+            return Ok(saved.client.clone());
+        }
+    }
+    let client = new_agent();
+    {
+        let mut jar = client.cookie_jar_lock();
+        for pair in cookies.split(';').map(str::trim).filter(|s| !s.is_empty()) {
+            let cookie = ureq::Cookie::parse(format!("{pair}; Path=/"), uri)
+                .map_err(|_| ureq::Error::CookieValue("invalid saved cookie"))?;
+            jar.insert(cookie, uri)?;
+        }
+    }
+    // 登录凭据与响应 Cookie 由同一个会话管理，匿名请求使用独立客户端
+    *session = Some(Session {
+        host: host.into(),
+        cookies: cookies.into(),
+        client: client.clone(),
+    });
+    Ok(client)
+}
+
 pub fn now_secs() -> i64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -58,14 +92,16 @@ fn request(
             .header("Referer", headers.referer)
             .header("Origin", headers.origin)
             .header("Accept", "application/json, text/plain, */*");
-        if let Some(cookie) = cookies.filter(|value| !value.is_empty()) {
-            request = request.header("Cookie", cookie);
-        }
         if form.is_some() {
             request = request.header("Content-Type", "application/x-www-form-urlencoded");
         }
+        let request = request.body(())?;
+        let client = match cookies.filter(|value| !value.is_empty()) {
+            Some(cookie) => session_agent(request.uri(), cookie)?,
+            None => client.clone(),
+        };
         let request = client
-            .configure_request(request.body(())?)
+            .configure_request(request)
             .timeout_global(Some(Duration::from_secs(timeout.into())))
             .build();
         let mut response = match form {
