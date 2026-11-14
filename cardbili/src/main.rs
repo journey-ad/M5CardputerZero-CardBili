@@ -59,9 +59,13 @@ pub enum Msg {
 
 fn main() {
     let mut settings = settings::Settings::load();
-    if let Err(error) = diagnostics::set_enabled(settings.debug_log) {
+    let force_log = std::env::var_os("CARDBILI_DEBUG").is_some();
+    if let Err(error) = diagnostics::set_enabled(settings.debug_log || force_log) {
         settings.debug_log = false;
         eprintln!("开启调试日志失败: {error}");
+    }
+    if force_log {
+        diagnostics::set_mirror(true);
     }
     diagnostics::write(format_args!("[应用] 启动 pid={}", std::process::id()));
     diagnostics::write(format_args!("[设置] 已加载 {settings:?}"));

@@ -1,6 +1,6 @@
 use std::fmt;
 use std::fs::{File, OpenOptions};
-use std::io::{self, BufRead, BufReader, Write};
+use std::io::{self, BufRead, BufReader, IsTerminal, Write};
 #[cfg(not(feature = "desktop"))]
 use std::os::fd::FromRawFd;
 #[cfg(unix)]
@@ -26,11 +26,13 @@ const MAX_FILES: usize = 5;
 struct Logger {
     file: Option<File>,
     started: bool,
+    mirror: bool,
 }
 
 static LOG: Mutex<Logger> = Mutex::new(Logger {
     file: None,
     started: false,
+    mirror: false,
 });
 
 pub(crate) fn path() -> &'static std::path::Path {
@@ -59,23 +61,35 @@ pub(crate) fn set_enabled(enabled: bool) -> io::Result<()> {
         }
         log.file = Some(OpenOptions::new().create(true).append(true).open(path())?);
         log.started = true;
+        log.mirror = std::io::stderr().is_terminal();
     } else {
         log.file = None;
+        log.mirror = false;
     }
     Ok(())
 }
 
+// 是否同时把日志写到 stderr，便于从终端启动时直接查看
+pub(crate) fn set_mirror(enabled: bool) {
+    LOG.lock().unwrap().mirror = enabled;
+}
+
 pub(crate) fn write(message: fmt::Arguments<'_>) {
     let mut log = LOG.lock().unwrap();
-    let Some(file) = log.file.as_mut() else {
+    if log.file.is_none() && !log.mirror {
         return;
-    };
+    }
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default();
     let line = format!("[{}.{:03}] {message}\n", now.as_secs(), now.subsec_millis());
-    if let Err(error) = file.write_all(line.as_bytes()) {
-        eprintln!("写入诊断日志失败 {}: {error}", path().display());
+    if let Some(file) = log.file.as_mut() {
+        if let Err(error) = file.write_all(line.as_bytes()) {
+            eprintln!("写入诊断日志失败 {}: {error}", path().display());
+        }
+    }
+    if log.mirror {
+        let _ = io::stderr().write_all(line.as_bytes());
     }
 }
 
