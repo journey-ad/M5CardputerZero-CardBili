@@ -7,7 +7,7 @@ use std::sync::OnceLock;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 pub const UA: &str = "Mozilla/5.0 (X11; Linux aarch64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
-pub const API_UA: &str = "Dart/3.6 (dart:io)";
+pub const API_UA: &str = concat!("CardBili/", env!("CARGO_PKG_VERSION"));
 pub const WEB_UA: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.2 Safari/605.1.15";
 pub const REFERER: &str = "https://www.bilibili.com/";
 
