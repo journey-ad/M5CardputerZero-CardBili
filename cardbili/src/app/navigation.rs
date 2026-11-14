@@ -1,3 +1,4 @@
+use slint::ComponentHandle as _;
 use super::*;
 
 #[derive(Clone)]
@@ -62,8 +63,8 @@ impl App {
         if self.settings_changed {
             self.settings.list_view = self.view;
             if self.settings.save().is_err() {
-                self.ui.set_bar("设置保存失败".into());
-                self.ui.set_bar_sticky(false);
+                self.ui.global::<crate::Status>().set_bar("设置保存失败".into());
+                self.ui.global::<crate::Status>().set_bar_sticky(false);
             }
         }
         if self.requested_uploader.is_some() && self.cookies.is_none() {
@@ -86,7 +87,7 @@ impl App {
         {
             self.go_back = false;
             self.detail_scroll = 0.0;
-            self.ui.set_detail_scroll(0.0);
+            self.ui.global::<crate::Detail>().set_scroll(0.0);
         }
         let navigating = self.requested_favorites
             || self.requested_folder.is_some()
@@ -170,10 +171,10 @@ impl App {
             self.comments_request += 1;
             self.controls.like_hold = None;
             self.controls.triple = None;
-            self.ui.set_triple_phase(0);
+            self.ui.global::<crate::Player>().set_triple_phase(0);
             if !self.back_hint {
-                self.ui.set_bar("".into());
-                self.ui.set_bar_sticky(false);
+                self.ui.global::<crate::Status>().set_bar("".into());
+                self.ui.global::<crate::Status>().set_bar_sticky(false);
             }
             self.detail_request += 1;
             self.collection_request += 1;
@@ -189,9 +190,9 @@ impl App {
             self.seek_deadline = None;
             self.direction_hold = None;
             self.scroll_tap = None;
-            self.ui.set_has_frame(false);
-            self.ui.set_paused(false);
-            self.ui.set_finished(false);
+            self.ui.global::<crate::Player>().set_has_frame(false);
+            self.ui.global::<crate::Player>().set_paused(false);
+            self.ui.global::<crate::Player>().set_finished(false);
             self.danmaku_view.clear();
         }
         if let Some(source) = self.requested_home_list.take() {
@@ -234,8 +235,8 @@ impl App {
         if self.requested_login {
             self.requested_login = false;
             self.page = Page::Login;
-            self.ui.set_has_qr(false);
-            self.ui.set_qr_status("正在生成二维码…".into());
+            self.ui.global::<crate::Login>().set_has_qr(false);
+            self.ui.global::<crate::Login>().set_qr_status("正在生成二维码…".into());
             self.login_request += 1;
             tasks::start_login(self.login_request, self.tx.clone());
         }
@@ -249,10 +250,10 @@ impl App {
                     ..Default::default()
                 };
             }
-            self.ui.set_ptitle("".into());
-            self.ui.set_watching("".into());
-            self.ui.set_progress(0.0);
-            self.ui.set_time_text("0:00 / 0:00".into());
+            self.ui.global::<crate::Player>().set_ptitle("".into());
+            self.ui.global::<crate::Player>().set_watching("".into());
+            self.ui.global::<crate::Player>().set_progress(0.0);
+            self.ui.global::<crate::Player>().set_time_text("0:00 / 0:00".into());
             self.status = "加载中…".into();
             self.status_detail.clear();
             tasks::start_play(
@@ -280,7 +281,7 @@ impl App {
                 .unwrap_or(0.0);
             self.detail_maxv = 0.0;
             show_detail_loading(&self.ui, &title);
-            self.ui.set_detail_bvid(bvid.as_str().into());
+            self.ui.global::<crate::Detail>().set_bvid(bvid.as_str().into());
             tasks::start_detail(
                 bvid,
                 self.cookies.clone(),
@@ -374,7 +375,7 @@ impl App {
                         self.load_comments();
                     }
                     self.marq_t = 0.0;
-                    self.ui.set_detail_bvid(self.detail_bvid.as_str().into());
+                    self.ui.global::<crate::Detail>().set_bvid(self.detail_bvid.as_str().into());
                     if let Some(display) = &self.detail_display {
                         show_detail(&self.ui, display);
                     } else {
@@ -386,7 +387,7 @@ impl App {
                             self.tx.clone(),
                         );
                     }
-                    self.ui.set_detail_scroll(self.detail_scroll as f32);
+                    self.ui.global::<crate::Detail>().set_scroll(self.detail_scroll as f32);
                 }
                 Some(BackTarget::Favorites {
                     selected_id,
@@ -472,7 +473,7 @@ impl App {
                     if self.sections.loading {
                         self.load_chapters();
                     }
-                    self.ui.set_watching("".into());
+                    self.ui.global::<crate::Player>().set_watching("".into());
                     tasks::playback::watching(
                         info.bvid.clone(),
                         info.cid,
@@ -531,8 +532,8 @@ impl App {
             }
         }
         if self.back_hint {
-            self.ui.set_bar("长按返回首页".into());
-            self.ui.set_bar_sticky(true);
+            self.ui.global::<crate::Status>().set_bar("长按返回首页".into());
+            self.ui.global::<crate::Status>().set_bar_sticky(true);
         }
     }
 }

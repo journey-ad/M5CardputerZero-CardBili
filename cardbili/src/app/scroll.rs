@@ -1,3 +1,4 @@
+use slint::ComponentHandle as _;
 use super::*;
 
 impl App {
@@ -31,7 +32,7 @@ impl App {
         };
         if self.page == Page::Detail {
             self.detail_scroll = (self.detail_scroll + delta).clamp(0.0, self.detail_maxv);
-            self.ui.set_detail_scroll(self.detail_scroll as f32);
+            self.ui.global::<crate::Detail>().set_scroll(self.detail_scroll as f32);
             sync_thumb(&self.ui, self.detail_scroll, self.detail_maxv);
             if delta > 0.0
                 && self.detail_scroll >= self.detail_maxv - 60.0

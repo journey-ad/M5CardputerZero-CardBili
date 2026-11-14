@@ -1,3 +1,4 @@
+use slint::ComponentHandle as _;
 use super::*;
 
 impl App {
@@ -8,8 +9,8 @@ impl App {
         self.last_tick = now;
 
         // --- 详情页滚动尺寸 ---
-        if self.page == Page::Detail && !self.ui.get_detail_loading() {
-            self.ui.set_detail_title_shift(yoyo_shift(
+        if self.page == Page::Detail && !self.ui.global::<crate::Detail>().get_loading() {
+            self.ui.global::<crate::Detail>().set_title_shift(yoyo_shift(
                 self.ui.get_detail_title_text_width() as f64,
                 self.ui.get_detail_title_width() as f64,
                 self.marq_t,
@@ -22,11 +23,11 @@ impl App {
             }
             if std::env::var("BILI_DSEND").is_ok() {
                 self.detail_scroll = self.detail_maxv;
-                self.ui.set_detail_scroll(self.detail_scroll as f32);
+                self.ui.global::<crate::Detail>().set_scroll(self.detail_scroll as f32);
             }
             if self.detail_scroll > self.detail_maxv {
                 self.detail_scroll = self.detail_maxv;
-                self.ui.set_detail_scroll(self.detail_scroll as f32);
+                self.ui.global::<crate::Detail>().set_scroll(self.detail_scroll as f32);
             }
             sync_thumb(&self.ui, self.detail_scroll, self.detail_maxv);
         }
@@ -49,7 +50,7 @@ impl App {
         };
         let actions = self.menu_actions();
         if self.menu_view != Some(actions) {
-            self.ui.set_menu_labels(ModelRc::new(VecModel::from(
+            self.ui.global::<crate::Menu>().set_labels(ModelRc::new(VecModel::from(
                 actions
                     .iter()
                     .map(|action| action.map(menu::Action::label).unwrap_or("").into())
@@ -57,42 +58,40 @@ impl App {
             )));
             self.menu_view = Some(actions);
         }
-        self.ui.set_controls_visible(controls_show);
-        self.ui.set_page(self.page);
-        self.ui.set_tab(self.tab);
-        self.ui.set_sel(self.sel);
+        self.ui.global::<crate::Player>().set_controls_visible(controls_show);
+        self.ui.global::<crate::Nav>().set_page(self.page);
+        self.ui.global::<crate::Nav>().set_tab(self.tab);
+        self.ui.global::<crate::Nav>().set_sel(self.sel);
         let animate_loading =
-            self.page == Page::Player && !self.ui.get_has_frame() && self.status.ends_with('…');
+            self.page == Page::Player && !self.ui.global::<crate::Player>().get_has_frame() && self.status.ends_with('…');
         let status = if animate_loading {
             self.status.trim_end_matches('…')
         } else {
             self.status.as_str()
         };
-        self.ui.set_loading_dots(if animate_loading {
+        self.ui.global::<crate::Status>().set_loading_dots(if animate_loading {
             (self.marq_t / 0.4) as i32 % 4
         } else {
             -1
         });
-        self.ui.set_status(status.into());
-        self.ui
-            .set_status_detail(self.status_detail.as_str().into());
-        self.ui.set_loading(self.loading);
-        self.ui.set_view(self.view);
-        self.ui.set_danmaku_enabled(self.settings.danmaku_enabled);
-        self.ui.set_danmaku_opacity(self.settings.danmaku_opacity);
-        self.ui.set_menu_position(self.settings.menu_position);
-        self.ui.set_record_history(self.settings.record_history);
-        self.ui.set_debug_log(self.settings.debug_log);
-        self.ui
-            .set_cdn_current(crate::cdn::index(&self.settings.cdn) as i32);
-        self.ui.set_cdn_name(
+        self.ui.global::<crate::Status>().set_status(status.into());
+        self.ui.global::<crate::Status>().set_detail(self.status_detail.as_str().into());
+        self.ui.global::<crate::ListModel>().set_loading(self.loading);
+        self.ui.global::<crate::Nav>().set_view(self.view);
+        self.ui.global::<crate::Danmaku>().set_enabled(self.settings.danmaku_enabled);
+        self.ui.global::<crate::Preferences>().set_danmaku_opacity(self.settings.danmaku_opacity);
+        self.ui.global::<crate::Preferences>().set_menu_position(self.settings.menu_position);
+        self.ui.global::<crate::Preferences>().set_record_history(self.settings.record_history);
+        self.ui.global::<crate::Preferences>().set_debug_log(self.settings.debug_log);
+        self.ui.global::<crate::Cdn>().set_current(crate::cdn::index(&self.settings.cdn) as i32);
+        self.ui.global::<crate::Preferences>().set_cdn_name(
             crate::cdn::OPTIONS[crate::cdn::index(&self.settings.cdn)]
                 .name
                 .into(),
         );
-        self.ui.set_about_scroll(self.about_scroll as f32);
-        self.ui.set_help(self.help);
-        self.ui.set_mine_detail(self.mine_detail >= 0);
+        self.ui.global::<crate::Meta>().set_about_scroll(self.about_scroll as f32);
+        self.ui.global::<crate::Nav>().set_help(self.help);
+        self.ui.global::<crate::Nav>().set_mine_detail(self.mine_detail >= 0);
         self.sync_cache();
         self.sync_home();
         self.sync_account();
@@ -106,7 +105,7 @@ impl App {
 
 impl App {
     pub(super) fn menu_actions(&self) -> [Option<menu::Action>; 5] {
-        if self.ui.get_cdn_open() {
+        if self.ui.global::<crate::Cdn>().get_open() {
             return [
                 Some(menu::Action::SpeedTest),
                 Some(menu::Action::Select),

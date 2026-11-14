@@ -1,3 +1,4 @@
+use slint::ComponentHandle as _;
 use super::super::*;
 use super::{TripleFeedback, TRIPLE_HOLD_DELAY};
 
@@ -11,8 +12,8 @@ pub(in crate::app) struct Controls {
 
 impl App {
     pub(in crate::app) fn toast(&self, text: &str) {
-        self.ui.set_bar(text.into());
-        self.ui.set_bar_sticky(false);
+        self.ui.global::<crate::Status>().set_bar(text.into());
+        self.ui.global::<crate::Status>().set_bar_sticky(false);
     }
 
     pub(in crate::app) fn refresh_liked(&mut self) {
@@ -52,8 +53,8 @@ impl App {
     pub(in crate::app) fn like_release(&mut self, cancel: bool) {
         if let Some((since, submitted)) = self.controls.like_hold.take() {
             if !submitted {
-                self.ui.set_bar("".into());
-                self.ui.set_bar_sticky(false);
+                self.ui.global::<crate::Status>().set_bar("".into());
+                self.ui.global::<crate::Status>().set_bar_sticky(false);
                 if !cancel && since.elapsed() < TRIPLE_HOLD_DELAY {
                     self.react(model::VideoAction::Like(
                         !self.controls.liked.unwrap_or(false),
@@ -87,8 +88,8 @@ impl App {
             if !*submitted && since.elapsed() >= TRIPLE_HOLD_DELAY + Duration::from_secs(2) {
                 *submitted = true;
                 self.controls.triple = Some(TripleFeedback::Pending(Instant::now()));
-                self.ui.set_bar("".into());
-                self.ui.set_bar_sticky(false);
+                self.ui.global::<crate::Status>().set_bar("".into());
+                self.ui.global::<crate::Status>().set_bar_sticky(false);
                 self.react(model::VideoAction::Triple);
             }
         }

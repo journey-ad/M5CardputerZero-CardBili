@@ -1,3 +1,4 @@
+use slint::ComponentHandle as _;
 use super::super::*;
 
 impl App {
@@ -10,8 +11,8 @@ impl App {
         if self.tab.is_video() && !self.help && (k == "ESC_DOWN" || k == "ESC_UP") {
             if k == "ESC_DOWN" {
                 self.esc_press = Some(Instant::now());
-                self.ui.set_bar("长按 2 秒退出".into());
-                self.ui.set_bar_sticky(true);
+                self.ui.global::<crate::Status>().set_bar("长按 2 秒退出".into());
+                self.ui.global::<crate::Status>().set_bar_sticky(true);
                 self.bar_until = None;
             } else {
                 self.esc_press = None;
@@ -29,8 +30,8 @@ impl App {
             self.tab = HomeTab::from_index((self.tab.index() + step) % 5);
             self.back_stack.clear();
             self.direction_hold = None;
-            self.ui.set_bar("".into());
-            self.ui.set_bar_sticky(false);
+            self.ui.global::<crate::Status>().set_bar("".into());
+            self.ui.global::<crate::Status>().set_bar_sticky(false);
             self.sel = 0;
             self.cache_checked = None;
             self.mine_detail = -1;

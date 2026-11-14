@@ -1,3 +1,4 @@
+use slint::ComponentHandle as _;
 use crate::{danmaku, AppWindow, DmRow};
 use slint::{Image, Model, VecModel};
 use std::collections::VecDeque;
@@ -64,7 +65,7 @@ pub(in crate::app) struct DanmakuView {
 impl DanmakuView {
     pub(in crate::app) fn new(ui: &AppWindow) -> Self {
         let model = Rc::new(VecModel::default());
-        ui.set_dm_rows(model.clone().into());
+        ui.global::<crate::Danmaku>().set_rows(model.clone().into());
         Self {
             model,
             active: Vec::new(),

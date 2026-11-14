@@ -1,3 +1,4 @@
+use slint::ComponentHandle as _;
 use super::*;
 
 pub(super) struct App {
@@ -122,8 +123,8 @@ impl App {
         ));
         let mid = cookies.as_deref().map(util::parse_mid).unwrap_or_default();
 
-        ui.set_version(format!("V{}", env!("CARGO_PKG_VERSION")).into());
-        ui.set_about_text("作者  journey-ad\n\n项目地址\ngithub.com/journey-ad/CardBili\n\n字体\nFusion Pixel Font\ngithub.com/TakWolf/fusion-pixel-font\n\n接口参考\nPiliPlus\ngithub.com/bggRGjQaUbCoE/PiliPlus\n\n图标\nPixelarticons\ngithub.com/halfmage/pixelarticons".into());
+        ui.global::<crate::Meta>().set_version(format!("V{}", env!("CARGO_PKG_VERSION")).into());
+        ui.global::<crate::Meta>().set_about_text("作者  journey-ad\n\n项目地址\ngithub.com/journey-ad/CardBili\n\n字体\nFusion Pixel Font\ngithub.com/TakWolf/fusion-pixel-font\n\n接口参考\nPiliPlus\ngithub.com/bggRGjQaUbCoE/PiliPlus\n\n图标\nPixelarticons\ngithub.com/halfmage/pixelarticons".into());
 
         let ph = util::make_placeholder();
         let mut page = Page::Home;
@@ -216,8 +217,8 @@ impl App {
         if std::env::var("BILI_TEST_LOGIN").is_ok() {
             page = Page::Login;
             view = VideoLayout::List;
-            ui.set_has_qr(false);
-            ui.set_qr_status("正在生成二维码…".into());
+            ui.global::<crate::Login>().set_has_qr(false);
+            ui.global::<crate::Login>().set_qr_status("正在生成二维码…".into());
             login_request += 1;
             tasks::start_login(login_request, tx.clone());
         }

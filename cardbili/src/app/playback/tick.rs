@@ -1,3 +1,4 @@
+use slint::ComponentHandle as _;
 use super::super::*;
 
 impl App {
@@ -21,7 +22,7 @@ impl App {
                             .update(engine, pp.position(self.frames_in_seg));
                     }
                     self.status = "加载中…".into();
-                    self.ui.set_has_frame(false);
+                    self.ui.global::<crate::Player>().set_has_frame(false);
                 }
             }
         }
@@ -34,8 +35,8 @@ impl App {
         }
         if let Some(t) = self.bar_until {
             if Instant::now() >= t {
-                self.ui.set_bar("".into());
-                self.ui.set_bar_sticky(false);
+                self.ui.global::<crate::Status>().set_bar("".into());
+                self.ui.global::<crate::Status>().set_bar_sticky(false);
                 self.bar_until = None;
                 self.back_hint = false;
             }

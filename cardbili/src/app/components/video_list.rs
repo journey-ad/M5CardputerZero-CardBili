@@ -1,3 +1,4 @@
+use slint::ComponentHandle as _;
 use super::super::*;
 
 pub(in crate::app) fn video_columns(view: VideoLayout) -> usize {
@@ -31,7 +32,7 @@ pub(in crate::app) fn compact_card_count(value: &str) -> slint::SharedString {
 
 pub(in crate::app) fn sync_list(ui: &AppWindow, items: &[model::Item]) {
     let rows = items.iter().map(video_row).collect::<Vec<_>>();
-    ui.set_list_rows(ModelRc::new(VecModel::from(rows)));
+    ui.global::<crate::ListModel>().set_rows(ModelRc::new(VecModel::from(rows)));
 }
 
 pub(in crate::app) fn list_source(tab: HomeTab, mine_detail: i32) -> Option<usize> {

@@ -3,10 +3,9 @@ import { ConfirmDialog } from "components/confirm_dialog.slint";
 import { CdnPanel } from "components/cdn_panel.slint";
 import { SectionsPanel } from "components/sections_panel.slint";
 export { HomeTab, Page, VideoLayout, MenuPosition, SettingsItem } from "types.slint";
-import { HomeTab, Page, VideoLayout, MenuPosition, SettingsRow } from "types.slint";
-// 主窗口通过双向绑定向 Rust 暴露全局状态
-import { Cmt, DmRow, VideoRow, FollowingRow, FavoriteRow } from "common.slint";
-import { Nav, ListModel, Status, Account, Player, Danmaku, Detail, Login, Meta, Preferences, Collection, Menu, Comments } from "state.slint";
+export { Nav, ListModel, Status, Account, Player, Danmaku, Detail, Login, Meta, Preferences, Collection, Menu, Comments, Favorite, Following, Confirm, Cdn, Sections } from "state.slint";
+import { Page } from "types.slint";
+import { Nav, Favorite, Following, Confirm, Cdn, Sections } from "state.slint";
 import { StatusBar } from "components/status_bar.slint";
 import { BottomBar } from "components/bottom_bar.slint";
 import { HomePage } from "pages/home.slint";
@@ -27,166 +26,34 @@ export component AppWindow inherits Window {
 
     Rectangle { x: 0px; y: 0px; width: parent.width; height: parent.height; background: #0b0f17; }
 
-    // Rust 读写属性与全局状态双向绑定
-    in-out property <Page> page <=> Nav.page;
-    in-out property <HomeTab> tab <=> Nav.tab;
-    in-out property <int> sel <=> Nav.sel;
-    in-out property <VideoLayout> view <=> Nav.view;
-    in-out property <bool> help <=> Nav.help;
-    in-out property <bool> mine-detail <=> Nav.mine-detail;
-    in-out property <[Cmt]> comment-rows <=> Comments.rows;
-    in-out property <bool> comment-finished <=> Comments.finished;
-    in-out property <bool> comment-loading <=> Comments.loading;
-    in-out property <string> comment-error <=> Comments.error;
-    in-out property <length> comment-scroll <=> Comments.scroll;
+    // 页面内容尺寸由页面内部计算，Rust 读取用于滚动边界
     out property <length> comment-content-h: comments-page.content-height;
     out property <length> comment-viewport-h: comments-page.viewport-height;
-    in-out property <[string]> menu-labels <=> Menu.labels;
-
-    in-out property <int> cols <=> ListModel.cols;
-    in-out property <[VideoRow]> list-rows <=> ListModel.rows;
-    in-out property <int> first-row <=> ListModel.first-row;
-    in-out property <length> grid-offset <=> ListModel.grid-offset;
-    in-out property <string> history-count <=> ListModel.history-count;
-    in-out property <string> favorite-count <=> ListModel.favorite-count;
-    in-out property <bool> loading <=> ListModel.loading;
-    in-out property <length> cell-w <=> ListModel.cell-w;
-    in-out property <length> cell-h <=> ListModel.cell-h;
-    in-out property <[image]> grid-covers <=> ListModel.grid-covers;
-    in-out property <[VideoRow]> grid-rows <=> ListModel.grid-rows;
-    in-out property <int> grid-active <=> ListModel.grid-active;
-    in-out property <bool> title-marquee <=> ListModel.title-marquee;
-    in-out property <length> title-shift <=> ListModel.title-shift;
-
-    in-out property <string> status <=> Status.status;
-    in-out property <int> loading-dots <=> Status.loading-dots;
-    in-out property <string> status-detail <=> Status.detail;
-    in-out property <string> bar <=> Status.bar;
-    in-out property <bool> bar-sticky <=> Status.bar-sticky;
-
-    in-out property <bool> acct-logged <=> Account.logged;
-    in-out property <bool> acct-known <=> Account.known;
-    in-out property <string> acct-name <=> Account.name;
-    in-out property <string> acct-mid <=> Account.mid;
-    in-out property <string> acct-level <=> Account.level;
-    in-out property <string> acct-vip <=> Account.vip;
-    in-out property <image> avatar <=> Account.avatar;
-    in-out property <bool> has-avatar <=> Account.has-avatar;
-
-    in-out property <image> frame <=> Player.frame;
-    in-out property <bool> has-frame <=> Player.has-frame;
-    in-out property <string> ptitle <=> Player.ptitle;
-    in-out property <string> watching <=> Player.watching;
-    in-out property <bool> ptitle-marquee <=> Player.ptitle-marquee;
-    in-out property <length> ptitle-shift <=> Player.ptitle-shift;
-    in-out property <float> progress <=> Player.progress;
-    in-out property <string> time-text <=> Player.time-text;
-    in-out property <bool> paused <=> Player.paused;
-    in-out property <bool> finished <=> Player.finished;
-    in-out property <[FavoriteRow]> favorite-folders;
-    in-out property <int> favorite-selected;
-    in-out property <bool> favorite-loading;
-    in-out property <string> favorite-error;
-    in-out property <[FollowingRow]> following-rows;
-    in-out property <int> following-selected;
-    in-out property <bool> following-loading;
-    in-out property <string> following-error;
-    callback player-key <=> Player.key;
-    in-out property <bool> liked <=> Player.liked;
-    in-out property <bool> reaction-busy <=> Player.reaction-busy;
-    in-out property <int> triple-phase <=> Player.triple-phase;
-    in-out property <int> triple-charge <=> Player.triple-charge;
-    in-out property <int> triple-tick <=> Player.triple-tick;
-    in-out property <string> speed-text <=> Player.speed-text;
-    in-out property <bool> danmaku-enabled <=> Danmaku.enabled;
-    in-out property <bool> controls-visible <=> Player.controls-visible;
-    in-out property <[DmRow]> dm-rows <=> Danmaku.rows;
-
-    in-out property <image> qr <=> Login.qr;
-    in-out property <bool> has-qr <=> Login.has-qr;
-    in-out property <string> qr-status <=> Login.qr-status;
-
-    in-out property <int> danmaku-opacity <=> Preferences.danmaku-opacity;
-    in-out property <MenuPosition> menu-position <=> Preferences.menu-position;
-    in-out property <bool> record-history <=> Preferences.record-history;
-    in-out property <bool> debug-log <=> Preferences.debug-log;
-    out property <[SettingsRow]> appearance-items: Preferences.appearance-items;
-    out property <[SettingsRow]> general-items: Preferences.general-items;
-    in-out property <string> cdn-name <=> Preferences.cdn-name;
-    in-out property <string> cache-size <=> Preferences.cache-size;
-    in-out property <bool> cache-busy <=> Preferences.cache-busy;
-    in-out property <bool> confirm-open: false;
-    in-out property <string> confirm-title;
-    in-out property <string> confirm-message;
-    in-out property <string> confirm-label;
-    in-out property <bool> confirm-selected: false;
-    callback confirm-result(bool);
-    in-out property <bool> cdn-open: false;
-    in-out property <bool> cdn-testing: false;
-    in-out property <int> cdn-current: 1;
-    in-out property <int> cdn-selected: 1;
-    in-out property <[Cmt]> cdn-rows;
-    in-out property <string> collection-title <=> Collection.title;
-    in-out property <string> collection-empty <=> Collection.empty;
-    in-out property <string> collection-name <=> Collection.name;
-    in-out property <bool> collection-is-author <=> Collection.is-author;
-    in-out property <string> collection-uid <=> Collection.uid;
-    in-out property <string> collection-level <=> Collection.level;
-    in-out property <string> collection-followers <=> Collection.followers;
-    in-out property <image> collection-avatar <=> Collection.avatar;
-    in-out property <bool> collection-has-avatar <=> Collection.has-avatar;
-    in-out property <bool> collection-loading <=> Collection.loading;
-    in-out property <string> collection-error <=> Collection.error;
-    in-out property <bool> detail-loading <=> Detail.loading;
-    in-out property <string> detail-error <=> Detail.error;
-    in-out property <string> version <=> Meta.version;
-
-    in-out property <string> detail-title <=> Detail.title;
-    in-out property <length> detail-title-shift <=> Detail.title-shift;
     out property <length> detail-title-width: detail-page.title-width;
     out property <length> detail-title-text-width: detail-page.title-text-width;
-    in-out property <string> detail-bvid <=> Detail.bvid;
-    in-out property <[string]> detail-metrics <=> Detail.metrics;
-    in-out property <string> detail-desc <=> Detail.desc;
-    in-out property <string> detail-owner <=> Detail.owner;
-    in-out property <image> detail-cover <=> Detail.cover;
-    in-out property <bool> has-detail-cover <=> Detail.has-cover;
-    in-out property <length> detail-scroll <=> Detail.scroll;
-    in-out property <length> detail-thumb-h <=> Detail.thumb-h;
-    in-out property <length> detail-thumb-y <=> Detail.thumb-y;
-
-    in-out property <string> about-text <=> Meta.about-text;
-    in-out property <length> about-scroll <=> Meta.about-scroll;
     out property <length> about-content-h: about-page.content-height;
-
     out property <length> detail-content-h: detail-page.content-height;
     out property <length> detail-viewport-h: detail-page.viewport-height;
 
-    in-out property <bool> sections-open: false;
-    in-out property <[Cmt]> sections-rows;
-    in-out property <int> sections-selected;
-    in-out property <bool> sections-loading;
-    in-out property <string> sections-error;
-
     // 页面组件根据父级尺寸布局
-    if page == Page.home: HomePage {}
-    if page == Page.player: PlayPage {}
-    if page == Page.login: LoginPage {}
-    detail-page := DetailPage { visible: page == Page.detail; }
-    about-page := AboutPage { visible: page == Page.about; }
-    if page == Page.collection: CollectionPage {}
-    comments-page := CommentsPage { visible: page == Page.comments; }
-    if page == Page.following: FollowingPage {
-        rows: root.following-rows; selected: root.following-selected;
-        loading: root.following-loading; error: root.following-error;
+    if Nav.page == Page.home: HomePage {}
+    if Nav.page == Page.player: PlayPage {}
+    if Nav.page == Page.login: LoginPage {}
+    detail-page := DetailPage { visible: Nav.page == Page.detail; }
+    about-page := AboutPage { visible: Nav.page == Page.about; }
+    if Nav.page == Page.collection: CollectionPage {}
+    comments-page := CommentsPage { visible: Nav.page == Page.comments; }
+    if Nav.page == Page.following: FollowingPage {
+        rows: Following.rows; selected: Following.selected;
+        loading: Following.loading; error: Following.error;
     }
-    if page == Page.favorites: FavoritesPage {
-        rows: root.favorite-folders; selected: root.favorite-selected;
-        loading: root.favorite-loading; error: root.favorite-error;
+    if Nav.page == Page.favorites: FavoritesPage {
+        rows: Favorite.folders; selected: Favorite.selected;
+        loading: Favorite.loading; error: Favorite.error;
     }
-    if root.cdn-open: CdnPanel { rows: root.cdn-rows; selected: root.cdn-selected; current: root.cdn-current; testing: root.cdn-testing; }
-    if root.sections-open: SectionsPanel { rows: root.sections-rows; selected: root.sections-selected; loading: root.sections-loading; error: root.sections-error; }
-    if page != Page.player || root.sections-open: BottomBar {
+    if Cdn.open: CdnPanel { rows: Cdn.rows; selected: Cdn.selected; current: Cdn.current; testing: Cdn.testing; }
+    if Sections.open: SectionsPanel { rows: Sections.rows; selected: Sections.selected; loading: Sections.loading; error: Sections.error; }
+    if Nav.page != Page.player || Sections.open: BottomBar {
         x: 0px;
         y: parent.height - self.height;
         width: parent.width;
@@ -194,13 +61,13 @@ export component AppWindow inherits Window {
     // 浮动状态提示显示在内容上方，数秒后自动消失
     StatusBar {
         x: (parent.width - self.width) / 2;
-        y: parent.height - (root.page == Page.player ? 50px : 46px);
+        y: parent.height - (Nav.page == Page.player ? 50px : 46px);
     }
-    if root.confirm-open: ConfirmDialog {
-        title: root.confirm-title;
-        message: root.confirm-message;
-        confirm-label: root.confirm-label;
-        confirm-selected <=> root.confirm-selected;
-        chosen(accepted) => { root.confirm-result(accepted); }
+    if Confirm.open: ConfirmDialog {
+        title: Confirm.title;
+        message: Confirm.message;
+        confirm-label: Confirm.label;
+        confirm-selected <=> Confirm.selected;
+        chosen(accepted) => { Confirm.result(accepted); }
     }
 }

@@ -1,3 +1,4 @@
+use slint::ComponentHandle as _;
 use super::*;
 
 #[derive(Clone, Default)]
@@ -94,7 +95,7 @@ impl App {
             return;
         }
         if self.comment_page.dirty {
-            self.ui.set_comment_rows(ModelRc::new(VecModel::from(
+            self.ui.global::<crate::Comments>().set_rows(ModelRc::new(VecModel::from(
                 self.comment_page
                     .items
                     .iter()
@@ -106,11 +107,9 @@ impl App {
             )));
             self.comment_page.dirty = false;
         }
-        self.ui
-            .set_comment_finished(self.comment_page.page > 0 && !self.comment_page.has_more);
-        self.ui.set_comment_loading(self.comment_page.loading);
-        self.ui
-            .set_comment_error(self.comment_page.error.as_str().into());
-        self.ui.set_comment_scroll(self.comment_page.scroll as f32);
+        self.ui.global::<crate::Comments>().set_finished(self.comment_page.page > 0 && !self.comment_page.has_more);
+        self.ui.global::<crate::Comments>().set_loading(self.comment_page.loading);
+        self.ui.global::<crate::Comments>().set_error(self.comment_page.error.as_str().into());
+        self.ui.global::<crate::Comments>().set_scroll(self.comment_page.scroll as f32);
     }
 }

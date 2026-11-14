@@ -1,3 +1,4 @@
+use slint::ComponentHandle as _;
 use super::super::*;
 
 impl App {
@@ -61,12 +62,12 @@ impl App {
                         .seek_pending
                         .unwrap_or_else(|| p.position(self.frames_in_seg));
                     let position = (base + step).clamp(0.0, p.duration.max(0.0));
-                    self.ui.set_progress(if p.duration > 0.0 {
+                    self.ui.global::<crate::Player>().set_progress(if p.duration > 0.0 {
                         (position / p.duration) as f32
                     } else {
                         0.0
                     });
-                    self.ui.set_time_text(
+                    self.ui.global::<crate::Player>().set_time_text(
                         format!("{} / {}", model::mmss(position), model::mmss(p.duration)).into(),
                     );
                     self.seek_pending = Some(position);

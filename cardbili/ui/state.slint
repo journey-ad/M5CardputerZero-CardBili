@@ -1,6 +1,6 @@
 import { HomeTab, Page, VideoLayout, MenuPosition, SettingsItem, SettingsRow } from "types.slint";
 // 页面与组件共用的全局状态
-import { Cmt, DmRow, VideoRow } from "common.slint";
+import { Cmt, DmRow, VideoRow, FavoriteRow, FollowingRow } from "common.slint";
 
 // 导航与交互态
 export global Nav {
@@ -160,4 +160,48 @@ export global Comments {
     in-out property <bool> loading: false;
     in-out property <string> error: "";
     in-out property <length> scroll: 0px;
+}
+
+// 收藏夹列表
+export global Favorite {
+    in-out property <[FavoriteRow]> folders: [];
+    in-out property <int> selected: 0;
+    in-out property <bool> loading: false;
+    in-out property <string> error: "";
+}
+
+// 关注动态列表
+export global Following {
+    in-out property <[FollowingRow]> rows: [];
+    in-out property <int> selected: 0;
+    in-out property <bool> loading: false;
+    in-out property <string> error: "";
+}
+
+// 通用确认弹窗
+export global Confirm {
+    in-out property <bool> open: false;
+    in-out property <string> title: "";
+    in-out property <string> message: "";
+    in-out property <string> label: "";
+    in-out property <bool> selected: false;
+    callback result(bool);
+}
+
+// CDN 线路选择面板
+export global Cdn {
+    in-out property <bool> open: false;
+    in-out property <bool> testing: false;
+    in-out property <int> current: 1;
+    in-out property <int> selected: 1;
+    in-out property <[Cmt]> rows: [];
+}
+
+// 分P选择面板
+export global Sections {
+    in-out property <bool> open: false;
+    in-out property <[Cmt]> rows: [];
+    in-out property <int> selected: 0;
+    in-out property <bool> loading: false;
+    in-out property <string> error: "";
 }

@@ -1,3 +1,4 @@
+use slint::ComponentHandle as _;
 use super::super::*;
 use slint::Model;
 
@@ -13,8 +14,8 @@ impl App {
         // 选中项保持在当前页面范围内
         if self.page == Page::Home {
             let len = if self.tab == HomeTab::Settings {
-                let appearance = self.ui.get_appearance_items().row_count() as i32;
-                let general = self.ui.get_general_items().row_count() as i32;
+                let appearance = self.ui.global::<crate::Preferences>().get_appearance_items().row_count() as i32;
+                let general = self.ui.global::<crate::Preferences>().get_general_items().row_count() as i32;
                 appearance + general
             } else if self.tab == HomeTab::Mine && self.mine_detail < 0 {
                 3
@@ -72,7 +73,7 @@ impl App {
             {
                 self.home_dirty = false;
                 self.home_view = None;
-                self.ui.set_history_count(if self.loaded[3] {
+                self.ui.global::<crate::ListModel>().set_history_count(if self.loaded[3] {
                     format!(
                         "{}{} 条",
                         self.lists[3].len(),
@@ -163,11 +164,10 @@ impl App {
             let start = first_row * columns;
             let rows = (content_height / cell_height).ceil() as usize;
             let end = (start + (rows + 1) * columns).min(items.len());
-            self.ui
-                .set_grid_offset((self.grid_scroll - first_row as f64 * cell_height) as f32);
+            self.ui.global::<crate::ListModel>().set_grid_offset((self.grid_scroll - first_row as f64 * cell_height) as f32);
             (start, end, rows * columns)
         };
-        self.ui.set_first_row(self.first_row as i32);
+        self.ui.global::<crate::ListModel>().set_first_row(self.first_row as i32);
 
         if collection {
             if !self.collection.loading
@@ -185,9 +185,8 @@ impl App {
                     self.tx.clone(),
                 );
             }
-            self.ui.set_collection_loading(self.collection.loading);
-            self.ui
-                .set_collection_error(self.collection.error.as_str().into());
+            self.ui.global::<crate::Collection>().set_loading(self.collection.loading);
+            self.ui.global::<crate::Collection>().set_error(self.collection.error.as_str().into());
         }
 
         // 列表标题跑马灯
@@ -195,11 +194,10 @@ impl App {
             .get(selected)
             .map(|item| util::est_w(&item.title, 12.0))
             .unwrap_or(0.0);
-        self.ui.set_title_marquee(
+        self.ui.global::<crate::ListModel>().set_title_marquee(
             self.view == VideoLayout::List && title_width > content_width - 16.0,
         );
-        self.ui
-            .set_title_shift(yoyo_shift(title_width, content_width - 16.0, self.marq_t));
+        self.ui.global::<crate::ListModel>().set_title_shift(yoyo_shift(title_width, content_width - 16.0, self.marq_t));
 
         let grid_start = if self.view == VideoLayout::List {
             0
@@ -242,15 +240,14 @@ impl App {
                             .unwrap_or_else(|| self.ph.clone()),
                     );
                 }
-                self.ui.set_cols(columns as i32);
-                self.ui.set_cell_w((content_width / columns as f64) as f32);
-                self.ui.set_cell_h(cell_height as f32);
-                self.ui.set_grid_rows(ModelRc::new(VecModel::from(rows)));
-                self.ui
-                    .set_grid_covers(ModelRc::new(VecModel::from(images)));
+                self.ui.global::<crate::ListModel>().set_cols(columns as i32);
+                self.ui.global::<crate::ListModel>().set_cell_w((content_width / columns as f64) as f32);
+                self.ui.global::<crate::ListModel>().set_cell_h(cell_height as f32);
+                self.ui.global::<crate::ListModel>().set_grid_rows(ModelRc::new(VecModel::from(rows)));
+                self.ui.global::<crate::ListModel>().set_grid_covers(ModelRc::new(VecModel::from(images)));
             }
         }
-        self.ui.set_grid_active(if selected < items.len() {
+        self.ui.global::<crate::ListModel>().set_grid_active(if selected < items.len() {
             self.sel - grid_start as i32
         } else {
             -1

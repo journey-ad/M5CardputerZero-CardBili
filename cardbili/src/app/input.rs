@@ -1,3 +1,4 @@
+use slint::ComponentHandle as _;
 use super::*;
 
 pub(super) struct DirectionHold {
@@ -40,7 +41,7 @@ impl App {
             return;
         }
         if let Ok(number @ 4..=8) = key.parse::<usize>() {
-            if self.page == Page::Player && !self.sections.open && !self.ui.get_controls_visible() {
+            if self.page == Page::Player && !self.sections.open && !self.ui.global::<crate::Player>().get_controls_visible() {
                 self.last_input = Instant::now();
                 return;
             }
@@ -124,7 +125,7 @@ impl App {
     }
 
     fn dispatch_key(&mut self, key: &str, repeat: bool) {
-        if self.ui.get_cdn_open() {
+        if self.ui.global::<crate::Cdn>().get_open() {
             self.cdn_key(key);
             return;
         }

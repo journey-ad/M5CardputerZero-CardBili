@@ -45,11 +45,11 @@ pub fn run(settings: Settings) {
     let mut display = platform::Display::new(ktx.clone());
     let ui = AppWindow::new().expect("ui");
     ui.show().expect("show");
-    ui.on_player_key(move |key| {
+    ui.global::<crate::Player>().on_key(move |key| {
         let _ = ktx.send(key.to_string());
     });
     let confirm_tx = tx.clone();
-    ui.on_confirm_result(move |accepted| {
+    ui.global::<crate::Confirm>().on_result(move |accepted| {
         let _ = confirm_tx.send(Msg::Confirmed(accepted));
     });
     let mut app = App::new(ui, tx, settings);

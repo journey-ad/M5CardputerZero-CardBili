@@ -1,3 +1,4 @@
+use slint::ComponentHandle as _;
 use super::*;
 
 impl App {
@@ -15,17 +16,16 @@ impl App {
             }
         }
         if self.account_dirty {
-            self.ui.set_acct_known(self.cookies.is_some());
-            self.ui
-                .set_acct_logged(self.acct.as_ref().map(|a| a.logged).unwrap_or(false));
-            self.ui.set_acct_name(
+            self.ui.global::<crate::Account>().set_known(self.cookies.is_some());
+            self.ui.global::<crate::Account>().set_logged(self.acct.as_ref().map(|a| a.logged).unwrap_or(false));
+            self.ui.global::<crate::Account>().set_name(
                 self.acct
                     .as_ref()
                     .map(|a| a.name.as_str())
                     .unwrap_or_default()
                     .into(),
             );
-            self.ui.set_acct_mid(
+            self.ui.global::<crate::Account>().set_mid(
                 self.acct
                     .as_ref()
                     .map(|a| a.mid.as_str())
@@ -33,7 +33,7 @@ impl App {
                     .into(),
             );
             let lv = self.acct.as_ref().map(|a| a.level).unwrap_or(0);
-            self.ui.set_acct_level(
+            self.ui.global::<crate::Account>().set_level(
                 if lv > 0 {
                     format!("Lv{}", lv)
                 } else {
@@ -42,16 +42,16 @@ impl App {
                 .as_str()
                 .into(),
             );
-            self.ui.set_acct_vip(
+            self.ui.global::<crate::Account>().set_vip(
                 self.acct
                     .as_ref()
                     .map(|a| a.vip.as_str())
                     .unwrap_or_default()
                     .into(),
             );
-            self.ui.set_has_avatar(self.avatar_img.is_some());
+            self.ui.global::<crate::Account>().set_has_avatar(self.avatar_img.is_some());
             if let Some(im) = self.avatar_img.clone() {
-                self.ui.set_avatar(im);
+                self.ui.global::<crate::Account>().set_avatar(im);
             }
 
             self.account_dirty = false;

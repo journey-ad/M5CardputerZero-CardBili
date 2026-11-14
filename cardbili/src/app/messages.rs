@@ -1,3 +1,4 @@
+use slint::ComponentHandle as _;
 use super::*;
 
 impl App {
@@ -18,7 +19,7 @@ impl App {
                 }
             }
             Msg::Watching(request, Ok(text)) if request == self.play_request => {
-                self.ui.set_watching(text.into())
+                self.ui.global::<crate::Player>().set_watching(text.into())
             }
             Msg::Watching(_, _) => {}
             Msg::Liked(request, result) => {
@@ -293,8 +294,8 @@ impl App {
                     if self.page == Page::Home {
                         self.status = friendly;
                         self.status_detail = tech;
-                        self.ui.set_bar("加载失败".into());
-                        self.ui.set_bar_sticky(false);
+                        self.ui.global::<crate::Status>().set_bar("加载失败".into());
+                        self.ui.global::<crate::Status>().set_bar_sticky(false);
                     }
                 }
             }
@@ -361,16 +362,16 @@ impl App {
                     return;
                 }
                 if let Some(img) = util::make_qr(&url) {
-                    self.ui.set_qr(img);
-                    self.ui.set_has_qr(true);
+                    self.ui.global::<crate::Login>().set_qr(img);
+                    self.ui.global::<crate::Login>().set_has_qr(true);
                 }
-                self.ui.set_qr_status("请用 B 站 App 扫码".into());
+                self.ui.global::<crate::Login>().set_qr_status("请用 B 站 App 扫码".into());
             }
             Msg::QrStatus(request, s) => {
                 if request != self.login_request || self.page != Page::Login {
                     return;
                 }
-                self.ui.set_qr_status(s.as_str().into());
+                self.ui.global::<crate::Login>().set_qr_status(s.as_str().into());
             }
             Msg::QrDone(request, ck) => {
                 if request != self.login_request || self.page != Page::Login {
@@ -391,7 +392,7 @@ impl App {
                     self.mid = util::parse_mid(&ck);
                     self.cookies = Some(ck);
                     self.account_dirty = true;
-                    self.ui.set_qr_status("登录成功".into());
+                    self.ui.global::<crate::Login>().set_qr_status("登录成功".into());
                     self.acct_loaded = false;
                     self.acct = None;
                     self.avatar_img = None;
@@ -483,8 +484,8 @@ impl App {
             }
             Msg::DetailError(request, error) => {
                 if self.page == Page::Detail && request == self.detail_request {
-                    self.ui.set_detail_loading(false);
-                    self.ui.set_detail_error(error.into());
+                    self.ui.global::<crate::Detail>().set_loading(false);
+                    self.ui.global::<crate::Detail>().set_error(error.into());
                 }
             }
             Msg::AuthorProfile(request, result) => {

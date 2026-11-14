@@ -1,11 +1,12 @@
+use slint::ComponentHandle as _;
 use super::super::*;
 use crate::SettingsItem;
 use slint::Model;
 
 impl App {
     pub(in crate::app) fn settings_key(&mut self, key: &str) {
-        let appearance = self.ui.get_appearance_items();
-        let general = self.ui.get_general_items();
+        let appearance = self.ui.global::<crate::Preferences>().get_appearance_items();
+        let general = self.ui.global::<crate::Preferences>().get_general_items();
         let appearance_len = appearance.row_count() as i32;
         let total = appearance_len + general.row_count() as i32;
         let row = if self.sel < appearance_len {
@@ -47,7 +48,7 @@ impl App {
                 SettingsItem::DebugLog => self.toggle_debug_log(),
                 SettingsItem::Cdn => self.open_cdn(),
                 SettingsItem::Cache => {
-                    if !self.ui.get_cache_busy() {
+                    if !self.ui.global::<crate::Preferences>().get_cache_busy() {
                         self.confirm(
                             confirmation::Action::ClearCache,
                             "清理缓存",

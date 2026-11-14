@@ -1,3 +1,4 @@
+use slint::ComponentHandle as _;
 use super::*;
 
 #[derive(Default)]
@@ -133,7 +134,7 @@ impl App {
                 .first
                 .min(selected)
                 .max(selected.saturating_sub(3));
-            self.ui.set_following_rows(ModelRc::new(VecModel::from(
+            self.ui.global::<crate::Following>().set_rows(ModelRc::new(VecModel::from(
                 self.following
                     .items
                     .iter()
@@ -156,12 +157,10 @@ impl App {
                     })
                     .collect::<Vec<_>>(),
             )));
-            self.ui
-                .set_following_selected((selected - self.following.first) as i32);
+            self.ui.global::<crate::Following>().set_selected((selected - self.following.first) as i32);
             self.following.dirty = false;
         }
-        self.ui.set_following_loading(self.following.loading);
-        self.ui
-            .set_following_error(self.following.error.as_str().into());
+        self.ui.global::<crate::Following>().set_loading(self.following.loading);
+        self.ui.global::<crate::Following>().set_error(self.following.error.as_str().into());
     }
 }

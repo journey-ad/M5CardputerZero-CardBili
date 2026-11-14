@@ -1,3 +1,4 @@
+use slint::ComponentHandle as _;
 use super::*;
 
 #[derive(Default)]
@@ -69,7 +70,7 @@ impl App {
                 .iter()
                 .map(|folder| folder.count)
                 .sum();
-            self.ui.set_favorite_count(format!("{total} 条").into());
+            self.ui.global::<crate::ListModel>().set_favorite_count(format!("{total} 条").into());
             self.favorites.selection = self
                 .favorites
                 .selection
@@ -80,7 +81,7 @@ impl App {
                 .first
                 .min(selected)
                 .max(selected.saturating_sub(3));
-            self.ui.set_favorite_folders(ModelRc::new(VecModel::from(
+            self.ui.global::<crate::Favorite>().set_folders(ModelRc::new(VecModel::from(
                 self.favorites
                     .folders
                     .iter()
@@ -100,12 +101,10 @@ impl App {
                     })
                     .collect::<Vec<_>>(),
             )));
-            self.ui
-                .set_favorite_selected((selected - self.favorites.first) as i32);
+            self.ui.global::<crate::Favorite>().set_selected((selected - self.favorites.first) as i32);
             self.favorites.dirty = false;
         }
-        self.ui.set_favorite_loading(self.favorites.loading);
-        self.ui
-            .set_favorite_error(self.favorites.error.as_str().into());
+        self.ui.global::<crate::Favorite>().set_loading(self.favorites.loading);
+        self.ui.global::<crate::Favorite>().set_error(self.favorites.error.as_str().into());
     }
 }
