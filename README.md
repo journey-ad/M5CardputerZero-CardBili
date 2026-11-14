@@ -86,6 +86,15 @@ python3 scripts/check-release.py --deb dist/cardbili_0.1.0_arm64.deb
 
 欢迎提交 Issues 和 Pull Request。问题反馈请附应用版本、复现步骤和相关日志，播放问题可附视频 BV 号
 
+## 致谢
+
+- [PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus)：Bilibili 接口与登录实现参考
+- [Slint](https://github.com/slint-ui/slint)：图形界面框架
+- [FFmpeg](https://ffmpeg.org/)：音视频解码
+- [Fusion Pixel Font](https://github.com/TakWolf/fusion-pixel-font)：中文像素字体
+- [Pixelarticons](https://github.com/halfmage/pixelarticons)：界面图标
+- [M5Stack / CardputerZero](https://github.com/CardputerZero)：硬件平台与应用生态
+
 ## 许可证
 
 项目原创代码、文档与 skill 使用 [MIT](LICENSE) 许可证。默认设备可执行文件包含 Slint，按 GPL-3.0-only 分发；FFmpeg 按 LGPLv3 分发，对应源码可在 Releases 下载，详见 [第三方许可证](THIRD_PARTY_NOTICES.md)
