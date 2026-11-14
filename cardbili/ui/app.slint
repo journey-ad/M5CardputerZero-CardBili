@@ -1,22 +1,13 @@
 import "../fonts/fusion12.ttf";
-import { ConfirmDialog } from "components/confirm_dialog.slint";
-import { CdnPanel } from "components/cdn_panel.slint";
-import { SectionsPanel } from "components/sections_panel.slint";
 export { HomeTab, Page, VideoLayout, MenuPosition, SettingsItem } from "types.slint";
 export { Nav, ListModel, Status, Account, Player, Danmaku, Detail, Login, Meta, Preferences, Collection, Menu, Comments, Favorite, Following, Confirm, Cdn, Sections } from "state.slint";
+import { Confirm, Nav, Sections } from "state.slint";
 import { Page } from "types.slint";
-import { Nav, Favorite, Following, Confirm, Cdn, Sections } from "state.slint";
 import { StatusBar } from "components/status_bar.slint";
 import { BottomBar } from "components/bottom_bar.slint";
-import { HomePage } from "pages/home.slint";
-import { PlayPage } from "pages/play.slint";
-import { LoginPage } from "pages/login.slint";
-import { DetailPage } from "pages/detail.slint";
-import { CollectionPage } from "pages/collection.slint";
-import { CommentsPage } from "pages/comments.slint";
-import { FavoritesPage } from "pages/favorites.slint";
-import { FollowingPage } from "pages/following.slint";
-import { AboutPage } from "pages/about.slint";
+import { Router } from "router.slint";
+import { PanelHost } from "components/panel_host.slint";
+import { ConfirmDialog } from "components/confirm_dialog.slint";
 
 export component AppWindow inherits Window {
     width: 320px;
@@ -26,48 +17,17 @@ export component AppWindow inherits Window {
 
     Rectangle { x: 0px; y: 0px; width: parent.width; height: parent.height; background: #0b0f17; }
 
-    // 页面内容尺寸由页面内部计算，Rust 读取用于滚动边界
-    out property <length> comment-content-h: comments-page.content-height;
-    out property <length> comment-viewport-h: comments-page.viewport-height;
-    out property <length> detail-title-width: detail-page.title-width;
-    out property <length> detail-title-text-width: detail-page.title-text-width;
-    out property <length> about-content-h: about-page.content-height;
-    out property <length> detail-content-h: detail-page.content-height;
-    out property <length> detail-viewport-h: detail-page.viewport-height;
-
-    // 页面组件根据父级尺寸布局
-    if Nav.page == Page.home: HomePage {}
-    if Nav.page == Page.player: PlayPage {}
-    if Nav.page == Page.login: LoginPage {}
-    detail-page := DetailPage { visible: Nav.page == Page.detail; }
-    about-page := AboutPage { visible: Nav.page == Page.about; }
-    if Nav.page == Page.collection: CollectionPage {}
-    comments-page := CommentsPage { visible: Nav.page == Page.comments; }
-    if Nav.page == Page.following: FollowingPage {
-        rows: Following.rows; selected: Following.selected;
-        loading: Following.loading; error: Following.error;
-    }
-    if Nav.page == Page.favorites: FavoritesPage {
-        rows: Favorite.folders; selected: Favorite.selected;
-        loading: Favorite.loading; error: Favorite.error;
-    }
-    if Cdn.open: CdnPanel { rows: Cdn.rows; selected: Cdn.selected; current: Cdn.current; testing: Cdn.testing; }
-    if Sections.open: SectionsPanel { rows: Sections.rows; selected: Sections.selected; loading: Sections.loading; error: Sections.error; }
-    if Nav.page != Page.player || Sections.open: BottomBar {
+    Router {}
+    PanelHost {}
+    BottomBar {
         x: 0px;
         y: parent.height - self.height;
         width: parent.width;
+        visible: Nav.page != Page.player || Sections.open;
     }
-    // 浮动状态提示显示在内容上方，数秒后自动消失
     StatusBar {
         x: (parent.width - self.width) / 2;
         y: parent.height - (Nav.page == Page.player ? 50px : 46px);
     }
-    if Confirm.open: ConfirmDialog {
-        title: Confirm.title;
-        message: Confirm.message;
-        confirm-label: Confirm.label;
-        confirm-selected <=> Confirm.selected;
-        chosen(accepted) => { Confirm.result(accepted); }
-    }
+    if Confirm.open: ConfirmDialog {}
 }

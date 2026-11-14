@@ -83,7 +83,7 @@ impl App {
         }
         if self.go_back
             && self.page == Page::Detail
-            && self.detail_scroll >= self.ui.get_detail_viewport_h() as f64
+            && self.detail_scroll >= self.ui.global::<crate::Detail>().get_viewport_h() as f64
         {
             self.go_back = false;
             self.detail_scroll = 0.0;

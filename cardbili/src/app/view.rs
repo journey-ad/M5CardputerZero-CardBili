@@ -16,12 +16,12 @@ impl App {
         // --- 详情页滚动尺寸 ---
         if self.page == Page::Detail && !detail.get_loading() {
             detail.set_title_shift(yoyo_shift(
-                self.ui.get_detail_title_text_width() as f64,
-                self.ui.get_detail_title_width() as f64,
+                detail.get_title_text_width() as f64,
+                detail.get_title_width() as f64,
                 self.marq_t,
             ));
-            let m = (self.ui.get_detail_content_h() as f64
-                - self.ui.get_detail_viewport_h() as f64)
+            let m = (detail.get_content_h() as f64
+                - detail.get_viewport_h() as f64)
                 .max(0.0);
             if (m - self.detail_maxv).abs() > 0.5 {
                 self.detail_maxv = m;

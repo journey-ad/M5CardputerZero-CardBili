@@ -77,8 +77,8 @@ impl App {
     }
 
     pub(super) fn scroll_comments(&mut self, step: f64) {
-        let limit = (self.ui.get_comment_content_h() as f64
-            - self.ui.get_comment_viewport_h() as f64)
+        let limit = (self.ui.global::<crate::Comments>().get_content_h() as f64
+            - self.ui.global::<crate::Comments>().get_viewport_h() as f64)
             .max(0.0);
         self.comment_page.scroll = (self.comment_page.scroll + step).clamp(0.0, limit);
         if step > 0.0

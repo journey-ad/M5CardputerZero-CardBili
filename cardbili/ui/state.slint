@@ -119,6 +119,10 @@ export global Detail {
     in-out property <length> scroll: 0px;
     in-out property <length> thumb-h: 0px;
     in-out property <length> thumb-y: 0px;
+    in-out property <length> content-h: 0px;
+    in-out property <length> viewport-h: 0px;
+    in-out property <length> title-width: 0px;
+    in-out property <length> title-text-width: 0px;
 }
 
 // 登录
@@ -131,6 +135,7 @@ export global Login {
 // 静态文案
 export global Meta {
     in-out property <string> about-text: "";
+    in-out property <length> about-content-h: 0px;
     in-out property <[string]> tab-names: ["推荐", "热门", "动态", "我的", "设置"];
     in-out property <string> version: "";
     in-out property <length> about-scroll: 0px;
@@ -160,6 +165,8 @@ export global Comments {
     in-out property <bool> loading: false;
     in-out property <string> error: "";
     in-out property <length> scroll: 0px;
+    in-out property <length> content-h: 0px;
+    in-out property <length> viewport-h: 0px;
 }
 
 // 收藏夹列表

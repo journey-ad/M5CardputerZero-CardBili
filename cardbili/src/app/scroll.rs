@@ -11,9 +11,9 @@ impl App {
             _ => return false,
         };
         let height = if self.page == Page::Detail {
-            self.ui.get_detail_viewport_h()
+            self.ui.global::<crate::Detail>().get_viewport_h()
         } else {
-            self.ui.get_comment_viewport_h()
+            self.ui.global::<crate::Comments>().get_viewport_h()
         } as f64;
         let step = direction * 22.0;
         let delta = if full_page {

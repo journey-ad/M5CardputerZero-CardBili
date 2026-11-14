@@ -8,10 +8,20 @@ import { Detail } from "../state.slint";
 export component DetailPage inherits Rectangle {
     width: 100%;
     height: 100%;
-    out property <length> content-height: body-lay.preferred-height;
-    out property <length> viewport-height: body-viewport.height;
-    out property <length> title-width: title-viewport.width;
-    out property <length> title-text-width: title.preferred-width;
+    property <length> _content-h: body-lay.preferred-height;
+    property <length> _viewport-h: body-viewport.height;
+    property <length> _title-width: title-viewport.width;
+    property <length> _title-text-width: title.preferred-width;
+    changed _content-h => { Detail.content-h = self._content-h; }
+    changed _viewport-h => { Detail.viewport-h = self._viewport-h; }
+    changed _title-width => { Detail.title-width = self._title-width; }
+    changed _title-text-width => { Detail.title-text-width = self._title-text-width; }
+    init => {
+        Detail.content-h = self._content-h;
+        Detail.viewport-h = self._viewport-h;
+        Detail.title-width = self._title-width;
+        Detail.title-text-width = self._title-text-width;
+    }
 
     background: #0b0f17;
 

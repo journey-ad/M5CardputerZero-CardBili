@@ -4,8 +4,14 @@ import { Comments } from "../state.slint";
 
 export component CommentsPage inherits Rectangle {
     width: 100%; height: 100%; background: #0b0f17;
-    out property <length> content-height: body.preferred-height;
-    out property <length> viewport-height: root.height - 44px;
+    property <length> _content-h: body.preferred-height;
+    property <length> _viewport-h: root.height - 44px;
+    changed _content-h => { Comments.content-h = self._content-h; }
+    changed _viewport-h => { Comments.viewport-h = self._viewport-h; }
+    init => {
+        Comments.content-h = self._content-h;
+        Comments.viewport-h = self._viewport-h;
+    }
     Rectangle {
         x: 0px; y: 0px; width: parent.width; height: 24px; background: #121a2a;
         Text { x: 8px; height: parent.height; text: "评论"; color: #7fb0ff; font-size: 12px; vertical-alignment: center; }
@@ -15,7 +21,7 @@ export component CommentsPage inherits Rectangle {
         body := CommentList { y: -Comments.scroll; width: parent.width; }
     }
     ScrollBar {
-        x: parent.width - 4px; y: 24px; height: root.viewport-height;
-        content-height: root.content-height; scroll: Comments.scroll;
+        x: parent.width - 4px; y: 24px; height: Comments.viewport-h;
+        content-height: Comments.content-h; scroll: Comments.scroll;
     }
 }

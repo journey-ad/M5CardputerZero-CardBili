@@ -1,0 +1,10 @@
+import { Cdn, Sections } from "../state.slint";
+import { CdnPanel } from "cdn_panel.slint";
+import { SectionsPanel } from "sections_panel.slint";
+
+export component PanelHost inherits Rectangle {
+    width: 100%; height: 100%;
+
+    if Cdn.open: CdnPanel {}
+    if Sections.open: SectionsPanel {}
+}

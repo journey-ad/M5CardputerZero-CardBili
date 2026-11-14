@@ -1,10 +1,6 @@
-export component ConfirmDialog inherits Rectangle {
-    in property <string> title;
-    in property <string> message;
-    in property <string> confirm-label: "确认";
-    in-out property <bool> confirm-selected: false;
-    callback chosen(bool);
+import { Confirm } from "../state.slint";
 
+export component ConfirmDialog inherits Rectangle {
     width: 100%; height: 100%; background: #000000a8;
     TouchArea {}
     Rectangle {
@@ -13,25 +9,25 @@ export component ConfirmDialog inherits Rectangle {
         background: #121a2a; border-radius: 5px; border-width: 1px; border-color: #405472;
         Text {
             x: 14px; y: 12px; width: parent.width - 28px; height: 18px;
-            text: root.title; color: #e6ebf5; font-size: 12px;
+            text: Confirm.title; color: #e6ebf5; font-size: 12px;
         }
         Text {
             x: 14px; y: 36px; width: parent.width - 28px; height: 30px;
-            text: root.message; color: #a8b4c9; wrap: word-wrap;
+            text: Confirm.message; color: #a8b4c9; wrap: word-wrap;
             font-size: 10px; font-family: "Fusion Pixel 10px Prop zh-Hans";
         }
-        for label[index] in ["取消", root.confirm-label]: Rectangle {
+        for label[index] in ["取消", Confirm.label]: Rectangle {
             x: 14px + index * (parent.width / 2 - 7px); y: 76px;
             width: parent.width / 2 - 21px; height: 26px;
-            background: root.confirm-selected == (index == 1) ? #284673 : #1b273b;
+            background: Confirm.selected == (index == 1) ? #284673 : #1b273b;
             border-width: 1px;
-            border-color: root.confirm-selected == (index == 1) ? #7fb0ff : #35465e;
+            border-color: Confirm.selected == (index == 1) ? #7fb0ff : #35465e;
             border-radius: 3px;
             Text {
                 text: label; color: #e6ebf5; font-size: 12px;
                 horizontal-alignment: center; vertical-alignment: center;
             }
-            TouchArea { clicked => { root.chosen(index == 1); } }
+            TouchArea { clicked => { Confirm.result(index == 1); } }
         }
     }
 }

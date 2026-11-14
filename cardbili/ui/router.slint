@@ -1,0 +1,25 @@
+import { Page } from "types.slint";
+import { Nav } from "state.slint";
+import { HomePage } from "pages/home.slint";
+import { PlayPage } from "pages/play.slint";
+import { LoginPage } from "pages/login.slint";
+import { DetailPage } from "pages/detail.slint";
+import { CollectionPage } from "pages/collection.slint";
+import { CommentsPage } from "pages/comments.slint";
+import { FavoritesPage } from "pages/favorites.slint";
+import { FollowingPage } from "pages/following.slint";
+import { AboutPage } from "pages/about.slint";
+
+export component Router inherits Rectangle {
+    width: 100%; height: 100%;
+
+    if Nav.page == Page.home: HomePage {}
+    if Nav.page == Page.player: PlayPage {}
+    if Nav.page == Page.login: LoginPage {}
+    if Nav.page == Page.detail: DetailPage {}
+    if Nav.page == Page.about: AboutPage {}
+    if Nav.page == Page.collection: CollectionPage {}
+    if Nav.page == Page.comments: CommentsPage {}
+    if Nav.page == Page.following: FollowingPage {}
+    if Nav.page == Page.favorites: FavoritesPage {}
+}

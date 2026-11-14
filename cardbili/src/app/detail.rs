@@ -4,7 +4,7 @@ use super::*;
 /// 根据可视高度与滚动范围更新详情页滚动条
 pub(in crate::app) fn sync_thumb(ui: &AppWindow, scroll: f64, maxv: f64) {
     let detail = ui.global::<crate::Detail>();
-    let vh = ui.get_detail_viewport_h() as f64;
+    let vh = detail.get_viewport_h() as f64;
     if maxv <= 0.5 {
         detail.set_thumb_h(0.0);
         detail.set_thumb_y(0.0);
