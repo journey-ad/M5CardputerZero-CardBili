@@ -207,9 +207,11 @@ impl Player {
         args.extend(["-af".into(), format!("atempo@speed={}", self.rate)]);
         if cfg!(target_os = "linux") {
             args.extend(["-f".into(), "s16le".into(), "pipe:3".into()]);
-        } else {
+        } else if cfg!(target_os = "macos") {
             args.extend(["-f".into(), "audiotoolbox".into()]);
             args.push("default".into());
+        } else {
+            args.extend(["-f".into(), "sdl2".into(), "cardbili".into()]);
         }
 
         if let Some(mut ch) =

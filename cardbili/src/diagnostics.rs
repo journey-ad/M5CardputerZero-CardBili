@@ -1,16 +1,25 @@
 use std::fmt;
 use std::fs::{File, OpenOptions};
 use std::io::{self, BufRead, BufReader, Write};
-#[cfg(target_os = "linux")]
+#[cfg(not(feature = "desktop"))]
 use std::os::fd::FromRawFd;
-use std::os::fd::{AsRawFd, OwnedFd};
-#[cfg(target_os = "linux")]
+#[cfg(unix)]
+use std::os::fd::AsRawFd;
+#[cfg(all(unix, not(feature = "desktop")))]
+use std::os::fd::OwnedFd;
+#[cfg(not(feature = "desktop"))]
 use std::os::unix::net::UnixStream;
+#[cfg(unix)]
 use std::os::unix::process::CommandExt;
 use std::process::{Child, Command, Stdio};
 use std::sync::Mutex;
 use std::thread;
 use std::time::{SystemTime, UNIX_EPOCH};
+
+#[cfg(unix)]
+pub(crate) type AudioPipe = std::os::fd::OwnedFd;
+#[cfg(not(unix))]
+pub(crate) type AudioPipe = ();
 
 const MAX_FILES: usize = 5;
 
@@ -75,8 +84,10 @@ pub(crate) fn spawn(
     args: &[String],
     cookies: &str,
     stdout: Stdio,
-    audio: Option<OwnedFd>,
+    audio: Option<AudioPipe>,
 ) -> Option<Child> {
+    #[cfg(not(unix))]
+    let _ = &audio;
     let mut redactions = Vec::new();
     if !cookies.is_empty() {
         redactions.push((cookies.to_string(), "<Cookie 已隐藏>".to_string()));
@@ -97,21 +108,21 @@ pub(crate) fn spawn(
     };
     let logged_args: Vec<_> = args.iter().map(|arg| redact(arg)).collect();
     write(format_args!("[{kind}] ffmpeg 参数: {logged_args:?}"));
-    #[cfg(target_os = "linux")]
+    #[cfg(feature = "desktop")]
+    let executable = std::path::PathBuf::from("ffmpeg");
+    #[cfg(not(feature = "desktop"))]
     let executable = std::env::current_exe()
         .ok()?
         .with_file_name("cardbili-ffmpeg");
-    #[cfg(not(target_os = "linux"))]
-    let executable = std::path::PathBuf::from("ffmpeg");
     write(format_args!("[{kind}] 解码器={}", executable.display()));
     let mut command = Command::new(executable);
     command
         .stdin(Stdio::piped())
         .stdout(stdout)
         .stderr(Stdio::piped());
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(feature = "desktop")]
     command.args(args);
-    #[cfg(target_os = "linux")]
+    #[cfg(not(feature = "desktop"))]
     let (arguments, mut writer, payload) = match (|| -> std::io::Result<_> {
         let mut payload = Vec::new();
         for arg in args {
@@ -131,6 +142,7 @@ pub(crate) fn spawn(
             return None;
         }
     };
+    #[cfg(unix)]
     if let Some(audio) = audio.as_ref() {
         let fd = audio.as_raw_fd();
         // 子进程的描述符 3 接收解码后的 PCM 音频
@@ -143,7 +155,7 @@ pub(crate) fn spawn(
             });
         }
     }
-    #[cfg(target_os = "linux")]
+    #[cfg(not(feature = "desktop"))]
     {
         let fd = arguments.as_raw_fd();
         unsafe {
@@ -157,7 +169,7 @@ pub(crate) fn spawn(
     }
     match command.spawn() {
         Ok(mut child) => {
-            #[cfg(target_os = "linux")]
+            #[cfg(not(feature = "desktop"))]
             {
                 let result = writer.write_all(&payload);
                 drop(writer);
