@@ -43,7 +43,7 @@ Linux 与 macOS 下载后执行 `chmod +x <文件名>` 再运行，Windows 直�
 
 macOS 首次运行如被 Gatekeeper 拦截，执行 `xattr -dr com.apple.quarantine cardbili`
 
-桌面版播放依赖系统已安装 FFmpeg。Linux 还需 `pacat`（PipeWire 或 PulseAudio 自带），Windows 需带 SDL2 输出的 FFmpeg 构建（BtbN 构建即可）
+桌面版播放依赖系统已安装 FFmpeg。Linux 还需 `pacat`（PipeWire 或 PulseAudio 自带），Windows 的音频直接输出到系统音频设备
 
 ## 使用
 

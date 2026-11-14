@@ -1,5 +1,7 @@
 #[cfg(target_os = "linux")]
 mod audio;
+#[cfg(all(feature = "desktop", windows))]
+mod audio_desktop;
 mod frames;
 pub mod volume;
 
@@ -117,6 +119,60 @@ impl Player {
         p
     }
 
+    #[cfg(all(feature = "desktop", windows))]
+    fn start_desktop_audio(&mut self, ss: f64) {
+        let headers = headers(&self.cookies);
+        let mut args: Vec<String> = [
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-nostats",
+            "-threads",
+            "4",
+            "-probesize",
+            "65536",
+            "-analyzeduration",
+            "100000",
+            "-protocol_whitelist",
+            "file,pipe,crypto,http,https,tcp,tls",
+        ]
+        .iter()
+        .map(|value| value.to_string())
+        .collect();
+        args.extend([
+            "-user_agent".to_string(),
+            UA.to_string(),
+            "-referer".to_string(),
+            REFERER.to_string(),
+            "-headers".to_string(),
+            headers,
+        ]);
+        if ss > 0.0 {
+            args.extend(["-ss".to_string(), format!("{ss:.3}")]);
+        }
+        args.extend(["-i".to_string(), self.audio_url.clone()]);
+        args.extend([
+            "-vn".to_string(),
+            "-ac".to_string(),
+            "2".to_string(),
+            "-ar".to_string(),
+            "44100".to_string(),
+            "-af".to_string(),
+            format!("atempo@speed={}", self.rate),
+            "-f".to_string(),
+            "s16le".to_string(),
+            "pipe:1".to_string(),
+        ]);
+        if let Some(mut child) =
+            diagnostics::spawn("音频", &args, &self.cookies, Stdio::piped(), None)
+        {
+            if let Some(stdout) = child.stdout.take() {
+                audio_desktop::start(stdout, self.frames.clone());
+            }
+            self.audio = Some(child);
+        }
+    }
+
     fn spawn(&mut self, ss: f64) {
         self.speeds = vec![Speed {
             output: 0.0,
@@ -141,6 +197,8 @@ impl Player {
         };
         #[cfg(not(target_os = "linux"))]
         let audio_pipe = None;
+        #[cfg(all(feature = "desktop", windows))]
+        self.start_desktop_audio(ss);
         self.ready = false;
         self.finished = false;
         diagnostics::write(format_args!(
@@ -162,7 +220,12 @@ impl Player {
             "-filter_threads".into(),
             "2".into(),
         ];
-        for url in [&self.video_url, &self.audio_url] {
+        let inputs: Vec<&String> = if cfg!(all(feature = "desktop", windows)) {
+            vec![&self.video_url]
+        } else {
+            vec![&self.video_url, &self.audio_url]
+        };
+        for url in inputs {
             args.extend([
                 "-threads".into(),
                 "4".into(),
@@ -196,22 +259,26 @@ impl Player {
         args.push("rawvideo".into());
         args.push("pipe:1".into());
 
-        args.extend([
-            "-map".into(),
-            "1:a:0".into(),
-            "-ac".into(),
-            "2".into(),
-            "-ar".into(),
-            "44100".into(),
-        ]);
-        args.extend(["-af".into(), format!("atempo@speed={}", self.rate)]);
-        if cfg!(target_os = "linux") {
-            args.extend(["-f".into(), "s16le".into(), "pipe:3".into()]);
-        } else if cfg!(target_os = "macos") {
-            args.extend(["-f".into(), "audiotoolbox".into()]);
-            args.push("default".into());
+        if cfg!(all(feature = "desktop", windows)) {
+            // Windows 桌面版的音频由独立进程解码后交给 cpal 播放
         } else {
-            args.extend(["-f".into(), "sdl2".into(), "cardbili".into()]);
+            args.extend([
+                "-map".into(),
+                "1:a:0".into(),
+                "-ac".into(),
+                "2".into(),
+                "-ar".into(),
+                "44100".into(),
+            ]);
+            args.extend(["-af".into(), format!("atempo@speed={}", self.rate)]);
+            if cfg!(target_os = "linux") {
+                args.extend(["-f".into(), "s16le".into(), "pipe:3".into()]);
+            } else if cfg!(target_os = "macos") {
+                args.extend(["-f".into(), "audiotoolbox".into()]);
+                args.push("default".into());
+            } else {
+                args.extend(["-f".into(), "sdl2".into(), "cardbili".into()]);
+            }
         }
 
         if let Some(mut ch) =

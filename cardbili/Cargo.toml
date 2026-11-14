@@ -34,3 +34,6 @@ opt-level = "z"
 lto = true
 codegen-units = 1
 strip = true
+
+[target.'cfg(windows)'.dependencies]
+cpal = "0.15"
