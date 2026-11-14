@@ -68,7 +68,7 @@ impl App {
         } else if self.tab == HomeTab::Settings {
             match k {
                 "UP" | "f" | "w" => self.sel = (self.sel - 1).max(0),
-                "DOWN" | "x" | "s" => self.sel = (self.sel + 1).min(8),
+                "DOWN" | "x" | "s" => self.sel = (self.sel + 1).min(7),
                 "LEFT" | "z" | "RIGHT" | "c" => {
                     let step = if matches!(k, "LEFT" | "z") { -1 } else { 1 };
                     if self.sel == 0 {
@@ -92,10 +92,17 @@ impl App {
                 "ENTER" if self.sel == 5 => {
                     self.open_cdn();
                 }
-                "ENTER" if self.sel == 7 => {
-                    self.clear_cache();
+                "ENTER" if self.sel == 6 => {
+                    if !self.ui.get_cache_busy() {
+                        self.confirm(
+                            confirmation::Action::ClearCache,
+                            "清理缓存",
+                            "清理图片和接口缓存？\n登录状态和设置会保留",
+                            "清理",
+                        );
+                    }
                 }
-                "ENTER" if self.sel == 8 => {
+                "ENTER" if self.sel == 7 => {
                     self.requested_about = true;
                 }
                 "ESC" | "BACKSPACE" => {

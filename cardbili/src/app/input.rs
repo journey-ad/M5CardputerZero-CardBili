@@ -8,6 +8,10 @@ pub(super) struct DirectionHold {
 
 impl App {
     pub(super) fn handle_key(&mut self, mut key: String) {
+        if self.confirmation.is_some() {
+            self.confirmation_key(&key);
+            return;
+        }
         if let Some(button) = key
             .strip_suffix("_UP")
             .and_then(|s| s.parse::<usize>().ok())

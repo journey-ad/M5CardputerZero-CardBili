@@ -2,7 +2,11 @@ use super::*;
 
 impl App {
     pub(super) fn sync_cache(&mut self) {
-        if self.page != Page::Home || self.tab != HomeTab::Settings || self.ui.get_cache_busy() {
+        if self.page != Page::Home
+            || self.tab != HomeTab::Settings
+            || self.ui.get_cache_busy()
+            || self.confirmation.is_some()
+        {
             return;
         }
         if self
@@ -37,6 +41,7 @@ impl App {
             return;
         }
         self.ui.set_cache_busy(true);
+        self.ui.set_cache_size("清理中…".into());
         let tx = self.tx.clone();
         thread::spawn(move || {
             let result = crate::cache::clear().map_err(|error| error.to_string());

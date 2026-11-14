@@ -79,15 +79,6 @@ pub fn init() {
                 ));
             }
         }
-        let old = std::env::temp_dir().join("cardbili-cache");
-        if old != base() && old.exists() {
-            let result = migrate(&old);
-            diagnostics::write(format_args!(
-                "[缓存] 迁移 {} → {} 结果={result:?}",
-                old.display(),
-                base().display()
-            ));
-        }
         let result = (|| -> std::io::Result<u64> {
             let mut total = entries()?.iter().map(|(_, m)| m.len()).sum();
             enforce_limit(&mut total)?;
@@ -104,53 +95,25 @@ pub fn init() {
     });
 }
 
-fn migrate(old: &Path) -> std::io::Result<()> {
-    for name in ["api", "img"] {
-        let directory = old.join(name);
-        if !directory.exists() {
-            continue;
-        }
-        for entry in fs::read_dir(&directory)? {
-            let entry = entry?;
-            let metadata = entry.metadata()?;
-            if !metadata.is_file() {
-                continue;
-            }
-            let target = base().join(name).join(entry.file_name());
-            let modified = metadata.modified()?;
-            let newer = fs::metadata(&target)
-                .and_then(|m| m.modified())
-                .is_ok_and(|time| time >= modified);
-            if !newer {
-                let temporary = target.with_extension("migrating");
-                let result = (|| -> std::io::Result<()> {
-                    fs::copy(entry.path(), &temporary)?;
-                    fs::File::options()
-                        .write(true)
-                        .open(&temporary)?
-                        .set_modified(modified)?;
-                    fs::rename(&temporary, &target)
-                })();
-                if result.is_err() {
-                    let _ = fs::remove_file(&temporary);
-                }
-                result?;
-            }
-            fs::remove_file(entry.path())?;
-        }
-        fs::remove_dir(directory)?;
-    }
-    fs::remove_dir(old)
+// 哈希前两位分别作为目录名，每类缓存共 256 个叶子目录
+fn cache_path(directory: &Path, key: &str, extension: &str) -> PathBuf {
+    directory
+        .join(&key[..1])
+        .join(&key[1..2])
+        .join(format!("{key}.{extension}"))
 }
 
 fn entries() -> std::io::Result<Vec<(PathBuf, fs::Metadata)>> {
     let mut files = Vec::new();
-    for directory in [api_dir(), img_dir()] {
+    let mut directories = vec![api_dir(), img_dir()];
+    while let Some(directory) = directories.pop() {
         for entry in fs::read_dir(directory)? {
             let entry = entry?;
-            let metadata = entry.metadata()?;
-            if metadata.is_file() {
-                files.push((entry.path(), metadata));
+            let kind = entry.file_type()?;
+            if kind.is_dir() {
+                directories.push(entry.path());
+            } else if kind.is_file() {
+                files.push((entry.path(), entry.metadata()?));
             }
         }
     }
@@ -174,12 +137,13 @@ pub fn usage() -> std::io::Result<u64> {
 pub fn clear() -> std::io::Result<()> {
     init();
     let mut size = SIZE.lock().unwrap();
-    let result = entries().and_then(|files| {
-        for (path, _) in files {
-            fs::remove_file(path)?;
+    let result = (|| -> std::io::Result<()> {
+        for directory in [api_dir(), img_dir()] {
+            fs::remove_dir_all(&directory)?;
+            fs::create_dir_all(directory)?;
         }
         Ok(())
-    });
+    })();
     *size = if result.is_ok() { Some(0) } else { None };
     diagnostics::write(format_args!("[缓存] 清理结果={result:?}"));
     result
@@ -217,6 +181,7 @@ fn write_atomic(path: &Path, data: &[u8]) {
             Some(bytes) => bytes,
             None => entries()?.iter().map(|(_, m)| m.len()).sum(),
         };
+        fs::create_dir_all(path.parent().unwrap())?;
         let previous = fs::metadata(path).map(|m| m.len()).unwrap_or(0);
         let name = path.file_name().unwrap().to_string_lossy();
         let n = SEQ.fetch_add(1, Ordering::Relaxed);
@@ -310,10 +275,7 @@ pub fn api_json_with(
         Some(c) if !c.is_empty() => format!("u:{}", crate::util::parse_mid(c)),
         _ => "a".to_string(),
     };
-    let path = api_dir().join(format!(
-        "{}.json",
-        key_of(&format!("{}\n{}", cache_key, tag))
-    ));
+    let path = cache_path(&api_dir(), &key_of(&format!("{cache_key}\n{tag}")), "json");
     let endpoint = cache_key.split(['?', '#']).next().unwrap_or(cache_key);
     // 强制刷新优先于缓存预览，普通请求按有效期读取
     if !force_on() {
@@ -374,10 +336,11 @@ fn cached_image(pic: &str, width: u32, height: u32) -> Option<Pixels> {
     if url.is_empty() {
         return None;
     }
-    let path = img_dir().join(format!(
-        "{}.raw",
-        key_of(&format!("{url}@{width}x{height}"))
-    ));
+    let path = cache_path(
+        &img_dir(),
+        &key_of(&format!("{url}@{width}x{height}")),
+        "raw",
+    );
     if let Ok(data) = fs::read(&path) {
         if data.len() >= 8 {
             let w = u32::from_le_bytes([data[0], data[1], data[2], data[3]]);
@@ -417,7 +380,7 @@ fn cached_image(pic: &str, width: u32, height: u32) -> Option<Pixels> {
 pub fn invalidate_api(url: &str, cookies: &str) {
     init();
     let tag = format!("u:{}", crate::util::parse_mid(cookies));
-    let path = api_dir().join(format!("{}.json", key_of(&format!("{url}\n{tag}"))));
+    let path = cache_path(&api_dir(), &key_of(&format!("{url}\n{tag}")), "json");
     let mut size = SIZE.lock().unwrap();
     let bytes = fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
     let result = fs::remove_file(&path);

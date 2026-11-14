@@ -3,6 +3,7 @@ mod cache;
 mod cdn;
 mod comments;
 mod components;
+mod confirmation;
 mod detail;
 mod favorites;
 mod following;
@@ -44,6 +45,10 @@ pub fn run() {
     ui.show().expect("show");
     ui.on_player_key(move |key| {
         let _ = ktx.send(key.to_string());
+    });
+    let confirm_tx = tx.clone();
+    ui.on_confirm_result(move |accepted| {
+        let _ = confirm_tx.send(Msg::Confirmed(accepted));
     });
     let mut app = App::new(ui, tx);
     let mut pending = None;

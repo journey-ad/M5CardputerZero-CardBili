@@ -1,4 +1,5 @@
 import "../fonts/fusion12.ttf";
+import { ConfirmDialog } from "components/confirm_dialog.slint";
 import { CdnPanel } from "components/cdn_panel.slint";
 import { SectionsPanel } from "components/sections_panel.slint";
 export { HomeTab, Page, VideoLayout, MenuPosition } from "types.slint";
@@ -111,6 +112,12 @@ export component AppWindow inherits Window {
     in-out property <string> cdn-name <=> Preferences.cdn-name;
     in-out property <string> cache-size <=> Preferences.cache-size;
     in-out property <bool> cache-busy <=> Preferences.cache-busy;
+    in-out property <bool> confirm-open: false;
+    in-out property <string> confirm-title;
+    in-out property <string> confirm-message;
+    in-out property <string> confirm-label;
+    in-out property <bool> confirm-selected: false;
+    callback confirm-result(bool);
     in-out property <bool> cdn-open: false;
     in-out property <bool> cdn-testing: false;
     in-out property <int> cdn-current: 1;
@@ -185,5 +192,12 @@ export component AppWindow inherits Window {
     StatusBar {
         x: (parent.width - self.width) / 2;
         y: parent.height - (root.page == Page.player ? 50px : 46px);
+    }
+    if root.confirm-open: ConfirmDialog {
+        title: root.confirm-title;
+        message: root.confirm-message;
+        confirm-label: root.confirm-label;
+        confirm-selected <=> root.confirm-selected;
+        chosen(accepted) => { root.confirm-result(accepted); }
     }
 }

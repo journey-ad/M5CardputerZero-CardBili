@@ -12,7 +12,7 @@ impl App {
         // 选中项保持在当前页面范围内
         if self.page == Page::Home {
             let len = if self.tab == HomeTab::Settings {
-                9
+                8
             } else if self.tab == HomeTab::Mine && self.mine_detail < 0 {
                 3
             } else {

@@ -16,6 +16,7 @@ mod util;
 slint::include_modules!();
 
 pub enum Msg {
+    Confirmed(bool),
     CacheUsage(Result<u64, String>),
     CacheCleared(Result<(), String>),
     CdnSpeed(u64, usize, String),
