@@ -122,21 +122,21 @@ jobs:
       - name: Build desktop binary
         working-directory: cardbili
         run: cargo build --release --locked --features desktop --target ${{ matrix.target }}
-      - name: Package archive (Unix)
+      - name: Package binary (Unix)
         if: runner.os != 'Windows'
         run: bash scripts/package-desktop.sh "${{ matrix.name }}" "${{ matrix.target }}" "${{ matrix.binary }}"
-      - name: Package archive (Windows)
+      - name: Package binary (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force dist | Out-Null
-          Compress-Archive -Path "cardbili/target/${{ matrix.target }}/release/${{ matrix.binary }}" -DestinationPath "dist/cardbili-desktop-${{ matrix.name }}.zip" -Force
+          Copy-Item "cardbili/target/${{ matrix.target }}/release/${{ matrix.binary }}" "dist/cardbili-desktop-${{ matrix.name }}.exe"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: cardbili-desktop-${{ matrix.name }}
           if-no-files-found: error
           retention-days: 14
-          path: dist/cardbili-desktop-${{ matrix.name }}.*
+          path: dist/cardbili-desktop-${{ matrix.name }}*
 
   release:
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')

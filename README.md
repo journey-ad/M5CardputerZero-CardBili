@@ -35,11 +35,11 @@ sudo apt install ./cardbili_*_arm64.deb
 
 | 平台 | 附件 |
 | --- | --- |
-| Linux x86_64 | `cardbili-desktop-linux-x86_64.tar.gz` |
-| macOS Apple Silicon | `cardbili-desktop-macos-arm64.tar.gz` |
-| Windows x86_64 | `cardbili-desktop-windows-x86_64.zip` |
+| Linux x86_64 | `cardbili-desktop-linux-x86_64` |
+| macOS Apple Silicon | `cardbili-desktop-macos-arm64` |
+| Windows x86_64 | `cardbili-desktop-windows-x86_64.exe` |
 
-解压后得到可执行文件
+Linux 与 macOS 下载后执行 `chmod +x <文件名>` 再运行，Windows 直接运行 `.exe`
 
 macOS 首次运行如被 Gatekeeper 拦截，执行 `xattr -dr com.apple.quarantine cardbili`
 
