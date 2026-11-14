@@ -160,8 +160,8 @@ pub(crate) fn spawn(
     let executable = std::path::PathBuf::from("ffmpeg");
     #[cfg(not(feature = "desktop"))]
     let executable = std::env::current_exe()
-        .ok()?
-        .with_file_name("cardbili-ffmpeg");
+        .map(|path| path.with_file_name("cardbili-ffmpeg"))
+        .unwrap_or_default();
     write(format_args!("[{kind}] 解码器={}", executable.display()));
     let mut command = Command::new(executable);
     #[cfg(windows)]
@@ -178,7 +178,7 @@ pub(crate) fn spawn(
     #[cfg(feature = "desktop")]
     command.args(args);
     #[cfg(not(feature = "desktop"))]
-    let (arguments, mut writer, payload) = match (|| -> std::io::Result<_> {
+    let pipe_args = match (|| -> std::io::Result<_> {
         let mut payload = Vec::new();
         for arg in args {
             payload.extend_from_slice(std::ffi::CString::new(arg.as_str())?.as_bytes_with_nul());
@@ -191,7 +191,7 @@ pub(crate) fn spawn(
         }
         Ok((unsafe { OwnedFd::from_raw_fd(fd) }, writer, payload))
     })() {
-        Ok(value) => value,
+        Ok(value) => Some(value),
         Err(error) => {
             write(format_args!("[{kind}] 创建参数管道失败: {error}"));
             return None;
@@ -211,7 +211,7 @@ pub(crate) fn spawn(
         }
     }
     #[cfg(not(feature = "desktop"))]
-    {
+    if let Some((arguments, _, _)) = pipe_args.as_ref() {
         let fd = arguments.as_raw_fd();
         unsafe {
             command.pre_exec(move || {
@@ -225,7 +225,7 @@ pub(crate) fn spawn(
     match command.spawn() {
         Ok(mut child) => {
             #[cfg(not(feature = "desktop"))]
-            {
+            if let Some((_, mut writer, payload)) = pipe_args {
                 let result = writer.write_all(&payload);
                 drop(writer);
                 if let Err(error) = result {

@@ -13,6 +13,7 @@ use std::io::{Read, Write};
 use std::process::{Child, Command, Stdio};
 use std::sync::{mpsc::Sender, Arc};
 use std::thread;
+use std::time::{Duration, Instant};
 
 pub const WIDTH: u32 = 320;
 pub const HEIGHT: u32 = 170;
@@ -79,11 +80,13 @@ pub struct Player {
     pub rate: f64,
     pub finished: bool,
     ready: bool,
+    last_frame: Instant,
     video_url: String,
     audio_url: String,
     cookies: String,
     child: Option<Child>,
     audio: Option<Child>,
+    live: bool,
     tx: Sender<Msg>,
     frames: Arc<frames::Frames>,
 }
@@ -105,12 +108,14 @@ impl Player {
             paused: state.paused,
             rate: state.rate,
             ready: false,
+            last_frame: Instant::now(),
             finished: false,
             video_url: info.video_url.clone(),
             audio_url: info.audio_url.clone(),
             cookies,
             child: None,
             audio: None,
+            live: info.live,
             tx,
             frames: Arc::new(frames::Frames::default()),
         };
@@ -134,7 +139,7 @@ impl Player {
             "-analyzeduration",
             "100000",
             "-protocol_whitelist",
-            "file,pipe,crypto,http,https,tcp,tls",
+            "file,pipe,crypto,http,https,tcp,tls,httpproxy",
         ]
         .iter()
         .map(|value| value.to_string())
@@ -150,7 +155,13 @@ impl Player {
         if ss > 0.0 {
             args.extend(["-ss".to_string(), format!("{ss:.3}")]);
         }
-        args.extend(["-i".to_string(), self.audio_url.clone()]);
+        args.extend(["-rw_timeout".into(), "15000000".into()]);
+        let url = if self.live {
+            &self.video_url
+        } else {
+            &self.audio_url
+        };
+        args.extend(["-i".to_string(), url.clone()]);
         args.extend([
             "-vn".to_string(),
             "-ac".to_string(),
@@ -174,6 +185,9 @@ impl Player {
     }
 
     fn spawn(&mut self, ss: f64) {
+        self.ready = false;
+        self.last_frame = Instant::now();
+        self.finished = false;
         self.speeds = vec![Speed {
             output: 0.0,
             position: ss,
@@ -192,6 +206,10 @@ impl Player {
             }
             Err(error) => {
                 diagnostics::write(format_args!("音频输出启动失败: {error}"));
+                let _ = self.tx.send(Msg::PlaybackFailed(
+                    self.gen,
+                    "音频输出启动失败，请检查音频服务".into(),
+                ));
                 return;
             }
         };
@@ -199,8 +217,6 @@ impl Player {
         let audio_pipe = None;
         #[cfg(all(feature = "desktop", windows))]
         self.start_desktop_audio(ss);
-        self.ready = false;
-        self.finished = false;
         diagnostics::write(format_args!(
             "开始解码 gen={} 跳转={ss:.3}s 倍速={} 日志={}",
             self.gen,
@@ -220,7 +236,7 @@ impl Player {
             "-filter_threads".into(),
             "2".into(),
         ];
-        let inputs: Vec<&String> = if cfg!(all(feature = "desktop", windows)) {
+        let inputs: Vec<&String> = if self.live || cfg!(all(feature = "desktop", windows)) {
             vec![&self.video_url]
         } else {
             vec![&self.video_url, &self.audio_url]
@@ -229,12 +245,14 @@ impl Player {
             args.extend([
                 "-threads".into(),
                 "4".into(),
+                "-rw_timeout".into(),
+                "15000000".into(),
                 "-probesize".into(),
                 "65536".into(),
                 "-analyzeduration".into(),
                 "100000".into(),
                 "-protocol_whitelist".into(),
-                "file,pipe,crypto,http,https,tcp,tls".into(),
+                "file,pipe,crypto,http,https,tcp,tls,httpproxy".into(),
                 "-user_agent".into(),
                 UA.into(),
                 "-referer".into(),
@@ -264,7 +282,11 @@ impl Player {
         } else {
             args.extend([
                 "-map".into(),
-                "1:a:0".into(),
+                if self.live {
+                    "0:a:0".into()
+                } else {
+                    "1:a:0".into()
+                },
                 "-ac".into(),
                 "2".into(),
                 "-ar".into(),
@@ -323,6 +345,12 @@ impl Player {
                 });
             }
             self.child = Some(ch);
+        } else {
+            stop_child(&mut self.audio, "音频");
+            let _ = self.tx.send(Msg::PlaybackFailed(
+                self.gen,
+                "解码器启动失败，请检查 FFmpeg".into(),
+            ));
         }
     }
 
@@ -333,7 +361,12 @@ impl Player {
             .iter()
             .rfind(|speed| speed.output <= output)
             .unwrap();
-        (speed.position + (output - speed.output) * speed.rate).min(self.duration)
+        let position = speed.position + (output - speed.output) * speed.rate;
+        if self.live {
+            position
+        } else {
+            position.min(self.duration)
+        }
     }
 
     pub fn cycle_rate(&mut self) -> Result<(), String> {
@@ -375,6 +408,7 @@ impl Player {
         self.paused = !self.paused;
         diagnostics::write(format_args!("[播放] gen={} 暂停={}", self.gen, self.paused));
         self.frames.pause(self.paused);
+        self.last_frame = Instant::now();
         let signal = if self.paused { "-STOP" } else { "-CONT" };
         if self.ready {
             Self::signal_child(&self.child, signal);
@@ -383,6 +417,7 @@ impl Player {
     }
 
     pub fn frame_ready(&mut self) {
+        self.last_frame = Instant::now();
         if self.ready {
             return;
         }
@@ -400,6 +435,12 @@ impl Player {
                 .args([signal, &child.id().to_string()])
                 .output();
         }
+    }
+
+    pub fn stalled(&self) -> bool {
+        !self.finished
+            && !(self.paused && self.ready)
+            && self.last_frame.elapsed() > Duration::from_secs(30)
     }
 
     pub fn take_frame(&self) -> Option<(u64, Vec<u8>)> {

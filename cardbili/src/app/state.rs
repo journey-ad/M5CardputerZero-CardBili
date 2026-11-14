@@ -27,12 +27,12 @@ pub(super) struct App {
     pub(super) sel: i32,
     pub(super) lists: Vec<Vec<model::Item>>,
     pub(super) covers: Vec<Vec<Option<slint::Image>>>,
-    pub(super) covers_started: [bool; 5],
-    pub(super) loaded: [bool; 5],
-    pub(super) pages: [usize; 5],
-    pub(super) first_page_sizes: [usize; 5],
-    pub(super) has_more: [bool; 5],
-    pub(super) loading_more: [bool; 5],
+    pub(super) covers_started: [bool; 6],
+    pub(super) loaded: [bool; 6],
+    pub(super) pages: [usize; 6],
+    pub(super) first_page_sizes: [usize; 6],
+    pub(super) has_more: [bool; 6],
+    pub(super) loading_more: [bool; 6],
     pub(super) mine_detail: i32,
     pub(super) acct: Option<model::Account>,
     pub(super) avatar_img: Option<slint::Image>,
@@ -56,6 +56,10 @@ pub(super) struct App {
     pub(super) play_request: u64,
     pub(super) current_play: Option<model::PlayInfo>,
     pub(super) requested_play: Option<String>,
+    pub(super) requested_live: Option<u64>,
+    pub(super) live: Option<model::LiveInfo>,
+    pub(super) live_danmaku: Option<crate::live_danmaku::Connection>,
+    pub(super) live_engine: danmaku::LiveEngine,
     pub(super) requested_uploader: Option<model::Owner>,
     pub(super) requested_related: Option<String>,
     pub(super) requested_login: bool,
@@ -160,6 +164,13 @@ impl App {
                 requested_play = Some(b);
             }
         }
+        let mut requested_live: Option<u64> = None;
+        if let Ok(v) = std::env::var("BILI_LIVE") {
+            requested_live = v.parse::<u64>().ok();
+            if requested_live.is_some() {
+                status = "正在加载直播…".into();
+            }
+        }
         if let Ok(b) = std::env::var("BILI_DETAIL") {
             if !b.is_empty() {
                 requested_detail = Some((b, String::new()));
@@ -210,14 +221,14 @@ impl App {
             view,
             help,
             sel,
-            lists: vec![Vec::new(); 5],
-            covers: vec![Vec::new(); 5],
-            covers_started: [false; 5],
-            loaded: [false; 5],
-            pages: [1; 5],
-            first_page_sizes: [0; 5],
-            has_more: [true; 5],
-            loading_more: [false; 5],
+            lists: vec![Vec::new(); 6],
+            covers: vec![Vec::new(); 6],
+            covers_started: [false; 6],
+            loaded: [false; 6],
+            pages: [1; 6],
+            first_page_sizes: [0; 6],
+            has_more: [true; 6],
+            loading_more: [false; 6],
             mine_detail: -1,
             acct: None,
             avatar_img: None,
@@ -241,6 +252,10 @@ impl App {
             play_request: 0,
             current_play: None,
             requested_play,
+            requested_live,
+            live: None,
+            live_danmaku: None,
+            live_engine: danmaku::LiveEngine::default(),
             requested_uploader: None,
             requested_related: None,
             requested_login: false,

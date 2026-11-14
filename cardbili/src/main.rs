@@ -10,6 +10,7 @@ mod danmaku;
 mod diagnostics;
 mod fonts;
 mod menu;
+mod live_danmaku;
 mod model;
 mod net;
 mod player;
@@ -32,6 +33,7 @@ pub enum Msg {
     Frame(u64),
     Volume(Result<i32, String>),
     PlaybackEnded(u64),
+    PlaybackFailed(u64, String),
     ListLoaded(usize, Vec<model::Item>),
     ListMore(usize, Vec<model::Item>),
     Dynamic(u64, String, Result<model::DynamicPage, String>),
@@ -41,6 +43,7 @@ pub enum Msg {
     Following(u64, u32, Result<model::FollowingPage, String>),
     Err(usize, String),
     PlayReady(u64, Result<model::PlayInfo, String>),
+    LiveReady(u64, Result<model::LiveInfo, String>),
     Danmaku(u64, danmaku::Engine),
     QrReady(u64, String),
     QrStatus(u64, String),

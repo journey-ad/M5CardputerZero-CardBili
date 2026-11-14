@@ -1,5 +1,5 @@
-use slint::ComponentHandle as _;
 use super::super::*;
+use slint::ComponentHandle as _;
 
 impl App {
     pub(in crate::app) fn sync_playback(&mut self) {
@@ -17,6 +17,14 @@ impl App {
                 let g_player = self.ui.global::<crate::Player>();
                 g_player.set_frame(slint::Image::from_rgb8(pb));
                 g_player.set_has_frame(true);
+                if self.live.is_some() && self.settings.danmaku_enabled {
+                    if let Some(player) = &self.player {
+                        self.danmaku_view.update_rows(
+                            self.live_engine
+                                .rows_at(player.position(self.frames_in_seg)),
+                        );
+                    }
+                }
                 if let (Some(p), Some(eng)) = (
                     self.player.as_ref(),
                     self.danmaku
@@ -32,6 +40,7 @@ impl App {
         if self.page == Page::Player {
             self.sync_triple();
             let g_player = self.ui.global::<crate::Player>();
+
             g_player.set_liked(self.controls.liked.unwrap_or(false));
             g_player.set_reaction_busy(self.controls.busy);
             if let Some(p) = self.player.as_ref() {
@@ -45,13 +54,22 @@ impl App {
                     .unwrap_or_else(|| p.position(self.frames_in_seg));
                 let dur = p.duration;
                 g_player.set_progress(if dur > 0.0 { (pos / dur) as f32 } else { 0.0 });
-                g_player.set_time_text(
+                let time = if let Some(live) = &self.live {
+                    if live.started_at > 0 {
+                        model::mmss((crate::net::now_secs() - live.started_at).max(0) as f64)
+                    } else {
+                        "--:--".into()
+                    }
+                } else {
                     format!("{}/{}", model::mmss(pos), model::mmss(dur))
-                        .as_str()
-                        .into(),
-                );
+                };
+                g_player.set_time_text(time.into());
                 let est = util::est_w(&p.title, 10.0);
-                let clip = (WIDTH as f64) - 12.0;
+                let clip = if self.live.is_some() {
+                    WIDTH as f64 - util::est_w(&g_player.get_watching(), 10.0) - 32.0
+                } else {
+                    WIDTH as f64 - 12.0
+                };
                 g_player.set_ptitle_marquee(est > clip);
                 g_player.set_ptitle_shift(yoyo_shift(est, clip, self.marq_t));
             }

@@ -106,7 +106,9 @@ impl App {
         if self.page == Page::Home && list_source(self.tab, self.mine_detail) == Some(source) {
             self.sel = selection;
             self.status = if len == 0 {
-                "暂无内容".to_string()
+                if source == crate::HomeTab::Live.index() { "暂无直播".into() } else { "暂无内容".into() }
+            } else if source == crate::HomeTab::Live.index() {
+                format!("{} 个直播间", len)
             } else {
                 format!("{} 条", len)
             };
@@ -152,7 +154,11 @@ impl App {
         }
         tasks::spawn_covers(source, added, self.tx.clone());
         if source == self.tab.index() && self.page == Page::Home {
-            self.status = format!("{} 条", self.lists[source].len());
+            self.status = if source == crate::HomeTab::Live.index() {
+                format!("{} 个直播间", self.lists[source].len())
+            } else {
+                format!("{} 条", self.lists[source].len())
+            };
             self.status_detail.clear();
         }
     }
@@ -187,12 +193,12 @@ impl App {
         (w, h, raw): crate::cache::Pixels,
     ) {
         let (items, covers, dirty) = match source {
-            0..5 => (
+            0..super::COLLECTION_SOURCE => (
                 &self.lists[source],
                 &mut self.covers[source],
                 &mut self.home_dirty,
             ),
-            5 => (
+            super::COLLECTION_SOURCE => (
                 &self.collection.items,
                 &mut self.collection.covers,
                 &mut self.collection_dirty,

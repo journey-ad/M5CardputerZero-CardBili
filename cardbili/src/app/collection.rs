@@ -90,7 +90,7 @@ impl App {
                     .filter(|(_, cover)| cover.is_none())
                     .map(|(item, _)| item.clone())
                     .collect();
-                tasks::spawn_covers(5, missing, self.tx.clone());
+                tasks::spawn_covers(crate::app::home::COLLECTION_SOURCE, missing, self.tx.clone());
                 if loaded_page >= self.collection.page {
                     self.collection.page = loaded_page;
                     self.collection.has_more = videos.has_more;

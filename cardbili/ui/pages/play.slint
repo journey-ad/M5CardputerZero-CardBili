@@ -50,7 +50,7 @@ export component PlayPage inherits Rectangle {
         visible: Player.controls-visible;
         x: 0px; y: 0px; width: parent.width; height: 20px; background: #000000cc;
         Rectangle {
-            x: 0px; y: 0px; width: parent.width - 6px; height: 20px; clip: true;
+            x: 0px; y: 0px; width: Player.live ? parent.width - online.preferred-width - 26px : parent.width - 6px; height: 20px; clip: true;
             if Player.ptitle-marquee: Text {
                 x: -Player.ptitle-shift; y: 0px; height: 20px; text: Player.ptitle; color: #e6ebf5;
                 font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px; vertical-alignment: center;
@@ -71,9 +71,13 @@ export component PlayPage inherits Rectangle {
         text: Player.watching; color: #9aa6ba;
         font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
         vertical-alignment: center;
-        visible: Player.controls-visible && title-measure.preferred-width + self.preferred-width + 18px <= root.width;
+        visible: Player.controls-visible && (Player.live || title-measure.preferred-width + self.preferred-width + 18px <= root.width);
     }
-    TouchArea { x: 0px; y: 0px; width: parent.width; height: 20px; enabled: Player.controls-visible; clicked => { Player.key("p"); } }
+    if Player.live && Player.controls-visible && Player.watching != "": Icon {
+        x: online.x - 15px; y: 4px;
+        source: Icons.hot; colorize: #9aa6ba;
+    }
+    TouchArea { x: 0px; y: 0px; width: parent.width; height: 20px; enabled: Player.controls-visible; clicked => { Player.key(Player.live ? "SPACE" : "p"); } }
 
     PlaybackBar {
         visible: Player.controls-visible;

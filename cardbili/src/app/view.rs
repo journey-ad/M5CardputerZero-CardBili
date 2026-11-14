@@ -124,6 +124,15 @@ impl App {
                 Some(menu::Action::Back),
             ];
         }
+        if self.page == Page::Player && self.live.is_some() {
+            return [
+                Some(menu::Action::TogglePlay),
+                Some(menu::Action::Refresh),
+                None,
+                Some(menu::Action::Danmaku),
+                None,
+            ];
+        }
         if self.sections.open {
             return [
                 None,

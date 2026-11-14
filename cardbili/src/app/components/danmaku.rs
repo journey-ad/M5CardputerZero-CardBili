@@ -1,5 +1,5 @@
-use slint::ComponentHandle as _;
 use crate::{danmaku, AppWindow, DmRow};
+use slint::ComponentHandle as _;
 use slint::{Image, Model, VecModel};
 use std::collections::VecDeque;
 use std::rc::Rc;
@@ -85,7 +85,10 @@ impl DanmakuView {
 
     // 把引擎算出的弹幕行写进 Slint 模型
     pub(in crate::app) fn update(&mut self, engine: &danmaku::Engine, time: f64) {
-        let rows = engine.rows_at(time);
+        self.update_rows(engine.rows_at(time));
+    }
+
+    pub(in crate::app) fn update_rows(&mut self, rows: Vec<danmaku::Row<'_>>) {
         for index in (0..self.active.len()).rev() {
             if !rows.iter().any(|row| row.id == self.active[index]) {
                 self.active.remove(index);

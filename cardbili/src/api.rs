@@ -1,5 +1,7 @@
 pub mod auth;
 pub mod favorites;
+pub mod live;
+pub use live::{room as live_room, rooms as live_rooms};
 pub mod playback;
 pub mod sections;
 mod wbi;
@@ -295,6 +297,7 @@ pub fn play_info(
         duration,
         cid,
         parts,
+        live: false,
     })
 }
 

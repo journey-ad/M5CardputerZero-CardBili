@@ -1,8 +1,31 @@
-use slint::ComponentHandle as _;
 use super::super::*;
+use slint::ComponentHandle as _;
 
 impl App {
     pub(in crate::app) fn tick(&mut self) {
+        if let Some(player) = self.player.as_ref().filter(|player| player.stalled()) {
+            self.playback_failed(player.gen, "播放超时，按播放键重试".into());
+        }
+        if let Some(connection) = self.live_danmaku.as_ref() {
+            for event in connection.events.try_iter().take(64) {
+                match event {
+                    crate::live_danmaku::Event::Danmaku(dm) => {
+                        if let Some(player) = self.player.as_ref().filter(|player| {
+                            !player.paused
+                                && !player.finished
+                                && self.frames_in_seg > 0
+                                && self.settings.danmaku_enabled
+                        }) {
+                            self.live_engine
+                                .push(dm, player.position(self.frames_in_seg));
+                        }
+                    }
+                    crate::live_danmaku::Event::Unavailable => {
+                        self.toast("直播弹幕连接失败，正在重连…")
+                    }
+                }
+            }
+        }
         self.tick_input();
         self.tick_like();
         self.report_history(false, false);

@@ -16,7 +16,7 @@ RUN ./configure \
     --disable-ffplay --disable-ffprobe --disable-avdevice --disable-postproc \
     --enable-ffmpeg --enable-network --enable-openssl --enable-version3 \
     --enable-protocol=file,pipe,http,https,tcp,tls,crypto \
-    --enable-demuxer=mov --enable-parser=h264,aac \
+    --enable-demuxer=mov,hls,mpegts,flv --enable-parser=h264,aac \
     --enable-decoder=h264,aac --enable-encoder=rawvideo,pcm_s16le \
     --enable-muxer=rawvideo,pcm_s16le \
     --enable-filter=setpts,atempo,fps,scale,pad,format,aformat,aresample \

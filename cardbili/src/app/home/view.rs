@@ -91,7 +91,7 @@ impl App {
 
         let collection = self.page == Page::Collection;
         let source = if collection {
-            5
+            super::COLLECTION_SOURCE
         } else if let Some(source) = list_source(self.tab, self.mine_detail) {
             source
         } else {

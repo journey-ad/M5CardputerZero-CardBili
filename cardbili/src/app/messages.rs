@@ -41,10 +41,12 @@ impl App {
             }
             Msg::Frame(g) => self.frame_ready(g),
             Msg::PlaybackEnded(g) => self.playback_ended(g),
+            Msg::PlaybackFailed(g, error) => self.playback_failed(g, error),
             Msg::ListLoaded(t, items) => self.list_loaded(t, items),
             Msg::ListMore(t, items) => self.list_more(t, items),
             Msg::Err(t, msg) => self.list_error(t, msg),
             Msg::PlayReady(request, result) => self.play_ready(request, result),
+            Msg::LiveReady(request, result) => self.live_ready(request, result),
             Msg::Danmaku(g, eng) => self.danmaku_loaded(g, eng),
             Msg::QrReady(request, url) => self.qr_ready(request, url),
             Msg::QrStatus(request, s) => self.qr_status(request, s),

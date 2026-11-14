@@ -1,8 +1,46 @@
-use slint::ComponentHandle as _;
 use super::super::*;
+use slint::ComponentHandle as _;
 
 impl App {
+    // 直播支持暂停、重连、弹幕开关、音量与返回
+    fn live_key(&mut self, k: &str) {
+        if k == "r" {
+            self.requested_live = self.live.as_ref().map(|info| info.room_id);
+            return;
+        }
+        if k == "d" {
+            self.toggle_danmaku();
+            return;
+        }
+        if let Some(p) = self.player.as_mut() {
+            match k {
+                "SPACE" | "ENTER" => {
+                    if p.finished || p.paused {
+                        self.requested_live = self.live.as_ref().map(|info| info.room_id);
+                    } else {
+                        p.pause_toggle();
+                    }
+                }
+                "UP" | "f" | "w" => {
+                    let _ = self.volume_queue.try_send(10);
+                }
+                "DOWN" | "x" | "s" => {
+                    let _ = self.volume_queue.try_send(-10);
+                }
+                "ESC" | "BACKSPACE" => self.go_back = true,
+                _ => {}
+            }
+        } else if matches!(k, "SPACE" | "ENTER") {
+            self.requested_live = self.live.as_ref().map(|info| info.room_id);
+        } else if matches!(k, "ESC" | "BACKSPACE") {
+            self.go_back = true;
+        }
+    }
+
     pub(in crate::app) fn play_key(&mut self, k: &str, repeat: bool) {
+        if self.ui.global::<crate::Player>().get_live() {
+            return self.live_key(k);
+        }
         if k == "p" {
             self.sections.open = true;
             self.sections.dirty = true;

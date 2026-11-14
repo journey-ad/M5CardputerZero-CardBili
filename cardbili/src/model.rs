@@ -56,6 +56,17 @@ pub struct PlayInfo {
     pub duration: f64,
     pub cid: i64,
     pub parts: Vec<VideoPart>,
+    pub live: bool,
+}
+
+#[derive(Clone, Default)]
+pub struct LiveInfo {
+    pub room_id: u64,
+    pub title: String,
+    pub uname: String,
+    pub online: String,
+    pub play_url: String,
+    pub started_at: i64,
 }
 
 #[derive(Clone, Default)]

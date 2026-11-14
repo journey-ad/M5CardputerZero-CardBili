@@ -27,8 +27,10 @@ impl App {
             self.report_history(true, true);
         }
         if let Some(p) = self.player.as_mut() {
-            if g == p.gen {
+            if g == p.gen && !p.finished {
                 p.finished = true;
+                p.stop();
+                self.live_danmaku = None;
                 crate::diagnostics::write(format_args!(
                     "[播放] 已结束 gen={g} 位置={:.3}s 帧数={}",
                     p.position(self.frames_in_seg),
@@ -36,6 +38,8 @@ impl App {
                 ));
                 self.status = if self.frames_in_seg == 0 {
                     "播放失败，按播放键重试"
+                } else if self.live.is_some() {
+                    "直播已结束，按 ESC 返回"
                 } else {
                     "播放结束，按 ESC 返回"
                 }
@@ -43,6 +47,22 @@ impl App {
                 self.status_detail.clear();
             }
         }
+    }
+
+    pub(in crate::app) fn playback_failed(&mut self, g: u64, error: String) {
+        let Some(player) = self
+            .player
+            .as_mut()
+            .filter(|player| player.gen == g && !player.finished)
+        else {
+            return;
+        };
+        player.stop();
+        player.finished = true;
+        self.live_danmaku = None;
+        self.status = error;
+        self.status_detail.clear();
+        self.toast(&self.status);
     }
 
     pub(in crate::app) fn play_ready(
@@ -83,6 +103,54 @@ impl App {
             }
             Err(error) => {
                 self.play_start = 0.0;
+                self.status = error;
+                self.status_detail.clear();
+            }
+        }
+    }
+
+    pub(in crate::app) fn live_ready(
+        &mut self,
+        request: u64,
+        result: Result<model::LiveInfo, String>,
+    ) {
+        if self.page != Page::Player || request != self.play_request {
+            return;
+        }
+        match result {
+            Ok(info) => {
+                self.gen += 1;
+                self.frames_in_seg = 0;
+                let g_player = self.ui.global::<crate::Player>();
+                g_player.set_ptitle(info.title.as_str().into());
+                g_player.set_watching(info.online.as_str().into());
+                let play = model::PlayInfo {
+                    bvid: info.room_id.to_string(),
+                    owner: model::Owner {
+                        mid: String::new(),
+                        name: info.uname.clone(),
+                    },
+                    title: info.title.clone(),
+                    video_url: info.play_url.clone(),
+                    live: true,
+                    ..Default::default()
+                };
+                self.player = Some(player::Player::start(
+                    &play,
+                    self.cookies.clone().unwrap_or_default(),
+                    self.gen,
+                    self.tx.clone(),
+                    player::PlaybackState::default(),
+                ));
+                self.live_danmaku = Some(crate::live_danmaku::Connection::start(
+                    info.room_id,
+                    self.cookies.clone(),
+                ));
+                self.status = "加载中…".into();
+                self.status_detail.clear();
+                self.live = Some(info);
+            }
+            Err(error) => {
                 self.status = error;
                 self.status_detail.clear();
             }

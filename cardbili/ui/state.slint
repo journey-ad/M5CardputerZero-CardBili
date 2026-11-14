@@ -88,6 +88,7 @@ export global Player {
     in-out property <bool> paused: false;
     in-out property <bool> finished: false;
     in-out property <bool> controls-visible: true;
+    in-out property <bool> live: false;
 }
 
 // 弹幕：Rust 每帧写入当前可见弹幕
@@ -152,7 +153,7 @@ export global Login {
 export global Meta {
     in-out property <string> about-text: "";
     in-out property <length> about-content-h: 0px;
-    in-out property <[string]> tab-names: ["推荐", "热门", "动态", "我的", "设置"];
+    in-out property <[string]> tab-names: ["推荐", "热门", "动态", "直播", "我的", "设置"];
     in-out property <string> version: "";
     in-out property <length> about-scroll: 0px;
 }

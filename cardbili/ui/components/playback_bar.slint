@@ -3,8 +3,8 @@ import { Player, Danmaku } from "../state.slint";
 
 export component PlaybackBar inherits Rectangle {
     height: 28px; background: #000000b0;
-    Rectangle { x: 6px; y: 3px; width: parent.width - 12px; height: 3px; background: #2a3346; border-radius: 2px; }
-    Rectangle { x: 6px; y: 3px; width: (parent.width - 12px) * Player.progress; height: 3px; background: #6ea8ff; border-radius: 2px; }
+    if !Player.live: Rectangle { x: 6px; y: 3px; width: parent.width - 12px; height: 3px; background: #2a3346; border-radius: 2px; }
+    if !Player.live: Rectangle { x: 6px; y: 3px; width: (parent.width - 12px) * Player.progress; height: 3px; background: #6ea8ff; border-radius: 2px; }
     // 控制项依次对应实体 4–8 键
     Icon { x: 6px; y: 11px; source: Player.paused || Player.finished ? Icons.play : Icons.pause; }
     Text {
@@ -15,23 +15,23 @@ export component PlaybackBar inherits Rectangle {
     }
     TouchArea { x: 0px; y: 8px; width: 79px; height: 20px; clicked => { Player.key("SPACE"); } }
     Icon {
-        x: 100px; y: 11px; source: Icons.thumbs-up;
-        colorize: Player.liked ? #ff77a8 : #cfd8e6;
+        x: 100px; y: 11px; source: Player.live ? Icons.reload : Icons.thumbs-up;
+        colorize: !Player.live && Player.liked ? #ff77a8 : #cfd8e6;
     }
     TouchArea {
         x: 79px; y: 8px; width: 54px; height: 20px;
         pointer-event(event) => {
-            if event.button == PointerEventButton.left && event.kind == PointerEventKind.down { Player.key("l"); }
-            if event.button == PointerEventButton.left && event.kind == PointerEventKind.up { Player.key("LIKE_UP"); }
-            if event.kind == PointerEventKind.cancel { Player.key("LIKE_CANCEL"); }
+            if event.button == PointerEventButton.left && event.kind == PointerEventKind.down { Player.key(Player.live ? "r" : "l"); }
+            if !Player.live && event.button == PointerEventButton.left && event.kind == PointerEventKind.up { Player.key("LIKE_UP"); }
+            if !Player.live && event.kind == PointerEventKind.cancel { Player.key("LIKE_CANCEL"); }
         }
     }
-    Text {
+    if !Player.live: Text {
         x: 135px; y: 11px; width: 54px; height: 12px; text: Player.speed-text;
         color: #cfd8e6; font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
         horizontal-alignment: center; vertical-alignment: center;
     }
-    TouchArea { x: 135px; y: 8px; width: 54px; height: 20px; clicked => { Player.key("b"); } }
+    if !Player.live: TouchArea { x: 135px; y: 8px; width: 54px; height: 20px; clicked => { Player.key("b"); } }
     Rectangle {
         x: 211px; y: 11px; width: 12px; height: 12px;
         border-width: 1px; border-color: Danmaku.enabled ? #7fb0ff : #697487;
@@ -43,6 +43,6 @@ export component PlaybackBar inherits Rectangle {
         }
     }
     TouchArea { x: 190px; y: 8px; width: 54px; height: 20px; clicked => { Player.key("d"); } }
-    Icon { x: 269px; y: 11px; source: Icons.message-text; }
-    TouchArea { x: 248px; y: 8px; width: 54px; height: 20px; clicked => { Player.key("r"); } }
+    if !Player.live: Icon { x: 269px; y: 11px; source: Icons.message-text; }
+    if !Player.live: TouchArea { x: 248px; y: 8px; width: 54px; height: 20px; clicked => { Player.key("r"); } }
 }

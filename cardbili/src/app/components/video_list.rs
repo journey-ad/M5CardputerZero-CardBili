@@ -59,7 +59,9 @@ pub(in crate::app) fn sync_list(
 
 pub(in crate::app) fn list_source(tab: HomeTab, mine_detail: i32) -> Option<usize> {
     match tab {
-        HomeTab::Recommended | HomeTab::Popular | HomeTab::Dynamic => Some(tab.index()),
+        HomeTab::Recommended | HomeTab::Popular | HomeTab::Dynamic | HomeTab::Live => {
+            Some(tab.index())
+        }
         HomeTab::Mine if mine_detail >= 0 => Some(mine_detail as usize),
         _ => None,
     }

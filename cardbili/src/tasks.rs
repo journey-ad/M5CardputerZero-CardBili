@@ -40,6 +40,7 @@ pub fn load_list(tab: usize, cookies: Option<String>, tx: Sender<Msg>, force: bo
             || match tab {
                 0 => api::rcmd(cookies.as_deref(), 1),
                 1 => api::popular(cookies.as_deref(), 1),
+                5 => api::live_rooms(1),
                 _ => Err("未知视频列表".into()),
             },
             |result| {
@@ -95,6 +96,7 @@ pub fn load_more(tab: usize, page: u32, cookies: Option<String>, tx: Sender<Msg>
         let res = match tab {
             0 => api::rcmd(cookies.as_deref(), page),
             1 => api::popular(cookies.as_deref(), page),
+            5 => api::live_rooms(page),
             _ => Ok(Vec::new()),
         };
         match res {
@@ -122,6 +124,13 @@ pub fn start_play(
     thread::spawn(move || {
         let result = api::play_info(&bvid, cid, cookies.as_deref(), &cdn);
         let _ = tx.send(Msg::PlayReady(request, result));
+    });
+}
+
+pub fn start_live(room_id: u64, cookies: Option<String>, request: u64, tx: Sender<Msg>) {
+    thread::spawn(move || {
+        let result = api::live_room(room_id, cookies.as_deref());
+        let _ = tx.send(Msg::LiveReady(request, result));
     });
 }
 

@@ -27,8 +27,8 @@ impl App {
             return;
         }
         if matches!(k, "TAB" | "BACKTAB") && !self.help {
-            let step = if k == "TAB" { 1 } else { 4 };
-            self.tab = HomeTab::from_index((self.tab.index() + step) % 5);
+            let step = if k == "TAB" { 1 } else { -1 };
+            self.tab = self.tab.cycle(step);
             self.back_stack.clear();
             self.direction_hold = None;
             let g_status = self.ui.global::<crate::Status>();
@@ -80,18 +80,25 @@ impl App {
         } else {
             match k {
                 "ENTER" => {
-                    if let Some(it) = self.lists[self.tab.index()].get(self.sel as usize) {
-                        if !it.bvid.is_empty() {
-                            self.status = "正在加载视频…".into();
-                            self.status_detail.clear();
-                            self.requested_play = Some(it.bvid.clone());
-                        } else {
+                    let item = self.lists[self.tab.index()].get(self.sel as usize).cloned();
+                    if let Some(it) = item {
+                        if it.bvid.is_empty() {
                             self.status = "该条目无视频".into();
                             self.status_detail.clear();
+                        } else if self.tab == HomeTab::Live {
+                            if let Ok(room_id) = it.bvid.parse::<u64>() {
+                                self.status = "正在进入直播间…".into();
+                                self.status_detail.clear();
+                                self.requested_live = Some(room_id);
+                            }
+                        } else {
+                            self.status = "正在加载视频…".into();
+                            self.status_detail.clear();
+                            self.requested_play = Some(it.bvid);
                         }
                     }
                 }
-                "SPACE" => {
+                "SPACE" if self.tab != HomeTab::Live => {
                     if let Some(it) = self.lists[self.tab.index()].get(self.sel as usize) {
                         if !it.bvid.is_empty() {
                             self.requested_detail = Some((it.bvid.clone(), it.title.clone()));

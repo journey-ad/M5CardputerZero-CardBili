@@ -43,6 +43,7 @@ impl App {
             || self.requested_about
             || self.requested_following
             || self.requested_play.is_some()
+            || self.requested_live.is_some()
             || self.requested_detail.is_some()
             || self.requested_uploader.is_some()
             || self.requested_related.is_some()
@@ -90,6 +91,10 @@ impl App {
         self.collection_request += 1;
         self.following_request += 1;
         self.current_play = None;
+        self.live_danmaku = None;
+        self.live_engine = danmaku::LiveEngine::default();
+        self.live = None;
+        self.ui.global::<crate::Player>().set_live(false);
         if self.requested_play.is_none() {
             self.play_start = 0.0;
             self.requested_cid = None;
@@ -149,7 +154,23 @@ impl App {
             self.page = Page::Login;
             self.start_login("正在生成二维码…");
         }
+        if let Some(room_id) = self.requested_live.take() {
+            self.live = Some(model::LiveInfo { room_id, ..Default::default() });
+            self.controls = playback::Controls::default();
+            self.page = Page::Player;
+            self.sections = sections::Sections::default();
+            self.ui.global::<crate::Player>().set_ptitle("".into());
+            self.ui.global::<crate::Player>().set_watching("".into());
+            self.ui.global::<crate::Player>().set_progress(0.0);
+            self.ui.global::<crate::Player>().set_live(true);
+            self.ui.global::<crate::Player>().set_time_text("--:--".into());
+            self.status = "加载中…".into();
+            self.status_detail.clear();
+            tasks::start_live(room_id, self.cookies.clone(), self.play_request, self.tx.clone());
+        }
         if let Some(bvid) = self.requested_play.take() {
+            self.live = None;
+            self.ui.global::<crate::Player>().set_live(false);
             self.controls = playback::Controls::default();
             self.page = Page::Player;
             if self.sections.bvid != bvid {

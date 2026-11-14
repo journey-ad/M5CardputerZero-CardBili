@@ -1,7 +1,7 @@
 // 轻量弹幕引擎：加载时一次性分配赛道，按播放时间取出可见弹幕
 pub(crate) mod bitmap;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 
 use crate::player::WIDTH;
 
@@ -152,34 +152,41 @@ impl Engine {
         let mut rows = Vec::with_capacity(indices.len());
         for &index in indices {
             let group = &self.groups[index];
-            let age = t - group.t0;
-            if age < 0.0 || age > group.lifetime() {
-                continue;
+            if let Some(row) = group.row(index, t) {
+                rows.push(row);
             }
-            let width = WIDTH as f64;
-            let x = match group.kind {
-                Kind::Scroll => width - (width + group.len) * age / LIFE,
-                Kind::Top | Kind::Bottom => (width - group.len).max(0.0) / 2.0,
-            };
-            let lane = group.lane.unwrap_or_default() as f64;
-            let y = match group.kind {
-                Kind::Bottom => AREA_BOTTOM - (lane + 1.0) * LINE_H,
-                _ => AREA_TOP + lane * LINE_H,
-            };
-            rows.push(Row {
-                id: index,
-                text: &group.text,
-                x: x as f32,
-                y: y as f32,
-                w: group.len as f32,
-                color: group.color,
-            });
         }
         rows
     }
 }
 
 impl Group {
+    fn row(&self, index: usize, t: f64) -> Option<Row<'_>> {
+        let group = self;
+        let age = t - group.t0;
+        if age < 0.0 || age > group.lifetime() {
+            return None;
+        }
+        let width = WIDTH as f64;
+        let x = match group.kind {
+            Kind::Scroll => width - (width + group.len) * age / LIFE,
+            Kind::Top | Kind::Bottom => (width - group.len).max(0.0) / 2.0,
+        };
+        let lane = group.lane.unwrap_or_default() as f64;
+        let y = match group.kind {
+            Kind::Bottom => AREA_BOTTOM - (lane + 1.0) * LINE_H,
+            _ => AREA_TOP + lane * LINE_H,
+        };
+        Some(Row {
+            id: index,
+            text: &group.text,
+            x: x as f32,
+            y: y as f32,
+            w: group.len as f32,
+            color: group.color,
+        })
+    }
+
     fn lifetime(&self) -> f64 {
         match self.kind {
             Kind::Scroll => LIFE,
@@ -192,59 +199,102 @@ fn time_slice(time: f64) -> usize {
     (time * SLICES_PER_SECOND as f64).floor() as usize
 }
 
-// 按时间顺序分配轨道，每条弹幕的轨道保持固定
-fn assign_lanes(groups: &mut [Group]) {
-    let width = WIDTH as f64;
-    // 每条赛道记录当前占用者：种类、入场时间、文本宽度
-    let mut up: Vec<Option<(Kind, f64, f64)>> = vec![None; MAX_ROWS];
-    let mut bot: Vec<Option<(Kind, f64, f64)>> = vec![None; BOTTOM_LANES];
-    // 已上屏且未结束的弹幕，用于限制新弹幕入场
-    let mut live: Vec<(f64, f64)> = Vec::new();
-    for g in groups.iter_mut() {
-        // 只统计当前仍在屏幕上的弹幕；满了就丢弃这一条新弹幕，已上屏的不受影响
-        live.retain(|(t0, life)| t0 + life > g.t0);
-        if live.len() >= MAX_LIVE {
-            continue;
+#[derive(Default)]
+struct Lanes {
+    up: [Option<(Kind, f64, f64)>; MAX_ROWS],
+    bottom: [Option<(Kind, f64, f64)>; BOTTOM_LANES],
+    active: Vec<(f64, f64)>,
+}
+
+impl Lanes {
+    fn assign(&mut self, group: &mut Group) {
+        self.active.retain(|(start, life)| start + life > group.t0);
+        if self.active.len() >= MAX_LIVE {
+            return;
         }
-        let pool = if g.kind == Kind::Bottom {
-            &mut bot
+        let pool = if group.kind == Kind::Bottom {
+            &mut self.bottom[..]
         } else {
-            &mut up
+            &mut self.up[..]
         };
-        let mut chosen = None;
-        for (i, occupant) in pool.iter().enumerate() {
+        for (lane, occupant) in pool.iter_mut().enumerate() {
             let free = match *occupant {
                 None => true,
-                Some((pk, pt, plen)) => {
-                    let dt = g.t0 - pt;
-                    if pk == Kind::Scroll && g.kind == Kind::Scroll {
+                Some((kind, start, len)) => {
+                    let elapsed = group.t0 - start;
+                    if kind == Kind::Scroll && group.kind == Kind::Scroll {
                         // 前一条弹幕的右边缘已进入屏幕并留出间距
-                        dt >= LIFE * (plen + GAP) / (width + plen)
-                    } else if pk == Kind::Scroll {
-                        // 固定弹幕等待前一条滚动弹幕移出屏幕
-                        dt >= LIFE
-                    } else if g.kind == Kind::Scroll {
-                        // 固定弹幕入场后短暂保留轨道，随后允许滚动弹幕进入
-                        dt >= 0.4
+                        elapsed >= LIFE * (len + GAP) / (WIDTH as f64 + len)
+                    } else if kind == Kind::Scroll {
+                        elapsed >= LIFE
+                    } else if group.kind == Kind::Scroll {
+                        elapsed >= 0.4
                     } else {
-                        // 固定弹幕之间按展示时长错开
-                        dt >= FIX_SECS
+                        elapsed >= FIX_SECS
                     }
                 }
             };
             if free {
-                chosen = Some(i);
+                group.lane = Some(lane);
+                *occupant = Some((group.kind, group.t0, group.len));
+                self.active.push((group.t0, group.lifetime()));
                 break;
             }
         }
-        if let Some(i) = chosen {
-            g.lane = Some(i);
-            pool[i] = Some((g.kind, g.t0, g.len));
-            let life = match g.kind {
-                Kind::Scroll => LIFE,
-                Kind::Top | Kind::Bottom => FIX_SECS,
-            };
-            live.push((g.t0, life));
+    }
+}
+
+// 按时间顺序分配轨道，每条弹幕的轨道保持固定
+fn assign_lanes(groups: &mut [Group]) {
+    let mut lanes = Lanes::default();
+    for group in groups {
+        lanes.assign(group);
+    }
+}
+
+#[derive(Default)]
+pub struct LiveEngine {
+    groups: VecDeque<(usize, Group)>,
+    lanes: Lanes,
+    next_id: usize,
+}
+
+impl LiveEngine {
+    pub fn push(&mut self, dm: Dm, time: f64) {
+        self.groups
+            .retain(|(_, group)| time < group.t0 + group.lifetime());
+        let Some(kind) = kind_of(dm.mode) else {
+            return;
+        };
+        if self.groups.len() >= MAX_LIVE
+            || self
+                .groups
+                .iter()
+                .any(|(_, group)| group.text == dm.text && time - group.t0 <= MERGE_WINDOW)
+        {
+            return;
         }
+        let mut group = Group {
+            kind,
+            len: bitmap::width(&dm.text),
+            text: dm.text,
+            color: dm.color,
+            t0: time,
+            last_seen: time,
+            count: 1,
+            lane: None,
+        };
+        self.lanes.assign(&mut group);
+        if group.lane.is_some() {
+            self.groups.push_back((self.next_id, group));
+            self.next_id = self.next_id.wrapping_add(1);
+        }
+    }
+
+    pub fn rows_at(&self, time: f64) -> Vec<Row<'_>> {
+        self.groups
+            .iter()
+            .filter_map(|(id, group)| group.row(*id, time))
+            .collect()
     }
 }

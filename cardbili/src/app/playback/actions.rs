@@ -141,11 +141,20 @@ impl App {
         self.settings.danmaku_enabled = !self.settings.danmaku_enabled;
         self.settings_changed = true;
         if self.settings.danmaku_enabled {
+            if self.live.is_some() {
+                if let Some(player) = &self.player {
+                    self.danmaku_view.update_rows(
+                        self.live_engine
+                            .rows_at(player.position(self.frames_in_seg)),
+                    );
+                }
+            }
             if let (Some(player), Some(engine)) = (&self.player, &self.danmaku) {
                 self.danmaku_view
                     .update(engine, player.position(self.frames_in_seg));
             }
         } else {
+            self.live_engine = danmaku::LiveEngine::default();
             self.danmaku_view.hide();
         }
     }

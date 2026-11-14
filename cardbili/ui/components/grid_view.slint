@@ -17,7 +17,7 @@ export component GridView inherits Rectangle {
             height: parent.height - ((video.views != "" || video.danmaku != "" || video.progress != "" || video.watched != "") ? 42px : 30px);
             source: ListModel.grid-covers[i]; image-fit: cover;
         }
-        Rectangle {
+        if video.duration != "": Rectangle {
             x: thumbnail.x + thumbnail.width - self.width - 4px;
             y: thumbnail.y + thumbnail.height - self.height - 4px;
             width: duration.preferred-width + 8px; height: 14px;

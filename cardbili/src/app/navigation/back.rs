@@ -224,7 +224,7 @@ impl App {
                     .map(|(item, _)| item.clone())
                     .collect::<Vec<_>>();
                 if !missing_covers.is_empty() {
-                    tasks::spawn_covers(5, missing_covers, self.tx.clone());
+                    tasks::spawn_covers(crate::app::home::COLLECTION_SOURCE, missing_covers, self.tx.clone());
                 }
                 if !matches!(self.collection.source, model::VideoSource::Related(_)) {
                     self.collection.loading = self.collection.items.is_empty();

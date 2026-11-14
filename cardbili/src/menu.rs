@@ -98,7 +98,9 @@ pub fn actions(
             }
             if tab.is_video() || mine_detail >= 0 {
                 slots[2] = Some(Play);
-                slots[3] = Some(Detail);
+                if tab != HomeTab::Live {
+                    slots[3] = Some(Detail);
+                }
             }
             slots[4] = Some(if mine_detail >= 0 { Back } else { Help });
         }
