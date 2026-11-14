@@ -5,6 +5,7 @@ pub(super) struct DirectionHold {
     key: &'static str,
     since: Instant,
     repeat_at: Instant,
+    repeat_fired: bool,
 }
 
 impl App {
@@ -69,6 +70,14 @@ impl App {
                     let step = if released == "UP" { -22.0 } else { 22.0 };
                     self.scroll_tap = Some((step, hold.since));
                 }
+                if self.page == Page::Player && matches!(released, "LEFT" | "RIGHT") {
+                    if !hold.repeat_fired {
+                        self.dispatch_key(released, false);
+                    }
+                    if self.seek_pending.is_some() {
+                        self.seek_deadline = Some(Instant::now());
+                    }
+                }
                 return;
             }
         }
@@ -90,8 +99,12 @@ impl App {
                 key,
                 since: now,
                 repeat_at: now + Duration::from_millis(350),
+                repeat_fired: false,
             });
-            self.dispatch_key(key, false);
+            // 播放页左右键长按用于快进快退，按下先不跳转，松开后再提交
+            if !(self.page == Page::Player && matches!(key, "LEFT" | "RIGHT")) {
+                self.dispatch_key(key, false);
+            }
         } else {
             if !key.ends_with("_UP") && key != "POINTER" {
                 self.direction_hold = None;
@@ -119,6 +132,9 @@ impl App {
             Some(hold.key)
         });
         if let Some(key) = repeat {
+            if let Some(hold) = self.direction_hold.as_mut() {
+                hold.repeat_fired = true;
+            }
             self.last_input = now;
             self.dispatch_key(key, true);
         }
