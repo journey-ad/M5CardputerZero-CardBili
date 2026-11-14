@@ -4,6 +4,10 @@ use super::*;
 #[derive(Debug)]
 pub(super) enum Action {
     ClearCache,
+    #[cfg(all(feature = "desktop", windows))]
+    FfmpegInstall,
+    #[cfg(all(feature = "desktop", not(windows)))]
+    FfmpegNotice,
 }
 
 impl App {
@@ -43,6 +47,12 @@ impl App {
         if accepted {
             match action {
                 Action::ClearCache => self.clear_cache(),
+                #[cfg(all(feature = "desktop", windows))]
+                Action::FfmpegInstall => {
+                    crate::diagnostics::install_ffmpeg();
+                }
+                #[cfg(all(feature = "desktop", not(windows)))]
+                Action::FfmpegNotice => {}
             }
         }
     }

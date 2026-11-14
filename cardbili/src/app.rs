@@ -55,6 +55,30 @@ pub fn run(settings: Settings) {
         let _ = confirm_tx.send(Msg::Confirmed(accepted));
     });
     let mut app = App::new(ui, tx, settings);
+    #[cfg(feature = "desktop")]
+    if !crate::diagnostics::ffmpeg_available() {
+        #[cfg(windows)]
+        app.confirm(
+            confirmation::Action::FfmpegInstall,
+            "未找到 FFmpeg",
+            "播放需要 FFmpeg，是否通过 winget 自动安装？",
+            "安装",
+        );
+        #[cfg(target_os = "macos")]
+        app.confirm(
+            confirmation::Action::FfmpegNotice,
+            "未找到 FFmpeg",
+            "播放需要 FFmpeg，请先执行 brew install ffmpeg",
+            "知道了",
+        );
+        #[cfg(all(not(windows), not(target_os = "macos")))]
+        app.confirm(
+            confirmation::Action::FfmpegNotice,
+            "未找到 FFmpeg",
+            "播放需要 FFmpeg，请先通过系统包管理器安装",
+            "知道了",
+        );
+    }
     let mut pending = None;
     while !app.quit {
         let tick_end = Instant::now() + Duration::from_millis(16);
