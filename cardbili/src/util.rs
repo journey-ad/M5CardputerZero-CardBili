@@ -12,6 +12,8 @@ use slint::Rgb8Pixel;
 pub fn key_release(name: &str) -> Option<&'static str> {
     match name {
         "l" | "5" => Some("LIKE_UP"),
+        "7" => Some("7_UP"),
+        "8" => Some("8_UP"),
         "LEFT" | "z" => Some("LEFT_UP"),
         "RIGHT" | "c" => Some("RIGHT_UP"),
         "UP" | "f" | "w" => Some("UP_UP"),
@@ -46,6 +48,7 @@ pub fn spawn_keys(path: String, tx: mpsc::Sender<String>) {
         };
         let mut buf = [0u8; 24];
         let mut esc_down: Option<std::time::Instant> = None;
+        let mut shift = [false; 2];
         loop {
             if f.read_exact(&mut buf).is_err() {
                 break;
@@ -54,6 +57,10 @@ pub fn spawn_keys(path: String, tx: mpsc::Sender<String>) {
             let code = u16::from_le_bytes([buf[18], buf[19]]);
             let value = i32::from_le_bytes([buf[20], buf[21], buf[22], buf[23]]);
             if ty != 1 {
+                continue;
+            }
+            if code == 42 || code == 54 {
+                shift[usize::from(code == 54)] = value != 0;
                 continue;
             }
             // ESC 单独处理：短按返回，长按退出
@@ -80,6 +87,11 @@ pub fn spawn_keys(path: String, tx: mpsc::Sender<String>) {
             }
             if value == 1 {
                 if let Some(n) = code_name(code) {
+                    let n = if n == "TAB" && shift.iter().any(|down| *down) {
+                        "BACKTAB"
+                    } else {
+                        n
+                    };
                     if tx.send(n.to_string()).is_err() {
                         break;
                     }
@@ -118,15 +130,6 @@ pub fn make_placeholder() -> slint::Image {
         };
     }
     slint::Image::from_rgb8(pb)
-}
-
-pub fn decode_avatar(bytes: &[u8]) -> Option<slint::Image> {
-    let img = image::load_from_memory(bytes)
-        .ok()?
-        .thumbnail(64, 64)
-        .to_rgb8();
-    let (w, h) = img.dimensions();
-    Some(raw_to_image(w, h, img.as_raw()))
 }
 
 pub fn fetch_cover(pic: &str) -> Option<(u32, u32, Vec<u8>)> {

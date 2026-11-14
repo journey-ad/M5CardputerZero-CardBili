@@ -3,7 +3,10 @@ use super::*;
 #[derive(Default)]
 pub(super) struct FollowingState {
     pub items: Vec<model::Following>,
+    pub avatars: HashMap<String, slint::Image>,
     pub page: u32,
+    pub pending_page: u32,
+    pub first_page_size: usize,
     pub has_more: bool,
     pub loading: bool,
     pub error: String,
@@ -19,6 +22,7 @@ impl App {
         }
         if let Some(cookies) = &self.cookies {
             self.following.loading = true;
+            self.following.pending_page = self.following.page + 1;
             self.following.error.clear();
             tasks::load_following(
                 self.mid.clone(),
@@ -39,23 +43,45 @@ impl App {
         if self.page != 7 || request != self.following_request {
             return;
         }
-        self.following.loading = false;
+        if page == self.following.pending_page {
+            self.following.loading = false;
+        }
         match result {
             Ok(result) => {
-                let mut known: HashSet<String> = self
+                tasks::load_following_avatars(result.items.clone(), request, self.tx.clone());
+                let selected = self
+                    .following
+                    .items
+                    .get(self.following.selection)
+                    .map(|user| user.owner.mid.clone());
+                if page == 1 {
+                    let tail = self.following.items.split_off(
+                        self.following
+                            .first_page_size
+                            .min(self.following.items.len()),
+                    );
+                    self.following.first_page_size = result.items.len();
+                    self.following.items = result.items;
+                    self.following.items.extend(tail);
+                } else {
+                    self.following.items.extend(result.items);
+                }
+                let mut known = HashSet::new();
+                self.following
+                    .items
+                    .retain(|user| known.insert(user.owner.mid.clone()));
+                if let Some(index) = self
                     .following
                     .items
                     .iter()
-                    .map(|user| user.owner.mid.clone())
-                    .collect();
-                self.following.items.extend(
-                    result
-                        .items
-                        .into_iter()
-                        .filter(|user| known.insert(user.owner.mid.clone())),
-                );
-                self.following.page = page;
-                self.following.has_more = result.has_more;
+                    .position(|user| Some(&user.owner.mid) == selected.as_ref())
+                {
+                    self.following.selection = index;
+                }
+                if page >= self.following.page {
+                    self.following.page = page;
+                    self.following.has_more = result.has_more;
+                }
                 self.following.dirty = true;
             }
             Err(error) => self.following.error = error,
@@ -113,7 +139,14 @@ impl App {
                     .iter()
                     .skip(self.following.first)
                     .take(4)
-                    .map(|user| Cmt {
+                    .map(|user| crate::FollowingRow {
+                        avatar: self
+                            .following
+                            .avatars
+                            .get(&user.owner.mid)
+                            .cloned()
+                            .unwrap_or_default(),
+                        has_avatar: self.following.avatars.contains_key(&user.owner.mid),
                         user: user.owner.name.as_str().into(),
                         text: if user.signature.is_empty() {
                             format!("UID {}", user.owner.mid).into()

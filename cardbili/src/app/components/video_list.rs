@@ -64,3 +64,35 @@ pub(in crate::app) fn list_source(tab: usize, mine_detail: i32) -> Option<usize>
         _ => None,
     }
 }
+
+// 首屏刷新保留后续页、已解码封面和当前视频的选中位置
+pub(in crate::app) fn refresh_first_page(
+    items: &mut Vec<model::Item>,
+    covers: &mut Vec<Option<slint::Image>>,
+    first_page_size: &mut usize,
+    mut fresh: Vec<model::Item>,
+    selection: i32,
+) -> i32 {
+    let selected = items.get(selection as usize).map(|item| item.bvid.clone());
+    let images: HashMap<_, _> = items
+        .iter()
+        .zip(covers.iter())
+        .map(|(item, image)| (item.bvid.clone(), image.clone()))
+        .collect();
+    let mut known: HashSet<_> = fresh.iter().map(|item| item.bvid.clone()).collect();
+    let tail = items
+        .drain((*first_page_size).min(items.len())..)
+        .filter(|item| known.insert(item.bvid.clone()))
+        .collect::<Vec<_>>();
+    *first_page_size = fresh.len();
+    fresh.extend(tail);
+    *items = fresh;
+    *covers = items
+        .iter()
+        .map(|item| images.get(&item.bvid).cloned().flatten())
+        .collect();
+    selected
+        .and_then(|bvid| items.iter().position(|item| item.bvid == bvid))
+        .map(|index| index as i32)
+        .unwrap_or(selection.clamp(0, (items.len() as i32 - 1).max(0)))
+}

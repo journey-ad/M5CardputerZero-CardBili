@@ -57,11 +57,6 @@ impl App {
                 } else {
                     "".into()
                 });
-                self.ui.set_favorite_count(if self.loaded[4] {
-                    format!("{} 条", self.lists[4].len()).into()
-                } else {
-                    "".into()
-                });
             }
         }
 
@@ -175,6 +170,7 @@ impl App {
                 && selected + visible_count >= items.len()
             {
                 self.collection.loading = true;
+                self.collection.pending_page = self.collection.page + 1;
                 tasks::load_collection(
                     self.collection.source.clone(),
                     self.collection.page + 1,

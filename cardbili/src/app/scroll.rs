@@ -1,7 +1,7 @@
 use super::*;
 
 impl App {
-    pub(super) fn scroll_key(&mut self, key: &str) -> bool {
+    pub(super) fn scroll_key(&mut self, key: &str, repeat: bool) -> bool {
         let (direction, full_page) = match key {
             "UP" | "f" | "w" => (-1.0, false),
             "DOWN" | "x" | "s" => (1.0, false),
@@ -19,15 +19,10 @@ impl App {
             self.scroll_tap = None;
             direction * height
         } else {
-            if self.detail_hold.is_some() {
-                return true;
-            }
-            let double = self.scroll_tap.take().is_some_and(|(previous, since)| {
-                previous == step && since.elapsed() <= Duration::from_millis(300)
-            });
-            let now = Instant::now();
-            self.detail_hold = Some((step, now));
-            self.detail_repeat = now;
+            let double = !repeat
+                && self.scroll_tap.take().is_some_and(|(previous, since)| {
+                    previous == step && since.elapsed() <= Duration::from_millis(300)
+                });
             if double {
                 direction * (height - 22.0)
             } else {

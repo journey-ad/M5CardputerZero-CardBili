@@ -278,6 +278,9 @@ impl Display {
             for key in cur.iter() {
                 if !self.prev_keys.contains(key) {
                     if let Some(s) = desktop_key(*key) {
+                        let shift = cur.contains(&minifb::Key::LeftShift)
+                            || cur.contains(&minifb::Key::RightShift);
+                        let s = if s == "TAB" && shift { "BACKTAB" } else { s };
                         let _ = self.ktx.send(s.to_string());
                     }
                 }

@@ -86,14 +86,6 @@ impl App {
         if self.page != 6 {
             return;
         }
-        if let Some((step, since)) = self.detail_hold {
-            if since.elapsed() >= Duration::from_millis(350)
-                && self.detail_repeat.elapsed() >= Duration::from_millis(120)
-            {
-                self.detail_repeat = Instant::now();
-                self.scroll_comments(step);
-            }
-        }
         if self.comment_page.dirty {
             self.ui.set_comment_rows(ModelRc::new(VecModel::from(
                 self.comment_page

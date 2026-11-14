@@ -15,6 +15,22 @@ impl App {
     pub(super) fn sync_collection_header(&self) {
         let model::VideoSource::Author(owner) = &self.collection.source else {
             self.ui.set_collection_is_author(false);
+            let title = match &self.collection.source {
+                model::VideoSource::Related(_) => "相关推荐".to_string(),
+                model::VideoSource::Favorites(folder) => {
+                    format!("{} · {} 条", folder.title, folder.count)
+                }
+                model::VideoSource::Author(_) => unreachable!(),
+            };
+            self.ui.set_collection_title(title.into());
+            self.ui.set_collection_empty(
+                if matches!(self.collection.source, model::VideoSource::Favorites(_)) {
+                    "暂无收藏视频"
+                } else {
+                    "暂无相关视频"
+                }
+                .into(),
+            );
             return;
         };
         self.ui.set_collection_is_author(true);
@@ -46,23 +62,20 @@ impl App {
     }
 
     pub(super) fn page_key(&mut self, k: &str) {
-        if self.page == 7 {
+        if self.page == 8 {
+            self.favorites_key(k);
+        } else if self.page == 7 {
             self.following_key(k);
         } else if self.page == 6 {
             self.comments_key(k);
         } else if self.page == 2 {
             match k {
                 "ESC" | "BACKSPACE" => {
-                    if self.login_uploader.take().is_some()
-                        || self.login_return
-                        || self.login_following
-                    {
-                        self.login_following = false;
-                        self.login_return = false;
-                        self.go_back = true;
-                    } else {
-                        self.page = 0;
-                    }
+                    self.login_uploader = None;
+                    self.login_following = false;
+                    self.login_favorites = false;
+                    self.login_return = false;
+                    self.go_back = true;
                 }
                 "r" => {
                     self.ui.set_has_qr(false);
@@ -107,7 +120,7 @@ impl App {
                 "DOWN" | "x" | "s" | "PGDN" => {
                     self.about_scroll = (self.about_scroll + 20.0).min(limit)
                 }
-                "ESC" | "BACKSPACE" | "ENTER" => self.page = 0,
+                "ESC" | "BACKSPACE" | "ENTER" => self.go_back = true,
                 _ => {}
             }
         } else if self.page == 5 {
@@ -130,13 +143,14 @@ impl App {
                     self.collection_request += 1;
                     self.collection.loading = true;
                     self.collection.error.clear();
+                    self.collection.pending_page = if self.collection.items.is_empty() {
+                        1
+                    } else {
+                        self.collection.page + 1
+                    };
                     tasks::load_collection(
                         self.collection.source.clone(),
-                        if self.collection.items.is_empty() {
-                            1
-                        } else {
-                            self.collection.page + 1
-                        },
+                        self.collection.pending_page,
                         self.cookies.clone(),
                         self.collection_request,
                         self.tx.clone(),

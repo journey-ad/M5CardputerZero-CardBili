@@ -28,6 +28,7 @@ pub(super) struct App {
     pub(super) covers_started: [bool; 5],
     pub(super) loaded: [bool; 5],
     pub(super) pages: [usize; 5],
+    pub(super) first_page_sizes: [usize; 5],
     pub(super) has_more: [bool; 5],
     pub(super) loading_more: [bool; 5],
     pub(super) mine_detail: i32,
@@ -46,7 +47,6 @@ pub(super) struct App {
     pub(super) status: String,
     pub(super) status_detail: String,
     pub(super) loading: bool,
-    pub(super) detail_from_uploader: bool,
     pub(super) scroll_tap: Option<(f64, Instant)>,
     pub(super) detail_bvid: String,
     pub(super) detail_request: u64,
@@ -65,6 +65,12 @@ pub(super) struct App {
     pub(super) following_request: u64,
     pub(super) requested_following: bool,
     pub(super) login_following: bool,
+    pub(super) favorites: favorites::Favorites,
+    pub(super) requested_favorites: bool,
+    pub(super) requested_folder: Option<model::FavoriteFolder>,
+    pub(super) requested_home_list: Option<usize>,
+    pub(super) requested_about: bool,
+    pub(super) login_favorites: bool,
     pub(super) collection: CollectionState,
     pub(super) collection_request: u64,
     pub(super) collection_dirty: bool,
@@ -85,12 +91,11 @@ pub(super) struct App {
     pub(super) esc_press: Option<Instant>,
     pub(super) bar_until: Option<Instant>,
     pub(super) last_input: Instant,
-    pub(super) left_hold: Option<Instant>,
-    pub(super) right_hold: Option<Instant>,
-    pub(super) left_rep: Instant,
-    pub(super) right_rep: Instant,
-    pub(super) detail_hold: Option<(f64, Instant)>,
-    pub(super) detail_repeat: Instant,
+    pub(super) direction_hold: Option<input::DirectionHold>,
+    pub(super) return_hold: Option<(usize, Instant)>,
+    pub(super) back_taps: (u8, Option<Instant>),
+    pub(super) back_hint: bool,
+    pub(super) return_home: bool,
     pub(super) latest: Option<(u64, Vec<u8>)>,
     pub(super) settings_changed: bool,
     pub(super) go_back: bool,
@@ -182,7 +187,7 @@ impl App {
 
         let force0 = std::env::var("BILI_FORCE").is_ok();
         if tab < 3 {
-            tasks::load_list(tab, cookies.clone(), mid.clone(), tx.clone(), force0);
+            tasks::load_list(tab, cookies.clone(), tx.clone(), force0);
         }
 
         if let Ok(b) = std::env::var("BILI_AUTOPLAY") {
@@ -219,12 +224,6 @@ impl App {
         let esc_press: Option<Instant> = None;
         let bar_until: Option<Instant> = None;
         let last_input = Instant::now();
-        let left_hold: Option<Instant> = None;
-        let right_hold: Option<Instant> = None;
-        let left_rep = Instant::now();
-        let right_rep = Instant::now();
-        let detail_hold: Option<(f64, Instant)> = None;
-        let detail_repeat = Instant::now();
         let latest = None;
         let settings_changed = false;
         let go_back = false;
@@ -256,6 +255,7 @@ impl App {
             covers_started,
             loaded,
             pages,
+            first_page_sizes: [0; 5],
             has_more,
             loading_more,
             mine_detail,
@@ -274,7 +274,6 @@ impl App {
             status,
             status_detail,
             loading,
-            detail_from_uploader: false,
             scroll_tap: None,
             detail_bvid,
             detail_request,
@@ -293,6 +292,12 @@ impl App {
             following_request: 0,
             requested_following: false,
             login_following: false,
+            favorites: favorites::Favorites::default(),
+            requested_favorites: false,
+            requested_folder: None,
+            requested_home_list: None,
+            requested_about: false,
+            login_favorites: false,
             collection,
             collection_request,
             collection_dirty,
@@ -313,12 +318,11 @@ impl App {
             esc_press,
             bar_until,
             last_input,
-            left_hold,
-            right_hold,
-            left_rep,
-            right_rep,
-            detail_hold,
-            detail_repeat,
+            direction_hold: None,
+            return_hold: None,
+            back_taps: (0, None),
+            back_hint: false,
+            return_home: false,
             latest,
             settings_changed,
             go_back,

@@ -1,7 +1,7 @@
 use super::super::*;
 
 impl App {
-    pub(in crate::app) fn play_key(&mut self, k: &str) {
+    pub(in crate::app) fn play_key(&mut self, k: &str, repeat: bool) {
         match k {
             "l" => {
                 self.like_press();
@@ -41,44 +41,22 @@ impl App {
                 "SPACE" | "ENTER" => {
                     p.pause_toggle();
                 }
-                "LEFT" | "z" => {
-                    self.left_hold = Some(Instant::now());
-                    self.left_rep = Instant::now();
+                "LEFT" | "RIGHT" => {
+                    let step = if repeat { 2.0 } else { 10.0 };
+                    let step = if k == "LEFT" { -step } else { step };
                     let base = self
                         .seek_pending
                         .unwrap_or_else(|| p.position(self.frames_in_seg));
-                    let t = (base - 10.0).max(0.0);
+                    let position = (base + step).clamp(0.0, p.duration.max(0.0));
                     self.ui.set_progress(if p.duration > 0.0 {
-                        (t / p.duration) as f32
+                        (position / p.duration) as f32
                     } else {
                         0.0
                     });
                     self.ui.set_time_text(
-                        format!("{} / {}", model::mmss(t), model::mmss(p.duration))
-                            .as_str()
-                            .into(),
+                        format!("{} / {}", model::mmss(position), model::mmss(p.duration)).into(),
                     );
-                    self.seek_pending = Some(t);
-                    self.seek_deadline = Some(Instant::now() + Duration::from_millis(300));
-                }
-                "RIGHT" | "c" => {
-                    self.right_hold = Some(Instant::now());
-                    self.right_rep = Instant::now();
-                    let base = self
-                        .seek_pending
-                        .unwrap_or_else(|| p.position(self.frames_in_seg));
-                    let t = (base + 10.0).min(p.duration.max(0.0));
-                    self.ui.set_progress(if p.duration > 0.0 {
-                        (t / p.duration) as f32
-                    } else {
-                        0.0
-                    });
-                    self.ui.set_time_text(
-                        format!("{} / {}", model::mmss(t), model::mmss(p.duration))
-                            .as_str()
-                            .into(),
-                    );
-                    self.seek_pending = Some(t);
+                    self.seek_pending = Some(position);
                     self.seek_deadline = Some(Instant::now() + Duration::from_millis(300));
                 }
                 "UP" | "f" | "w" => {

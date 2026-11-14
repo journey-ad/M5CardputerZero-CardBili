@@ -12,6 +12,9 @@ pub const TTL_LIST: u64 = 60;
 pub const TTL_DETAIL: u64 = 120;
 pub const TTL_PLAYURL: u64 = 120;
 pub const TTL_REPLY: u64 = 120;
+pub const TTL_ACCOUNT: u64 = 86400;
+
+pub type Pixels = (u32, u32, Vec<u8>);
 
 // 缩略图缓存文件上限
 const IMG_MAX: usize = 256;
@@ -34,7 +37,7 @@ fn force_on() -> bool {
 }
 
 // 缓存预览阶段可接受的数据最大年龄，单位为秒
-const STALE_MAX: u64 = 86400;
+const STALE_MAX: u64 = 7 * 86400;
 
 thread_local! {
     static CACHED_ONLY: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
@@ -195,7 +198,15 @@ pub fn api_json_with(
 }
 
 // 带缓存的封面：命中直接返回已缩放像素，未命中下载并回填
-pub fn cover(pic: &str) -> Option<(u32, u32, Vec<u8>)> {
+pub fn cover(pic: &str) -> Option<Pixels> {
+    cached_image(pic, 180, 120)
+}
+
+pub fn avatar(url: &str) -> Option<Pixels> {
+    cached_image(url, 64, 64)
+}
+
+fn cached_image(pic: &str, width: u32, height: u32) -> Option<Pixels> {
     init();
     let mut url = pic.to_string();
     if let Some(p) = url.find('@') {
@@ -209,7 +220,10 @@ pub fn cover(pic: &str) -> Option<(u32, u32, Vec<u8>)> {
     if url.is_empty() {
         return None;
     }
-    let path = img_dir().join(format!("{}.raw", key_of(&url)));
+    let path = img_dir().join(format!(
+        "{}.raw",
+        key_of(&format!("{url}@{width}x{height}"))
+    ));
     if let Ok(data) = fs::read(&path) {
         if data.len() >= 8 {
             let w = u32::from_le_bytes([data[0], data[1], data[2], data[3]]);
@@ -220,7 +234,7 @@ pub fn cover(pic: &str) -> Option<(u32, u32, Vec<u8>)> {
     }
     let bytes = net::curl_bytes(&url).ok()?;
     let img = image::load_from_memory(&bytes).ok()?;
-    let img = img.thumbnail(180, 120).to_rgb8();
+    let img = img.thumbnail(width, height).to_rgb8();
     let (w, h) = img.dimensions();
     let raw = img.into_raw();
     let mut buf = Vec::with_capacity(8 + raw.len());

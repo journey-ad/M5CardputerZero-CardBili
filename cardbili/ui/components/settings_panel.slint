@@ -4,7 +4,7 @@ import { Icon, Icons } from "icons.slint";
 export component SettingsPanel inherits Rectangle {
     clip: true;
     property <int> first: max(0, Nav.sel - floor((root.height - 4px) / 24px) + 1);
-    for label[index] in ["列表风格", "弹幕开关", "弹幕不透明度", "界面布局", "记录历史", "关于"]: Rectangle {
+    for label[index] in ["视频列表风格", "弹幕开关", "弹幕不透明度", "首页布局", "记录播放历史", "关于"]: Rectangle {
         x: 6px;
         y: 4px + (index - root.first) * 24px;
         width: parent.width - 12px;

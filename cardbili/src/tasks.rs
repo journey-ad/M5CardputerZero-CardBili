@@ -6,84 +6,73 @@ use std::time::Duration;
 
 use crate::{api, net, util, Msg};
 
-pub fn load_list(tab: usize, cookies: Option<String>, mid: String, tx: Sender<Msg>, force: bool) {
+// 先发布缓存，再发布最新数据；刷新失败时保留已展示的缓存
+fn cached_then_refresh<T>(
+    force: bool,
+    fetch: impl Fn() -> Result<T, String>,
+    publish: impl Fn(Result<T, String>),
+) {
+    let mut showed = false;
+    if !force {
+        crate::cache::set_cached_only(true);
+        let cached = fetch();
+        crate::cache::set_cached_only(false);
+        if let Ok(value) = cached {
+            publish(Ok(value));
+            showed = true;
+        }
+    }
+    crate::cache::set_force(true);
+    let fresh = fetch();
+    if fresh.is_ok() || !showed {
+        publish(fresh);
+    }
+}
+
+pub fn load_list(tab: usize, cookies: Option<String>, tx: Sender<Msg>, force: bool) {
     if tab == 2 {
         load_dynamic(0, String::new(), cookies, tx, force);
         return;
     }
     thread::spawn(move || {
-        let fetch =
-            |cookies: &Option<String>, mid: &String| -> Result<Vec<crate::model::Item>, String> {
-                match tab {
-                    0 => api::rcmd(cookies.as_deref(), 1),
-                    1 => api::popular(cookies.as_deref(), 1),
-                    3 => match cookies.as_deref() {
-                        Some(c) => api::history(c),
-                        None => Err("未登录，请先登录".into()),
-                    },
-                    4 => match cookies.as_deref() {
-                        Some(c) => api::fav(c, mid),
-                        None => Err("未登录，请先登录".into()),
-                    },
-                    _ => Err("?".into()),
-                }
-            };
-        // 自动加载时先展示本地缓存
-        let mut showed = false;
-        if !force {
-            crate::cache::set_cached_only(true);
-            let cached = fetch(&cookies, &mid);
-            crate::cache::set_cached_only(false);
-            if let Ok(items) = cached {
-                if !items.is_empty() {
-                    if std::env::var("BILI_DUMP").is_ok() {
-                        for it in items.iter().take(6) {
-                            eprintln!("CACHE ITEM: {} | {}", it.title, it.meta);
-                        }
-                    }
-                    let _ = tx.send(Msg::ListLoaded(tab, items));
-                    showed = true;
-                }
-            }
-        }
-        // SWR 阶段2：后台请求最新，成功则覆盖界面
-        crate::cache::set_force(true);
-        match fetch(&cookies, &mid) {
-            Ok(items) => {
-                if std::env::var("BILI_DUMP").is_ok() {
-                    for it in items.iter().take(6) {
-                        eprintln!("ITEM: {} | {}", it.title, it.meta);
-                    }
-                }
-                let _ = tx.send(Msg::ListLoaded(tab, items));
-            }
-            Err(e) => {
-                // 已展示缓存时，后台失败静默，保留旧数据
-                if !showed {
-                    let _ = tx.send(Msg::Err(tab, e));
-                }
-            }
-        }
+        cached_then_refresh(
+            force,
+            || match tab {
+                0 => api::rcmd(cookies.as_deref(), 1),
+                1 => api::popular(cookies.as_deref(), 1),
+                3 => cookies
+                    .as_deref()
+                    .ok_or_else(|| "未登录，请先登录".to_string())
+                    .and_then(api::history),
+                _ => Err("未知视频列表".into()),
+            },
+            |result| {
+                let message = match result {
+                    Ok(items) => Msg::ListLoaded(tab, items),
+                    Err(error) => Msg::Err(tab, error),
+                };
+                let _ = tx.send(message);
+            },
+        );
     });
 }
 
-pub fn fetch_account(cookies: Option<String>, tx: Sender<Msg>) {
-    thread::spawn(move || match api::account(cookies.as_deref()) {
-        Ok(a) => {
-            let mut face = a.face.clone();
-            if face.starts_with("//") {
-                face = format!("https:{}", face);
-            }
-            let raw = if face.is_empty() {
-                Vec::new()
-            } else {
-                net::curl_bytes(&face).unwrap_or_default()
-            };
-            let _ = tx.send(Msg::Acct(a, raw));
-        }
-        Err(e) => {
-            let _ = tx.send(Msg::Err(9, e));
-        }
+pub fn fetch_account(cookies: Option<String>, tx: Sender<Msg>, force: bool) {
+    thread::spawn(move || {
+        cached_then_refresh(
+            force,
+            || api::account(cookies.as_deref()),
+            |result| {
+                let message = match result {
+                    Ok(account) => {
+                        let avatar = crate::cache::avatar(&account.face);
+                        Msg::Acct(account, avatar)
+                    }
+                    Err(error) => Msg::Err(9, error),
+                };
+                let _ = tx.send(message);
+            },
+        );
     });
 }
 
@@ -138,25 +127,40 @@ pub fn load_collection(
     tx: Sender<Msg>,
 ) {
     thread::spawn(move || {
-        let result = match source {
-            crate::model::VideoSource::Author(owner) => {
-                api::uploader_videos(&owner.mid, page, cookies.as_deref())
-            }
-            crate::model::VideoSource::Related(bvid) => {
-                api::related_videos(&bvid, cookies.as_deref())
-            }
-        };
-        let _ = tx.send(Msg::Collection(request, page, result));
+        cached_then_refresh(
+            page > 1,
+            || match &source {
+                crate::model::VideoSource::Author(owner) => {
+                    api::uploader_videos(&owner.mid, page, cookies.as_deref())
+                }
+                crate::model::VideoSource::Favorites(folder) => cookies
+                    .as_deref()
+                    .ok_or_else(|| "未登录，请先登录".to_string())
+                    .and_then(|cookies| api::favorites::videos(folder.id, page, cookies)),
+                crate::model::VideoSource::Related(bvid) => {
+                    api::related_videos(bvid, cookies.as_deref())
+                }
+            },
+            |result| {
+                let _ = tx.send(Msg::Collection(request, page, result));
+            },
+        );
     });
 }
 
 pub fn load_author_profile(mid: String, cookies: Option<String>, request: u64, tx: Sender<Msg>) {
     thread::spawn(move || {
-        let result = api::author_profile(&mid, cookies.as_deref()).map(|profile| {
-            let avatar = net::curl_bytes(&profile.face).unwrap_or_default();
-            (profile, avatar)
-        });
-        let _ = tx.send(Msg::AuthorProfile(request, result));
+        cached_then_refresh(
+            false,
+            || api::author_profile(&mid, cookies.as_deref()),
+            |result| {
+                let result = result.map(|profile| {
+                    let avatar = crate::cache::avatar(&profile.face);
+                    (profile, avatar)
+                });
+                let _ = tx.send(Msg::AuthorProfile(request, result));
+            },
+        );
     });
 }
 
@@ -198,29 +202,20 @@ pub fn start_detail(bvid: String, cookies: Option<String>, request: u64, tx: Sen
             }
             (d, w, h, raw)
         };
-        // SWR 阶段1：缓存详情先展示
-        let mut showed = false;
-        crate::cache::set_cached_only(true);
-        let cached = api::video_detail(&bvid, cookies.as_deref());
-        crate::cache::set_cached_only(false);
-        if let Ok(d) = cached {
-            let (d, w, h, raw) = build(d);
-            let _ = tx.send(Msg::Detail(request, d, w, h, raw));
-            showed = true;
-        }
-        // 请求最新详情并更新播放量等信息
-        crate::cache::set_force(true);
-        match api::video_detail(&bvid, cookies.as_deref()) {
-            Ok(d) => {
-                let (d, w, h, raw) = build(d);
-                let _ = tx.send(Msg::Detail(request, d, w, h, raw));
-            }
-            Err(e) => {
-                if !showed {
-                    let _ = tx.send(Msg::DetailError(request, e));
-                }
-            }
-        }
+        cached_then_refresh(
+            false,
+            || api::video_detail(&bvid, cookies.as_deref()),
+            |result| {
+                let message = match result {
+                    Ok(detail) => {
+                        let (detail, w, h, raw) = build(detail);
+                        Msg::Detail(request, detail, w, h, raw)
+                    }
+                    Err(error) => Msg::DetailError(request, error),
+                };
+                let _ = tx.send(message);
+            },
+        );
     });
 }
 
@@ -268,18 +263,56 @@ pub fn load_dynamic(
     force: bool,
 ) {
     thread::spawn(move || {
-        crate::cache::set_force(force);
-        let result = cookies
-            .as_deref()
-            .ok_or_else(|| "未登录，请先登录".to_string())
-            .and_then(|cookies| api::dynamic(cookies, &offset));
-        let _ = tx.send(Msg::Dynamic(request, offset, result));
+        cached_then_refresh(
+            force || !offset.is_empty(),
+            || {
+                cookies
+                    .as_deref()
+                    .ok_or_else(|| "未登录，请先登录".to_string())
+                    .and_then(|cookies| api::dynamic(cookies, &offset))
+            },
+            |result| {
+                let _ = tx.send(Msg::Dynamic(request, offset.clone(), result));
+            },
+        );
     });
 }
 
 pub fn load_following(mid: String, page: u32, cookies: String, request: u64, tx: Sender<Msg>) {
     thread::spawn(move || {
-        let result = api::followings(&mid, page, &cookies);
-        let _ = tx.send(Msg::Following(request, page, result));
+        cached_then_refresh(
+            page > 1,
+            || api::followings(&mid, page, &cookies),
+            |result| {
+                let _ = tx.send(Msg::Following(request, page, result));
+            },
+        );
+    });
+}
+
+pub fn load_following_avatars(users: Vec<crate::model::Following>, request: u64, tx: Sender<Msg>) {
+    thread::spawn(move || {
+        for user in users {
+            if let Some(avatar) = crate::cache::avatar(&user.face) {
+                if tx
+                    .send(Msg::FollowingAvatar(request, user.owner.mid, avatar))
+                    .is_err()
+                {
+                    break;
+                }
+            }
+        }
+    });
+}
+
+pub fn load_favorites(mid: String, cookies: String, request: u64, force: bool, tx: Sender<Msg>) {
+    thread::spawn(move || {
+        cached_then_refresh(
+            force,
+            || api::favorites::folders(&mid, &cookies),
+            |result| {
+                let _ = tx.send(Msg::Favorites(request, result));
+            },
+        );
     });
 }

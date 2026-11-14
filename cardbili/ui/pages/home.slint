@@ -6,7 +6,6 @@ import { VideoList } from "../components/video_list.slint";
 import { MinePanel } from "../components/mine_panel.slint";
 import { HelpOverlay } from "../components/help_overlay.slint";
 import { EmptyState } from "../components/empty_state.slint";
-import { StatusBar } from "../components/status_bar.slint";
 
 export component HomePage inherits Rectangle {
     width: 100%;
@@ -40,12 +39,6 @@ export component HomePage inherits Rectangle {
         if videos.visible && videos.empty: EmptyState {
             width: parent.width; height: parent.height;
         }
-    }
-
-    // 浮动状态提示显示在内容上方，数秒后自动消失
-    StatusBar {
-        x: (parent.width - self.width) / 2;
-        y: parent.height - 46px;
     }
 
     // 按键说明弹窗

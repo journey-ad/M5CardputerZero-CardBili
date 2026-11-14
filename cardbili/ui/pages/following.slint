@@ -1,8 +1,8 @@
-import { Cmt } from "../common.slint";
+import { FollowingRow } from "../common.slint";
 import { Icon, Icons } from "../components/icons.slint";
 
 export component FollowingPage inherits Rectangle {
-    in property <[Cmt]> rows;
+    in property <[FollowingRow]> rows;
     in property <int> selected;
     in property <bool> loading;
     in property <string> error;
@@ -14,7 +14,8 @@ export component FollowingPage inherits Rectangle {
     for user[index] in root.rows: Rectangle {
         x: 6px; y: 26px + index * 30px; width: parent.width - 12px; height: 28px;
         background: index == root.selected ? #1f2b45 : #101726;
-        Icon { x: 6px; y: 6px; width: 16px; height: 16px; source: Icons.user; colorize: #7fb0ff; }
+        if user.has-avatar: Image { x: 3px; y: 2px; width: 24px; height: 24px; source: user.avatar; image-fit: cover; }
+        if !user.has-avatar: Icon { x: 6px; y: 6px; width: 16px; height: 16px; source: Icons.user; colorize: #7fb0ff; }
         Text { x: 30px; y: 0px; width: parent.width - 50px; height: 17px; text: user.user; color: #e6ebf5; font-size: 12px; vertical-alignment: center; overflow: elide; }
         Text { x: 30px; y: 15px; width: parent.width - 50px; height: 14px; text: user.text; color: #8b95a7; font-size: 10px; font-family: "Fusion Pixel 10px Prop zh-Hans"; vertical-alignment: center; overflow: elide; }
         Icon { x: parent.width - 18px; y: 8px; source: Icons.right; colorize: #6f7c92; }

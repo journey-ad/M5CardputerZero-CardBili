@@ -5,6 +5,7 @@ pub enum Action {
     Help,
     Back,
     Works,
+    Open,
     Author,
     Related,
     Play,
@@ -25,6 +26,7 @@ impl Action {
             Self::Help => "说明",
             Self::Back => "返回",
             Self::Works => "作品",
+            Self::Open => "打开",
             Self::Author => "作者",
             Self::Related => "相关",
             Self::Play => "播放",
@@ -47,7 +49,7 @@ impl Action {
             Self::Works => "u",
             Self::Author => "u",
             Self::Related => "r",
-            Self::Play => "ENTER",
+            Self::Play | Self::Open => "ENTER",
             Self::Detail | Self::TogglePlay => "SPACE",
             Self::Like => "l",
             Self::Speed => "b",
@@ -70,7 +72,7 @@ pub fn actions(
     use Action::*;
     let mut slots = [None; 5];
     let first = usize::from(page != 0 && position == 1);
-    let last = if page != 0 && position == 2 { 3 } else { 4 };
+    let last = 4;
     if help {
         slots[last] = Some(Back);
         return slots;
@@ -98,16 +100,16 @@ pub fn actions(
                 Some(Comments),
             ]
         }
-        3 => {
-            slots[1] = Some(Author);
-            slots[2] = Some(Related);
-            slots[last] = Some(Back);
-        }
+        3 => return [None, Some(Play), Some(Author), Some(Related), Some(Back)],
         2 => {
             slots[first] = Some(Refresh);
             slots[last] = Some(Back);
         }
         4 => slots[last] = Some(Back),
+        8 => {
+            slots[first] = Some(if retry { Retry } else { Open });
+            slots[last] = Some(Back);
+        }
         7 => {
             slots[first] = Some(if retry { Retry } else { Works });
             slots[last] = Some(Back);

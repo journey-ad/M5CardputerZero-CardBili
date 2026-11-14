@@ -31,8 +31,8 @@ export component CollectionPage inherits Rectangle {
         }
         if !Collection.is-author: Text {
             x: 8px; width: parent.width - 16px; height: parent.height;
-            text: "相关推荐"; color: #7fb0ff; font-size: 12px;
-            vertical-alignment: center;
+            text: Collection.title; color: #7fb0ff; font-size: 12px;
+            vertical-alignment: center; overflow: elide;
         }
     }
     videos := VideoList {
@@ -41,7 +41,7 @@ export component CollectionPage inherits Rectangle {
     }
     if videos.empty: Text {
         x: 8px; y: header.height; width: parent.width - 16px; height: videos.height;
-        text: Collection.loading ? "加载中…" : (Collection.error != "" ? Collection.error : (Collection.is-author ? "暂无作品" : "暂无相关视频"));
+        text: Collection.loading ? "加载中…" : (Collection.error != "" ? Collection.error : (Collection.is-author ? "暂无作品" : Collection.empty));
         color: #9aa6ba; font-size: 12px; wrap: word-wrap;
         horizontal-alignment: center; vertical-alignment: center;
     }

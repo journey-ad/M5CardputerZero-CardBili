@@ -20,6 +20,7 @@ pub struct Owner {
 pub enum VideoSource {
     Author(Owner),
     Related(String),
+    Favorites(FavoriteFolder),
 }
 
 impl Default for VideoSource {
@@ -44,6 +45,7 @@ pub struct VideoStats {
 pub struct VideoPage {
     pub items: Vec<Item>,
     pub has_more: bool,
+    pub total: Option<u64>,
 }
 
 #[derive(Clone, Default)]
@@ -149,12 +151,21 @@ pub struct DynamicPage {
     pub has_more: bool,
 }
 
+#[derive(Clone)]
 pub struct Following {
     pub owner: Owner,
+    pub face: String,
     pub signature: String,
 }
 
 pub struct FollowingPage {
     pub items: Vec<Following>,
     pub has_more: bool,
+}
+
+#[derive(Clone)]
+pub struct FavoriteFolder {
+    pub id: i64,
+    pub title: String,
+    pub count: u64,
 }

@@ -19,8 +19,11 @@ impl App {
             self.settings_changed = true;
             return;
         }
-        if k == "TAB" && !self.help {
-            self.tab = (self.tab + 1) % 5;
+        if matches!(k, "TAB" | "BACKTAB") && !self.help {
+            let step = if k == "TAB" { 1 } else { 4 };
+            self.tab = (self.tab + step) % 5;
+            self.back_stack.clear();
+            self.direction_hold = None;
             self.ui.set_bar("".into());
             self.ui.set_bar_sticky(false);
             self.sel = 0;
@@ -39,8 +42,8 @@ impl App {
                     self.loading = true;
                     self.status = "加载中…".into();
                     self.status_detail.clear();
-                    self.load_home_list(self.tab, false);
                 }
+                self.load_home_list(self.tab, false);
                 if self.loaded[self.tab] && !self.covers_started[self.tab] {
                     self.covers_started[self.tab] = true;
                     self.covers[self.tab] = vec![None; self.lists[self.tab].len()];
@@ -56,11 +59,7 @@ impl App {
         } else if k == "h" {
             self.help = true;
         } else if k == "l" && self.tab < 4 {
-            self.page = 2;
-            self.ui.set_has_qr(false);
-            self.ui.set_qr_status("正在生成二维码…".into());
-            self.login_request += 1;
-            tasks::start_login(self.login_request, self.tx.clone());
+            self.requested_login = true;
         } else if self.tab == 4 {
             match k {
                 "UP" | "f" | "w" => self.sel = (self.sel - 1).max(0),
@@ -87,8 +86,7 @@ impl App {
                     }
                 }
                 "ENTER" if self.sel == 5 => {
-                    self.about_scroll = 0.0;
-                    self.page = 4;
+                    self.requested_about = true;
                 }
                 "ESC" | "BACKSPACE" => {
                     self.tab = 0;
@@ -112,17 +110,15 @@ impl App {
                             self.requested_following = true;
                             return;
                         }
-                        self.mine_detail = if self.sel == 1 { 3 } else { 4 };
-                        self.sel = 0;
-                        let src = self.mine_detail as usize;
-                        self.loaded[src] = false;
-                        self.loading = true;
-                        self.status = "加载中…".into();
-                        self.status_detail.clear();
-                        self.load_home_list(src, false);
+                        if self.sel == 1 {
+                            self.requested_home_list = Some(3);
+                        } else {
+                            self.requested_favorites = true;
+                        }
                     }
                     "r" => {
-                        self.acct_loaded = false;
+                        tasks::fetch_account(self.cookies.clone(), self.tx.clone(), true);
+                        self.load_favorites(true);
                     }
                     "ESC" | "BACKSPACE" => {
                         self.tab = 0;
@@ -161,8 +157,7 @@ impl App {
                         self.load_home_list(src, true);
                     }
                     "ESC" | "BACKSPACE" => {
-                        self.mine_detail = -1;
-                        self.sel = 0;
+                        self.go_back = true;
                     }
                     _ => {}
                 }
@@ -208,7 +203,7 @@ impl App {
     pub(in crate::app) fn load_home_list(&mut self, source: usize, force: bool) {
         if source == 2 {
             self.dynamic_request += 1;
-            self.dynamic_offset.clear();
+            self.loading_more[2] = false;
             tasks::load_dynamic(
                 self.dynamic_request,
                 String::new(),
@@ -217,13 +212,7 @@ impl App {
                 force,
             );
         } else {
-            tasks::load_list(
-                source,
-                self.cookies.clone(),
-                self.mid.clone(),
-                self.tx.clone(),
-                force,
-            );
+            tasks::load_list(source, self.cookies.clone(), self.tx.clone(), force);
         }
     }
 }

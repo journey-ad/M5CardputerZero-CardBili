@@ -1,7 +1,6 @@
 // 播放页：画面 + 顶部标题栏 + 底部进度条
 import { TripleAnimation } from "../components/triple_animation.slint";
 import { PlaybackBar } from "../components/playback_bar.slint";
-import { StatusBar } from "../components/status_bar.slint";
 import { Icon, Icons } from "../components/icons.slint";
 import { Player, Status, Danmaku, Preferences } from "../state.slint";
 
@@ -57,5 +56,4 @@ export component PlayPage inherits Rectangle {
     if Player.triple-phase > 0: TripleAnimation {
         x: (root.width - self.width) / 2; y: (root.height - self.height) / 2 - 10px;
     }
-    StatusBar { x: (parent.width - self.width) / 2; y: parent.height - 50px; }
 }

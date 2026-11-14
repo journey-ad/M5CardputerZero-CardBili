@@ -39,8 +39,7 @@ impl App {
                 .map(|p| {
                     p.paused
                         || self.controls.like_hold.is_some()
-                        || self.left_hold.is_some()
-                        || self.right_hold.is_some()
+                        || self.direction_hold.is_some()
                         || self.last_input.elapsed() < Duration::from_millis(3000)
                 })
                 .unwrap_or(true)
@@ -61,7 +60,13 @@ impl App {
         self.ui.set_page(self.page);
         self.ui.set_tab(self.tab as i32);
         self.ui.set_sel(self.sel);
-        self.ui.set_status(self.status.as_str().into());
+        let status = if self.page == 1 && !self.ui.get_has_frame() && self.status.ends_with('…') {
+            let dots = "·".repeat((self.marq_t / 0.4) as usize % 3 + 1);
+            format!("{}{dots}", self.status.trim_end_matches('…'))
+        } else {
+            self.status.clone()
+        };
+        self.ui.set_status(status.into());
         self.ui
             .set_status_detail(self.status_detail.as_str().into());
         self.ui.set_loading(self.loading);
@@ -78,6 +83,7 @@ impl App {
         self.sync_playback();
         self.sync_comments();
         self.sync_following();
+        self.sync_favorites();
     }
 }
 
@@ -86,9 +92,10 @@ impl App {
         let retry = match self.page {
             6 => !self.comment_page.error.is_empty(),
             7 => !self.following.error.is_empty(),
+            8 => !self.favorites.error.is_empty(),
             _ => !self.collection.error.is_empty(),
         };
-        let mut actions = menu::actions(
+        menu::actions(
             self.page,
             self.tab,
             self.mine_detail,
@@ -96,14 +103,6 @@ impl App {
             self.cookies.is_some(),
             self.settings.menu_position,
             retry,
-        );
-        if self.page == 3 && self.detail_from_uploader {
-            for action in &mut actions {
-                if *action == Some(menu::Action::Author) {
-                    *action = Some(menu::Action::Play);
-                }
-            }
-        }
-        actions
+        )
     }
 }

@@ -2,6 +2,7 @@ mod account;
 mod comments;
 mod components;
 mod detail;
+mod favorites;
 mod following;
 mod history;
 mod home;

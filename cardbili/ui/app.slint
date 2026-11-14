@@ -1,6 +1,7 @@
 // 主窗口通过双向绑定向 Rust 暴露全局状态
-import { Cmt, DmRow, VideoRow } from "common.slint";
+import { Cmt, DmRow, VideoRow, FollowingRow } from "common.slint";
 import { Nav, ListModel, Status, Account, Player, Danmaku, Detail, Login, Meta, Preferences, Collection, Menu, Comments } from "state.slint";
+import { StatusBar } from "components/status_bar.slint";
 import { BottomBar } from "components/bottom_bar.slint";
 import { HomePage } from "pages/home.slint";
 import { PlayPage } from "pages/play.slint";
@@ -8,6 +9,7 @@ import { LoginPage } from "pages/login.slint";
 import { DetailPage } from "pages/detail.slint";
 import { CollectionPage } from "pages/collection.slint";
 import { CommentsPage } from "pages/comments.slint";
+import { FavoritesPage } from "pages/favorites.slint";
 import { FollowingPage } from "pages/following.slint";
 import { AboutPage } from "pages/about.slint";
 
@@ -71,7 +73,11 @@ export component AppWindow inherits Window {
     in-out property <float> progress <=> Player.progress;
     in-out property <string> time-text <=> Player.time-text;
     in-out property <bool> paused <=> Player.paused;
-    in-out property <[Cmt]> following-rows;
+    in-out property <[Cmt]> favorite-folders;
+    in-out property <int> favorite-selected;
+    in-out property <bool> favorite-loading;
+    in-out property <string> favorite-error;
+    in-out property <[FollowingRow]> following-rows;
     in-out property <int> following-selected;
     in-out property <bool> following-loading;
     in-out property <string> following-error;
@@ -93,6 +99,8 @@ export component AppWindow inherits Window {
     in-out property <int> danmaku-opacity <=> Preferences.danmaku-opacity;
     in-out property <int> menu-position <=> Preferences.menu-position;
     in-out property <bool> record-history <=> Preferences.record-history;
+    in-out property <string> collection-title <=> Collection.title;
+    in-out property <string> collection-empty <=> Collection.empty;
     in-out property <string> collection-name <=> Collection.name;
     in-out property <bool> collection-is-author <=> Collection.is-author;
     in-out property <string> collection-uid <=> Collection.uid;
@@ -140,9 +148,18 @@ export component AppWindow inherits Window {
         rows: root.following-rows; selected: root.following-selected;
         loading: root.following-loading; error: root.following-error;
     }
+    if page == 8: FavoritesPage {
+        rows: root.favorite-folders; selected: root.favorite-selected;
+        loading: root.favorite-loading; error: root.favorite-error;
+    }
     if page != 1: BottomBar {
         x: 0px;
         y: parent.height - self.height;
         width: parent.width;
+    }
+    // 浮动状态提示显示在内容上方，数秒后自动消失
+    StatusBar {
+        x: (parent.width - self.width) / 2;
+        y: parent.height - (root.page == 1 ? 50px : 46px);
     }
 }

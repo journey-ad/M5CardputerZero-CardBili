@@ -14,6 +14,8 @@ pub(super) struct CollectionState {
     pub(super) items: Vec<model::Item>,
     pub(super) covers: Vec<Option<slint::Image>>,
     pub(super) page: u32,
+    pub(super) pending_page: u32,
+    pub(super) first_page_size: usize,
     pub(super) has_more: bool,
     pub(super) loading: bool,
     pub(super) error: String,
@@ -25,6 +27,8 @@ pub(super) struct CollectionState {
 pub(super) enum BackTarget {
     Home {
         tab: usize,
+        mine_detail: i32,
+        selected_bvid: Option<String>,
         selection: i32,
         first_row: usize,
         grid_scroll: f64,
@@ -32,11 +36,15 @@ pub(super) enum BackTarget {
     Detail {
         bvid: String,
         display: Option<DetailDisplay>,
-        from_uploader: bool,
         scroll: f64,
     },
     Collection(CollectionState),
     Following(following::FollowingState),
+    Favorites {
+        selected_id: Option<i64>,
+        selection: usize,
+        first: usize,
+    },
     Play {
         info: model::PlayInfo,
         position: f64,
@@ -48,8 +56,6 @@ pub(super) enum BackTarget {
 
 impl App {
     pub(super) fn navigate(&mut self) {
-        let from_uploader =
-            self.page == 5 && matches!(self.collection.source, model::VideoSource::Author(_));
         if self.settings_changed {
             self.settings.list_view = self.view;
             if let Err(error) = self.settings.save() {
@@ -67,20 +73,33 @@ impl App {
             self.login_following = true;
             self.requested_login = true;
         }
-        let navigating = self.requested_following
+        if self.requested_favorites && self.cookies.is_none() {
+            self.requested_favorites = false;
+            self.login_favorites = true;
+            self.requested_login = true;
+        }
+        let navigating = self.requested_favorites
+            || self.requested_folder.is_some()
+            || self.requested_home_list.is_some()
+            || self.requested_about
+            || self.requested_following
             || self.requested_play.is_some()
             || self.requested_detail.is_some()
             || self.requested_uploader.is_some()
             || self.requested_related.is_some()
             || self.requested_login
             || self.requested_comments.is_some();
-        if navigating || self.go_back {
+        if navigating || self.go_back || self.return_home {
             self.report_history(true, false);
         }
         if navigating {
             let target = match self.page {
                 0 => Some(BackTarget::Home {
                     tab: self.tab,
+                    mine_detail: self.mine_detail,
+                    selected_bvid: list_source(self.tab, self.mine_detail)
+                        .and_then(|source| self.lists[source].get(self.sel as usize))
+                        .map(|item| item.bvid.clone()),
                     selection: self.sel,
                     first_row: self.first_row,
                     grid_scroll: self.grid_scroll,
@@ -88,8 +107,16 @@ impl App {
                 3 => Some(BackTarget::Detail {
                     bvid: self.detail_bvid.clone(),
                     display: self.detail_display.clone(),
-                    from_uploader: self.detail_from_uploader,
                     scroll: self.detail_scroll,
+                }),
+                8 => Some(BackTarget::Favorites {
+                    selected_id: self
+                        .favorites
+                        .folders
+                        .get(self.favorites.selection)
+                        .map(|folder| folder.id),
+                    selection: self.favorites.selection,
+                    first: self.favorites.first,
                 }),
                 7 => Some(BackTarget::Following(std::mem::take(&mut self.following))),
                 5 => {
@@ -119,7 +146,7 @@ impl App {
                 self.back_stack.push(target);
             }
         }
-        if navigating || self.go_back {
+        if navigating || self.go_back || self.return_home {
             if let Some(mut previous) = self.player.take() {
                 self.gen = self.gen.max(previous.gen);
                 previous.stop();
@@ -139,13 +166,35 @@ impl App {
             self.frames_in_seg = 0;
             self.seek_pending = None;
             self.seek_deadline = None;
-            self.left_hold = None;
-            self.right_hold = None;
-            self.detail_hold = None;
+            self.direction_hold = None;
             self.scroll_tap = None;
             self.ui.set_has_frame(false);
             self.ui.set_paused(false);
             self.danmaku_view.clear();
+        }
+        if let Some(source) = self.requested_home_list.take() {
+            self.page = 0;
+            self.mine_detail = source as i32;
+            self.sel = 0;
+            self.first_row = 0;
+            self.grid_scroll = 0.0;
+            self.loading = !self.loaded[source];
+            self.home_dirty = true;
+            if self.loading {
+                self.status = "加载中…".into();
+            }
+            self.load_home_list(source, false);
+        }
+        if self.requested_about {
+            self.requested_about = false;
+            self.page = 4;
+            self.about_scroll = 0.0;
+        }
+        if self.requested_favorites {
+            self.requested_favorites = false;
+            self.page = 8;
+            self.favorites.dirty = true;
+            self.load_favorites(false);
         }
         if self.requested_following {
             self.requested_following = false;
@@ -184,7 +233,6 @@ impl App {
             );
         }
         if let Some((bvid, title)) = self.requested_detail.take() {
-            self.detail_from_uploader = from_uploader;
             self.page = 3;
             self.detail_bvid = bvid.clone();
             self.detail_display = None;
@@ -207,6 +255,11 @@ impl App {
             .take()
             .map(model::VideoSource::Author)
             .or_else(|| {
+                self.requested_folder
+                    .take()
+                    .map(model::VideoSource::Favorites)
+            })
+            .or_else(|| {
                 self.requested_related
                     .take()
                     .map(model::VideoSource::Related)
@@ -215,6 +268,7 @@ impl App {
             self.page = 5;
             self.collection = CollectionState {
                 source,
+                pending_page: 1,
                 loading: true,
                 has_more: true,
                 ..Default::default()
@@ -236,13 +290,23 @@ impl App {
             match self.back_stack.pop() {
                 Some(BackTarget::Home {
                     tab: previous_tab,
+                    mine_detail,
+                    selected_bvid,
                     selection,
                     first_row: first,
                     grid_scroll: scroll,
                 }) => {
                     self.page = 0;
                     self.tab = previous_tab;
-                    self.sel = selection;
+                    self.mine_detail = mine_detail;
+                    self.sel = list_source(previous_tab, mine_detail)
+                        .and_then(|source| {
+                            self.lists[source]
+                                .iter()
+                                .position(|item| Some(&item.bvid) == selected_bvid.as_ref())
+                        })
+                        .map(|index| index as i32)
+                        .unwrap_or(selection);
                     self.first_row = first;
                     self.grid_scroll = scroll;
                     self.home_dirty = true;
@@ -252,14 +316,12 @@ impl App {
                 Some(BackTarget::Detail {
                     bvid,
                     display,
-                    from_uploader,
                     scroll,
                 }) => {
                     self.page = 3;
                     self.detail_bvid = bvid;
                     self.detail_scroll = scroll;
                     self.detail_display = display;
-                    self.detail_from_uploader = from_uploader;
                     self.marq_t = 0.0;
                     self.ui.set_detail_bvid(self.detail_bvid.as_str().into());
                     if let Some(display) = &self.detail_display {
@@ -275,11 +337,42 @@ impl App {
                     }
                     self.ui.set_detail_scroll(self.detail_scroll as f32);
                 }
+                Some(BackTarget::Favorites {
+                    selected_id,
+                    selection,
+                    first,
+                }) => {
+                    self.page = 8;
+                    self.favorites.selection = self
+                        .favorites
+                        .folders
+                        .iter()
+                        .position(|folder| Some(folder.id) == selected_id)
+                        .unwrap_or(selection);
+                    self.favorites.first = first;
+                    self.favorites.dirty = true;
+                }
                 Some(BackTarget::Following(previous)) => {
                     self.page = 7;
                     self.following = previous;
                     self.following.loading = false;
                     self.following.dirty = true;
+                    let missing = self
+                        .following
+                        .items
+                        .iter()
+                        .filter(|user| !self.following.avatars.contains_key(&user.owner.mid))
+                        .cloned()
+                        .collect();
+                    tasks::load_following_avatars(missing, self.following_request, self.tx.clone());
+                    self.following.pending_page = 1;
+                    tasks::load_following(
+                        self.mid.clone(),
+                        1,
+                        self.cookies.clone().unwrap_or_default(),
+                        self.following_request,
+                        self.tx.clone(),
+                    );
                 }
                 Some(BackTarget::Collection(previous)) => {
                     self.page = 5;
@@ -300,16 +393,15 @@ impl App {
                     if !missing_covers.is_empty() {
                         tasks::spawn_covers(5, missing_covers, self.tx.clone());
                     }
-                    if self.collection.items.is_empty() {
-                        self.collection.loading = true;
-                        tasks::load_collection(
-                            self.collection.source.clone(),
-                            1,
-                            self.cookies.clone(),
-                            self.collection_request,
-                            self.tx.clone(),
-                        );
-                    }
+                    self.collection.loading = self.collection.items.is_empty();
+                    self.collection.pending_page = 1;
+                    tasks::load_collection(
+                        self.collection.source.clone(),
+                        1,
+                        self.cookies.clone(),
+                        self.collection_request,
+                        self.tx.clone(),
+                    );
                     if self.collection.profile.is_none() {
                         self.load_author_profile();
                     }
@@ -349,6 +441,30 @@ impl App {
                 }
                 None => self.page = 0,
             }
+        }
+        if self.return_home {
+            self.return_home = false;
+            self.back_stack.clear();
+            self.login_uploader = None;
+            self.login_following = false;
+            self.login_favorites = false;
+            self.login_return = false;
+            self.login_request += 1;
+            self.page = 0;
+            self.tab = 0;
+            self.mine_detail = -1;
+            self.help = false;
+            self.sel = 0;
+            self.first_row = 0;
+            self.grid_scroll = 0.0;
+            self.home_dirty = true;
+            self.loading = !self.loaded[0];
+            if self.loading {
+                self.load_home_list(0, false);
+            }
+        }
+        if std::mem::take(&mut self.back_hint) {
+            self.toast("长按返回首页");
         }
     }
 }

@@ -28,12 +28,41 @@ impl App {
                     }
                 }
             }
-            Msg::Following(request, page, result) => self.following_loaded(request, page, result),
-            Msg::Dynamic(request, offset, result) => {
-                if request != self.dynamic_request || offset != self.dynamic_offset {
+            Msg::Favorites(request, result) => {
+                if request != self.favorites.request {
                     return;
                 }
-                self.loading_more[2] = false;
+                self.favorites.loading = false;
+                match result {
+                    Ok(folders) => {
+                        let selected = self
+                            .favorites
+                            .folders
+                            .get(self.favorites.selection)
+                            .map(|folder| folder.id);
+                        if let Some(index) = folders
+                            .iter()
+                            .position(|folder| Some(folder.id) == selected)
+                        {
+                            self.favorites.selection = index;
+                        }
+                        self.favorites.folders = folders;
+                        self.favorites.loaded = true;
+                        self.favorites.dirty = true;
+                    }
+                    Err(error) => self.favorites.error = error,
+                }
+            }
+            Msg::Following(request, page, result) => self.following_loaded(request, page, result),
+            Msg::Dynamic(request, offset, result) => {
+                if request != self.dynamic_request
+                    || (!offset.is_empty() && offset != self.dynamic_offset)
+                {
+                    return;
+                }
+                if !offset.is_empty() {
+                    self.loading_more[2] = false;
+                }
                 match result {
                     Ok(page) => {
                         if offset.is_empty() {
@@ -41,8 +70,10 @@ impl App {
                         } else {
                             self.handle_message(Msg::ListMore(2, page.items));
                         }
-                        self.dynamic_offset = page.offset;
-                        self.has_more[2] = page.has_more;
+                        if !offset.is_empty() || self.pages[2] <= 1 && !self.loading_more[2] {
+                            self.dynamic_offset = page.offset;
+                            self.has_more[2] = page.has_more;
+                        }
                         if self.lists[2].is_empty() && page.has_more {
                             self.loading_more[2] = true;
                             tasks::load_dynamic(
@@ -109,46 +140,33 @@ impl App {
             }
             Msg::ListLoaded(t, items) => {
                 self.home_dirty = true;
-                let first = !self.loaded[t];
-                // 内容与已展示的一致时保留封面与选中，避免 SWR 更新时闪烁
-                let same_ids = !first
-                    && self.lists[t].len() == items.len()
-                    && self.lists[t]
-                        .iter()
-                        .zip(items.iter())
-                        .all(|(a, b)| a.bvid == b.bvid);
+                let selection = refresh_first_page(
+                    &mut self.lists[t],
+                    &mut self.covers[t],
+                    &mut self.first_page_sizes[t],
+                    items,
+                    self.sel,
+                );
                 self.loaded[t] = true;
-                self.pages[t] = 1;
-                self.has_more[t] = true;
-                self.loading_more[t] = false;
-                let len = items.len();
-                if t < 5 {
-                    if same_ids {
-                        self.covers[t].resize_with(len, || None);
-                    } else {
-                        self.covers[t] = vec![None; len];
-                    }
-                    self.covers_started[t] = true;
-                    let missing = items
-                        .iter()
-                        .zip(&self.covers[t])
-                        .filter(|(_, cover)| cover.is_none())
-                        .map(|(item, _)| item.clone())
-                        .collect::<Vec<_>>();
-                    if !missing.is_empty() {
-                        tasks::spawn_covers(t, missing, self.tx.clone());
-                    }
+                if self.pages[t] <= 1 {
+                    self.has_more[t] = true;
                 }
-                self.lists[t] = items;
+                self.covers_started[t] = true;
+                let len = self.lists[t].len();
+                let missing = self.lists[t]
+                    .iter()
+                    .zip(&self.covers[t])
+                    .filter(|(_, cover)| cover.is_none())
+                    .map(|(item, _)| item.clone())
+                    .collect::<Vec<_>>();
+                if !missing.is_empty() {
+                    tasks::spawn_covers(t, missing, self.tx.clone());
+                }
                 if list_source(self.tab, self.mine_detail) == Some(t) {
                     self.loading = false;
                 }
                 if self.page == 0 && list_source(self.tab, self.mine_detail) == Some(t) {
-                    if first {
-                        self.sel = 0;
-                    } else if self.sel >= len as i32 {
-                        self.sel = if len == 0 { 0 } else { len as i32 - 1 };
-                    }
+                    self.sel = selection;
                     self.status = if len == 0 {
                         "暂无内容".to_string()
                     } else {
@@ -293,6 +311,16 @@ impl App {
                     self.ui.set_qr_status("登录成功".into());
                     self.acct_loaded = false;
                     self.acct = None;
+                    self.avatar_img = None;
+                    self.favorites = favorites::Favorites {
+                        request: self.favorites.request + 1,
+                        ..Default::default()
+                    };
+                    if self.login_favorites {
+                        self.login_favorites = false;
+                        self.requested_favorites = true;
+                        return;
+                    }
                     if self.login_following {
                         self.login_following = false;
                         self.requested_following = true;
@@ -308,28 +336,21 @@ impl App {
                         self.go_back = true;
                         return;
                     }
-                    self.page = 0;
-                    if self.tab >= 3 {
-                        self.loading = false;
-                        self.status = "已登录".into();
-                        self.status_detail.clear();
-                    } else {
-                        self.loaded[self.tab] = false;
-                        self.loading = true;
-                        self.status = "已登录，刷新中…".into();
-                        self.status_detail.clear();
-                        self.load_home_list(self.tab, false);
-                    }
+                    self.go_back = true;
                 }
             }
-            Msg::Acct(a, raw) => {
+            Msg::Acct(account, avatar) => {
                 self.account_dirty = true;
-                if !raw.is_empty() {
-                    if let Some(img) = util::decode_avatar(&raw) {
-                        self.avatar_img = Some(img);
-                    }
+                self.avatar_img = avatar.map(|(w, h, raw)| util::raw_to_image(w, h, &raw));
+                self.acct = Some(account);
+            }
+            Msg::FollowingAvatar(request, mid, (w, h, raw)) => {
+                if request == self.following_request {
+                    self.following
+                        .avatars
+                        .insert(mid, util::raw_to_image(w, h, &raw));
+                    self.following.dirty = true;
                 }
-                self.acct = Some(a);
             }
             Msg::Cover(t, bvid, w, h, raw) => {
                 if t < 5 {
@@ -381,7 +402,8 @@ impl App {
                 }
                 match result {
                     Ok((profile, raw)) => {
-                        self.collection.avatar = util::decode_avatar(&raw);
+                        self.collection.avatar =
+                            raw.map(|(w, h, pixels)| util::raw_to_image(w, h, &pixels));
                         self.collection.profile = Some(profile);
                     }
                     Err(error) => eprintln!("{error}"),
@@ -391,37 +413,54 @@ impl App {
                 if self.page != 5 || request != self.collection_request {
                     return;
                 }
-                self.collection.loading = false;
+                if loaded_page == self.collection.pending_page {
+                    self.collection.loading = false;
+                }
                 match result {
                     Ok(videos) => {
-                        if loaded_page == 1 {
-                            self.collection.items.clear();
-                            self.collection.covers.clear();
+                        if let (model::VideoSource::Favorites(folder), Some(total)) =
+                            (&mut self.collection.source, videos.total)
+                        {
+                            folder.count = total;
                         }
-                        let mut known: HashSet<String> = self
+                        if loaded_page == 1 {
+                            self.sel = refresh_first_page(
+                                &mut self.collection.items,
+                                &mut self.collection.covers,
+                                &mut self.collection.first_page_size,
+                                videos.items,
+                                self.sel,
+                            );
+                        } else {
+                            let mut known: HashSet<String> = self
+                                .collection
+                                .items
+                                .iter()
+                                .map(|item| item.bvid.clone())
+                                .collect();
+                            self.collection.items.extend(
+                                videos
+                                    .items
+                                    .into_iter()
+                                    .filter(|item| known.insert(item.bvid.clone())),
+                            );
+                            self.collection
+                                .covers
+                                .resize_with(self.collection.items.len(), || None);
+                        }
+                        let missing = self
                             .collection
                             .items
                             .iter()
-                            .map(|item| item.bvid.clone())
+                            .zip(&self.collection.covers)
+                            .filter(|(_, cover)| cover.is_none())
+                            .map(|(item, _)| item.clone())
                             .collect();
-                        let previous_len = self.collection.items.len();
-                        self.collection.items.extend(
-                            videos
-                                .items
-                                .into_iter()
-                                .filter(|item| known.insert(item.bvid.clone())),
-                        );
-                        self.collection
-                            .covers
-                            .resize_with(self.collection.items.len(), || None);
-                        tasks::spawn_covers(
-                            5,
-                            self.collection.items[previous_len..].to_vec(),
-                            self.tx.clone(),
-                        );
-                        self.collection.page = loaded_page;
-                        self.collection.has_more =
-                            videos.has_more && self.collection.items.len() > previous_len;
+                        tasks::spawn_covers(5, missing, self.tx.clone());
+                        if loaded_page >= self.collection.page {
+                            self.collection.page = loaded_page;
+                            self.collection.has_more = videos.has_more;
+                        }
                         self.collection.error.clear();
                     }
                     Err(error) => {

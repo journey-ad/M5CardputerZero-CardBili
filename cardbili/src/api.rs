@@ -1,3 +1,4 @@
+pub mod favorites;
 pub mod playback;
 
 use crate::cache;
@@ -137,56 +138,6 @@ pub fn history(cookies: &str) -> Result<Vec<Item>, String> {
                 views: count_text(&it["stat"]["view"]),
                 likes: count_text(&it["stat"]["like"]),
                 danmaku: count_text(&it["stat"]["danmaku"]),
-            });
-        }
-    }
-    Ok(out)
-}
-
-pub fn fav(cookies: &str, mid: &str) -> Result<Vec<Item>, String> {
-    let furl = format!(
-        "https://api.bilibili.com/x/v3/fav/folder/created/list-all?up_mid={}&web_location=333.1387",
-        mid
-    );
-    let fv = cache::api_json(&furl, Some(cookies), cache::TTL_LIST)?;
-    if fv["code"].as_i64() != Some(0) {
-        return Err(api_err("收藏夹信息", &fv));
-    }
-    let folders = fv["data"]["list"]
-        .as_array()
-        .map(Vec::as_slice)
-        .unwrap_or_default();
-    let fid = folders
-        .iter()
-        .find(|f| f["media_count"].as_i64().unwrap_or(0) > 0)
-        .or_else(|| folders.first())
-        .and_then(|f| f["id"].as_i64())
-        .ok_or("无可用收藏夹")?;
-    let lurl = format!("https://api.bilibili.com/x/v3/fav/resource/list?media_id={}&pn=1&ps=20&order=mtime&type=0&tid=0&platform=web", fid);
-    let lv = cache::api_json(&lurl, Some(cookies), cache::TTL_LIST)?;
-    if lv["code"].as_i64() != Some(0) {
-        return Err(api_err("收藏列表", &lv));
-    }
-    let mut out = Vec::new();
-    if let Some(list) = lv["data"]["medias"].as_array() {
-        for it in list {
-            let bvid = it["bvid"].as_str().unwrap_or("").to_string();
-            if bvid.is_empty() {
-                continue;
-            }
-            let title = it["title"].as_str().unwrap_or("").to_string();
-            let name = it["upper"]["name"].as_str().unwrap_or("");
-            let d = model::dur_of(&it["duration"]);
-            let pic = it["cover"].as_str().unwrap_or("").to_string();
-            out.push(Item {
-                title,
-                meta: name.to_string(),
-                duration: model::mmss(d),
-                bvid,
-                pic,
-                views: count_text(&it["cnt_info"]["play"]),
-                likes: count_text(&it["cnt_info"]["thumb_up"]),
-                danmaku: count_text(&it["cnt_info"]["danmaku"]),
             });
         }
     }
@@ -356,7 +307,11 @@ fn unescape_xml(s: &str) -> String {
 }
 
 pub fn account(cookies: Option<&str>) -> Result<Account, String> {
-    let v = net::get_json("https://api.bilibili.com/x/web-interface/nav", cookies)?;
+    let v = cache::api_json(
+        "https://api.bilibili.com/x/web-interface/nav",
+        cookies,
+        cache::TTL_ACCOUNT,
+    )?;
     if v["code"].as_i64() != Some(0) {
         return Err(api_err("账号信息", &v));
     }
@@ -524,7 +479,11 @@ pub fn uploader_videos(
         .as_u64()
         .map(|count| u64::from(page) * 20 < count)
         .unwrap_or(items.len() == 20);
-    Ok(model::VideoPage { items, has_more })
+    Ok(model::VideoPage {
+        items,
+        has_more,
+        total: None,
+    })
 }
 
 pub fn related_videos(bvid: &str, cookies: Option<&str>) -> Result<model::VideoPage, String> {
@@ -537,6 +496,7 @@ pub fn related_videos(bvid: &str, cookies: Option<&str>) -> Result<model::VideoP
     Ok(model::VideoPage {
         items: video_items(&value["data"]),
         has_more: false,
+        total: None,
     })
 }
 
@@ -566,9 +526,10 @@ pub fn followings(mid: &str, page: u32, cookies: &str) -> Result<model::Followin
         ("order".into(), "desc".into()),
         ("order_type".into(), String::new()),
     ]);
-    let value = net::get_json(
+    let value = cache::api_json(
         &format!("https://api.bilibili.com/x/relation/followings?{params}"),
         Some(cookies),
+        cache::TTL_LIST,
     )?;
     if value["code"].as_i64() != Some(0) {
         return Err(api_err("我的关注", &value));
@@ -584,6 +545,7 @@ pub fn followings(mid: &str, page: u32, cookies: &str) -> Result<model::Followin
                     mid,
                     name: user["uname"].as_str().unwrap_or_default().into(),
                 },
+                face: user["face"].as_str().unwrap_or_default().into(),
                 signature: user["sign"]
                     .as_str()
                     .unwrap_or_default()
