@@ -14,7 +14,7 @@ pub(super) struct Comments {
 
 impl App {
     pub(super) fn open_comments(&mut self, aid: i64) {
-        self.page = 6;
+        self.page = Page::Comments;
         self.comment_page = Comments {
             aid,
             has_more: true,
@@ -45,7 +45,7 @@ impl App {
         page: u32,
         result: Result<model::CommentPage, String>,
     ) {
-        if self.page != 6 || request != self.comments_request {
+        if self.page != Page::Comments || request != self.comments_request {
             return;
         }
         self.comment_page.loading = false;
@@ -83,7 +83,7 @@ impl App {
     }
 
     pub(super) fn sync_comments(&mut self) {
-        if self.page != 6 {
+        if self.page != Page::Comments {
             return;
         }
         if self.comment_page.dirty {

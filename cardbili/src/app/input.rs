@@ -32,7 +32,7 @@ impl App {
             return;
         }
         if let Ok(number @ 4..=8) = key.parse::<usize>() {
-            if self.page == 1 && !self.ui.get_controls_visible() {
+            if self.page == Page::Player && !self.ui.get_controls_visible() {
                 self.last_input = Instant::now();
                 return;
             }
@@ -53,7 +53,7 @@ impl App {
                 .is_some_and(|hold| hold.key == released)
             {
                 let hold = self.direction_hold.take().unwrap();
-                if matches!(self.page, 3 | 6)
+                if matches!(self.page, Page::Detail | Page::Comments)
                     && matches!(released, "UP" | "DOWN")
                     && hold.since.elapsed() <= Duration::from_millis(300)
                 {
@@ -114,19 +114,19 @@ impl App {
     }
 
     fn dispatch_key(&mut self, key: &str, repeat: bool) {
-        if matches!(self.page, 3 | 6) && self.scroll_key(key, repeat) {
+        if matches!(self.page, Page::Detail | Page::Comments) && self.scroll_key(key, repeat) {
             return;
         }
-        let video_len = if self.page == 5 {
+        let video_len = if self.page == Page::Collection {
             Some(self.collection.items.len())
-        } else if self.page == 0 {
+        } else if self.page == Page::Home {
             list_source(self.tab, self.mine_detail).map(|source| self.lists[source].len())
         } else {
             None
         };
         if let Some(len) = video_len.filter(|_| !self.help) {
             if key == "v" {
-                self.view = (self.view + 1) % 3;
+                self.view = self.view.cycle(1);
                 self.settings_changed = true;
                 return;
             }
@@ -147,8 +147,8 @@ impl App {
             }
         }
         match self.page {
-            0 => self.home_key(key),
-            1 => self.play_key(key, repeat),
+            Page::Home => self.home_key(key),
+            Page::Player => self.play_key(key, repeat),
             _ => self.page_key(key),
         }
     }

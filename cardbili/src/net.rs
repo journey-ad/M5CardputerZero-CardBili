@@ -1,4 +1,3 @@
-use md5::{Digest, Md5};
 use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -158,58 +157,6 @@ fn pct(s: &str) -> String {
     o
 }
 
-const MIXIN_TAB: [usize; 32] = [
-    46, 47, 18, 2, 53, 8, 23, 32, 15, 50, 10, 31, 58, 3, 45, 35, 27, 43, 5, 49, 33, 9, 42, 19, 29,
-    28, 14, 39, 12, 38, 41, 13,
-];
-
-fn stem(u: &str) -> String {
-    let f = u.rsplit('/').next().unwrap_or(u);
-    f.split('.').next().unwrap_or(f).to_string()
-}
-
-pub fn mixin_key(img: &str, sub: &str) -> String {
-    let orig = format!("{}{}", stem(img), stem(sub));
-    let bytes = orig.as_bytes();
-    MIXIN_TAB
-        .iter()
-        .filter_map(|&i| bytes.get(i).map(|&b| b as char))
-        .collect()
-}
-
-pub fn fetch_mixin() -> Result<String, String> {
-    let v = get_json("https://api.bilibili.com/x/web-interface/nav", None)?;
-    let wi = &v["data"]["wbi_img"];
-    let img = wi["img_url"]
-        .as_str()
-        .ok_or("签名信息不完整\n缺少 img_url")?;
-    let sub = wi["sub_url"]
-        .as_str()
-        .ok_or("签名信息不完整\n缺少 sub_url")?;
-    Ok(mixin_key(img, sub))
-}
-
-/// 对 params 做 WBI 签名，返回带 wts/w_rid 的新参数表
-pub fn wbi_sign(params: &[(String, String)], mk: &str) -> Vec<(String, String)> {
-    let mut p: Vec<(String, String)> = params.to_vec();
-    p.push(("wts".into(), now_secs().to_string()));
-    p.sort_by(|a, b| a.0.cmp(&b.0));
-    let q = p
-        .iter()
-        .map(|(k, v)| {
-            let vf: String = v.chars().filter(|c| !"!'()*".contains(*c)).collect();
-            format!("{}={}", pct(k), pct(&vf))
-        })
-        .collect::<Vec<_>>()
-        .join("&");
-    let mut h = Md5::new();
-    h.update(q.as_bytes());
-    h.update(mk.as_bytes());
-    let rid = format!("{:x}", h.finalize());
-    p.push(("w_rid".into(), rid));
-    p
-}
-
 pub fn query_string(params: &[(String, String)]) -> String {
     params
         .iter()
@@ -218,211 +165,22 @@ pub fn query_string(params: &[(String, String)]) -> String {
         .join("&")
 }
 
-// ---------- QR login ----------
-pub fn qr_generate() -> Result<(String, String), String> {
-    let v = get_json(
-        "https://passport.bilibili.com/x/passport-login/web/qrcode/generate",
-        None,
-    )?;
-    if v["code"].as_i64() != Some(0) {
-        return Err(format!(
-            "二维码生成失败\ncode={} {}",
-            v["code"], v["message"]
-        ));
-    }
-    let d = &v["data"];
-    let url = d["url"].as_str().unwrap_or("").to_string();
-    let key = d["qrcode_key"].as_str().unwrap_or("").to_string();
-    if url.is_empty() || key.is_empty() {
-        return Err("二维码生成失败\n返回为空".into());
-    }
-    Ok((url, key))
-}
-
-pub enum Poll {
-    Success(String),
-    Scanned,
-    Pending,
-    Expired,
-    Err(String),
-}
-
-const WANT_CK: [&str; 5] = [
-    "SESSDATA",
-    "bili_jct",
-    "DedeUserID",
-    "DedeUserID__ckMd5",
-    "buvid3",
-];
-
-fn put_ck(map: &mut Vec<(String, String)>, k: &str, v: &str) {
-    let k = k.trim();
-    let v = v.trim();
-    if k.is_empty() || v.is_empty() || !WANT_CK.contains(&k) {
-        return;
-    }
-    if let Some(e) = map.iter_mut().find(|(n, _)| n.as_str() == k) {
-        e.1 = v.to_string();
-    } else {
-        map.push((k.to_string(), v.to_string()));
-    }
-}
-
-fn read_jar(jar: &str) -> Vec<(String, String)> {
-    let mut out = Vec::new();
-    if let Ok(txt) = std::fs::read_to_string(jar) {
-        for raw in txt.lines() {
-            let line = raw.strip_prefix("#HttpOnly_").unwrap_or(raw);
-            if line.trim().is_empty() || line.starts_with('#') {
-                continue;
-            }
-            let f: Vec<&str> = line.split('\t').collect();
-            if f.len() >= 7 {
-                put_ck(&mut out, f[5], f[6]);
-            }
-        }
-    }
-    out
-}
-
-fn cookies_from_url(url: &str) -> Vec<(String, String)> {
-    let mut out = Vec::new();
-    if let Some(q) = url.split('?').nth(1) {
-        for kv in q.split('&') {
-            if let Some((k, v)) = kv.split_once('=') {
-                put_ck(&mut out, k, v);
-            }
-        }
-    }
-    out
-}
-
-fn parse_set_cookie(hdr: &str) -> Vec<(String, String)> {
-    let mut out = Vec::new();
-    for line in hdr.lines() {
-        let b = line.as_bytes();
-        if b.len() >= 11 && b[..11].eq_ignore_ascii_case(b"set-cookie:") {
-            let first = line[11..].split(';').next().unwrap_or("");
-            if let Some((k, v)) = first.split_once('=') {
-                put_ck(&mut out, k, v);
-            }
-        }
-    }
-    out
-}
-
-fn join_ck(map: &[(String, String)]) -> String {
-    map.iter()
-        .map(|(k, v)| format!("{}={}", k, v))
-        .collect::<Vec<_>>()
-        .join("; ")
-}
-
-pub fn qr_poll(key: &str, jar: &str) -> Poll {
-    let url = format!(
-        "https://passport.bilibili.com/x/passport-login/web/qrcode/poll?qrcode_key={}",
-        pct(key)
-    );
-    let hdr = format!("{}.hdr", jar);
-    let args = vec![
-        "-s".to_string(),
-        "-L".into(),
+pub fn get_with_cookie_jar(
+    url: &str,
+    jar: &str,
+    headers_path: &str,
+    timeout: u32,
+) -> Result<String, String> {
+    let mut args = curl_args(url, None, &DEFAULT_HEADERS);
+    args.extend([
         "--max-time".into(),
-        "25".into(),
-        "-A".into(),
-        UA.into(),
-        "-e".into(),
-        REFERER.into(),
-        "-H".into(),
-        "Origin: https://www.bilibili.com".into(),
+        timeout.to_string(),
         "-c".into(),
         jar.into(),
         "-b".into(),
         jar.into(),
         "-D".into(),
-        hdr.clone(),
-        url,
-    ];
-    let out = match Command::new("curl").args(&args).output() {
-        Ok(o) => o,
-        Err(e) => return Poll::Err(format!("网络请求启动失败\n{e}")),
-    };
-    if !out.status.success() {
-        let code = out
-            .status
-            .code()
-            .map(|c| c.to_string())
-            .unwrap_or_else(|| "?".into());
-        let t = tidy(&String::from_utf8_lossy(&out.stderr));
-        let tail = if t.is_empty() {
-            String::new()
-        } else {
-            format!(" {}", t)
-        };
-        return Poll::Err(format!("网络连接失败\nexit {}{}", code, tail));
-    }
-    let body = String::from_utf8_lossy(&out.stdout).into_owned();
-    let v: serde_json::Value = match serde_json::from_str(&body) {
-        Ok(v) => v,
-        Err(e) => return Poll::Err(format!("登录状态解析失败\n{e}")),
-    };
-    let d = &v["data"];
-    let code = d["code"].as_i64().unwrap_or(-1);
-    match code {
-        0 => {
-            let mut map: Vec<(String, String)> = Vec::new();
-            for (k, val) in cookies_from_url(d["url"].as_str().unwrap_or("")) {
-                put_ck(&mut map, &k, &val);
-            }
-            for (k, val) in read_jar(jar) {
-                put_ck(&mut map, &k, &val);
-            }
-            let hdrtxt = std::fs::read_to_string(&hdr).unwrap_or_default();
-            for (k, val) in parse_set_cookie(&hdrtxt) {
-                put_ck(&mut map, &k, &val);
-            }
-            // SESSDATA 缺失时请求 crossDomain 获取 Cookie，再读取 Cookie 文件
-            if !map.iter().any(|(k, _)| k == "SESSDATA") {
-                if let Some(u) = d["url"].as_str() {
-                    if !u.is_empty() {
-                        let h2 = format!("{}.x", jar);
-                        let a2 = vec![
-                            "-s".to_string(),
-                            "-L".into(),
-                            "--max-time".into(),
-                            "20".into(),
-                            "-A".into(),
-                            UA.into(),
-                            "-e".into(),
-                            REFERER.into(),
-                            "-c".into(),
-                            jar.into(),
-                            "-b".into(),
-                            jar.into(),
-                            "-D".into(),
-                            h2.clone(),
-                            u.to_string(),
-                        ];
-                        let _ = Command::new("curl").args(&a2).output();
-                        let t2 = std::fs::read_to_string(&h2).unwrap_or_default();
-                        for (k, val) in parse_set_cookie(&t2) {
-                            put_ck(&mut map, &k, &val);
-                        }
-                    }
-                }
-                for (k, val) in read_jar(jar) {
-                    put_ck(&mut map, &k, &val);
-                }
-            }
-            if std::env::var("BILI_LOGIN_DEBUG").is_ok() {
-                eprintln!("LOGIN url={}", d["url"].as_str().unwrap_or(""));
-                eprintln!("LOGIN hdr={}", hdrtxt.chars().take(600).collect::<String>());
-            }
-            Poll::Success(join_ck(&map))
-        }
-        86101 => Poll::Pending,
-        86090 => Poll::Scanned,
-        86038 => Poll::Expired,
-        other => Poll::Err(format!("登录状态异常\ncode={} {}", other, d["message"])),
-    }
+        headers_path.into(),
+    ]);
+    curl_text(args)
 }

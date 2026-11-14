@@ -1,25 +1,27 @@
+import { HomeTab, MenuPosition } from "../types.slint";
 // 页签支持顶部横排与两侧竖排
 import { Nav, Meta, Preferences } from "../state.slint";
 import { Icon, Icons } from "icons.slint";
 
 export component TabBar inherits Rectangle {
     background: #121a2a;
-    property <bool> vertical: Preferences.menu-position != 0;
+    property <bool> vertical: Preferences.menu-position != MenuPosition.top;
     property <[image]> icons: [Icons.home, Icons.fire, Icons.rss, Icons.user, Icons.settings-cog];
+    property <[HomeTab]> tabs: [HomeTab.recommended, HomeTab.popular, HomeTab.dynamic, HomeTab.mine, HomeTab.settings];
     for name[index] in Meta.tab-names: Rectangle {
         x: root.vertical ? 0px : index * root.width / 5;
         y: root.vertical ? index * root.height / 5 : 0px;
         width: root.vertical ? root.width : root.width / 5;
         height: root.vertical ? root.height / 5 : root.height;
-        background: index == Nav.tab ? #1d3a6b : transparent;
+        background: root.tabs[index] == Nav.tab ? #1d3a6b : transparent;
         Icon {
             x: (parent.width - 40px) / 2; y: (parent.height - self.height) / 2;
-            source: root.icons[index]; colorize: index == Nav.tab ? #7fb0ff : #7d8798;
+            source: root.icons[index]; colorize: root.tabs[index] == Nav.tab ? #7fb0ff : #7d8798;
         }
         Text {
             x: (parent.width - 40px) / 2 + 16px; y: 0px;
             width: 24px; height: parent.height;
-            text: name; color: index == Nav.tab ? #7fb0ff : #7d8798;
+            text: name; color: root.tabs[index] == Nav.tab ? #7fb0ff : #7d8798;
             font-size: 12px; vertical-alignment: center;
         }
     }

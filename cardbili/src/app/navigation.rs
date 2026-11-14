@@ -26,7 +26,7 @@ pub(super) struct CollectionState {
 
 pub(super) enum BackTarget {
     Home {
-        tab: usize,
+        tab: HomeTab,
         mine_detail: i32,
         selected_bvid: Option<String>,
         selection: i32,
@@ -94,7 +94,7 @@ impl App {
         }
         if navigating {
             let target = match self.page {
-                0 => Some(BackTarget::Home {
+                Page::Home => Some(BackTarget::Home {
                     tab: self.tab,
                     mine_detail: self.mine_detail,
                     selected_bvid: list_source(self.tab, self.mine_detail)
@@ -104,12 +104,12 @@ impl App {
                     first_row: self.first_row,
                     grid_scroll: self.grid_scroll,
                 }),
-                3 => Some(BackTarget::Detail {
+                Page::Detail => Some(BackTarget::Detail {
                     bvid: self.detail_bvid.clone(),
                     display: self.detail_display.clone(),
                     scroll: self.detail_scroll,
                 }),
-                8 => Some(BackTarget::Favorites {
+                Page::Favorites => Some(BackTarget::Favorites {
                     selected_id: self
                         .favorites
                         .folders
@@ -118,14 +118,14 @@ impl App {
                     selection: self.favorites.selection,
                     first: self.favorites.first,
                 }),
-                7 => Some(BackTarget::Following(std::mem::take(&mut self.following))),
-                5 => {
+                Page::Following => Some(BackTarget::Following(std::mem::take(&mut self.following))),
+                Page::Collection => {
                     self.collection.selection = self.sel;
                     self.collection.first_row = self.first_row;
                     self.collection.grid_scroll = self.grid_scroll;
                     Some(BackTarget::Collection(std::mem::take(&mut self.collection)))
                 }
-                1 => self.current_play.take().map(|info| BackTarget::Play {
+                Page::Player => self.current_play.take().map(|info| BackTarget::Play {
                     info,
                     position: self
                         .player
@@ -173,7 +173,7 @@ impl App {
             self.danmaku_view.clear();
         }
         if let Some(source) = self.requested_home_list.take() {
-            self.page = 0;
+            self.page = Page::Home;
             self.mine_detail = source as i32;
             self.sel = 0;
             self.first_row = 0;
@@ -187,18 +187,18 @@ impl App {
         }
         if self.requested_about {
             self.requested_about = false;
-            self.page = 4;
+            self.page = Page::About;
             self.about_scroll = 0.0;
         }
         if self.requested_favorites {
             self.requested_favorites = false;
-            self.page = 8;
+            self.page = Page::Favorites;
             self.favorites.dirty = true;
             self.load_favorites(false);
         }
         if self.requested_following {
             self.requested_following = false;
-            self.page = 7;
+            self.page = Page::Following;
             self.following = following::FollowingState {
                 has_more: true,
                 dirty: true,
@@ -211,7 +211,7 @@ impl App {
         }
         if self.requested_login {
             self.requested_login = false;
-            self.page = 2;
+            self.page = Page::Login;
             self.ui.set_has_qr(false);
             self.ui.set_qr_status("正在生成二维码…".into());
             self.login_request += 1;
@@ -219,7 +219,7 @@ impl App {
         }
         if let Some(bvid) = self.requested_play.take() {
             self.controls = playback::Controls::default();
-            self.page = 1;
+            self.page = Page::Player;
             self.ui.set_ptitle("".into());
             self.ui.set_progress(0.0);
             self.ui.set_time_text("0:00 / 0:00".into());
@@ -233,7 +233,7 @@ impl App {
             );
         }
         if let Some((bvid, title)) = self.requested_detail.take() {
-            self.page = 3;
+            self.page = Page::Detail;
             self.detail_bvid = bvid.clone();
             self.detail_display = None;
             self.detail_scroll = std::env::var("BILI_DSCROLL")
@@ -265,7 +265,7 @@ impl App {
                     .map(model::VideoSource::Related)
             });
         if let Some(source) = collection_source {
-            self.page = 5;
+            self.page = Page::Collection;
             self.collection = CollectionState {
                 source,
                 pending_page: 1,
@@ -296,7 +296,7 @@ impl App {
                     first_row: first,
                     grid_scroll: scroll,
                 }) => {
-                    self.page = 0;
+                    self.page = Page::Home;
                     self.tab = previous_tab;
                     self.mine_detail = mine_detail;
                     self.sel = list_source(previous_tab, mine_detail)
@@ -318,7 +318,7 @@ impl App {
                     display,
                     scroll,
                 }) => {
-                    self.page = 3;
+                    self.page = Page::Detail;
                     self.detail_bvid = bvid;
                     self.detail_scroll = scroll;
                     self.detail_display = display;
@@ -342,7 +342,7 @@ impl App {
                     selection,
                     first,
                 }) => {
-                    self.page = 8;
+                    self.page = Page::Favorites;
                     self.favorites.selection = self
                         .favorites
                         .folders
@@ -353,7 +353,7 @@ impl App {
                     self.favorites.dirty = true;
                 }
                 Some(BackTarget::Following(previous)) => {
-                    self.page = 7;
+                    self.page = Page::Following;
                     self.following = previous;
                     self.following.loading = false;
                     self.following.dirty = true;
@@ -375,7 +375,7 @@ impl App {
                     );
                 }
                 Some(BackTarget::Collection(previous)) => {
-                    self.page = 5;
+                    self.page = Page::Collection;
                     self.collection = previous;
                     self.sel = self.collection.selection;
                     self.first_row = self.collection.first_row;
@@ -413,7 +413,7 @@ impl App {
                     rate,
                     engine,
                 }) => {
-                    self.page = 1;
+                    self.page = Page::Player;
                     self.gen += 1;
                     self.player = Some(player::Player::start(
                         &info,
@@ -439,7 +439,7 @@ impl App {
                     self.refresh_liked();
                     self.status = "加载中…".into();
                 }
-                None => self.page = 0,
+                None => self.page = Page::Home,
             }
         }
         if self.return_home {
@@ -450,8 +450,8 @@ impl App {
             self.login_favorites = false;
             self.login_return = false;
             self.login_request += 1;
-            self.page = 0;
-            self.tab = 0;
+            self.page = Page::Home;
+            self.tab = HomeTab::Recommended;
             self.mine_detail = -1;
             self.help = false;
             self.sel = 0;

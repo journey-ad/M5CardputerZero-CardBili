@@ -55,7 +55,7 @@ impl App {
     }
 
     pub(super) fn sync_favorites(&mut self) {
-        if self.page != 8 && !(self.page == 0 && self.tab == 3) {
+        if self.page != Page::Favorites && !(self.page == Page::Home && self.tab == HomeTab::Mine) {
             return;
         }
         if !self.favorites.loaded && self.favorites.error.is_empty() {

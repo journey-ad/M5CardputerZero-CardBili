@@ -3,7 +3,7 @@ use super::*;
 impl App {
     pub(super) fn sync_account(&mut self) {
         // --- 账号信息 ---
-        if self.tab == 3 && !self.acct_loaded {
+        if self.tab == HomeTab::Mine && !self.acct_loaded {
             self.acct_loaded = true;
             if self.cookies.is_some() {
                 tasks::fetch_account(self.cookies.clone(), self.tx.clone(), false);

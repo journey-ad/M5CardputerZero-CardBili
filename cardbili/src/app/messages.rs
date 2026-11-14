@@ -4,7 +4,7 @@ impl App {
     pub(super) fn handle_message(&mut self, m: Msg) {
         match m {
             Msg::Liked(request, result) => {
-                if self.page == 1 && request == self.play_request {
+                if self.page == Page::Player && request == self.play_request {
                     self.controls.busy = false;
                     match result {
                         Ok(liked) => self.controls.liked = Some(liked),
@@ -13,7 +13,7 @@ impl App {
                 }
             }
             Msg::Reaction(request, result) => {
-                if self.page == 1 && request == self.play_request {
+                if self.page == Page::Player && request == self.play_request {
                     self.controls.busy = false;
                     match result {
                         Ok(result) => {
@@ -93,7 +93,7 @@ impl App {
             }
             Msg::Comments(request, page, result) => self.comments_loaded(request, page, result),
             Msg::Volume(result) => {
-                if self.page == 1 {
+                if self.page == Page::Player {
                     match result {
                         Ok(volume) => self.toast(&format!("系统音量 {volume}%")),
                         Err(error) => {
@@ -104,7 +104,7 @@ impl App {
                 }
             }
             Msg::Frame(g) => {
-                if self.page == 1 {
+                if self.page == Page::Player {
                     if let Some(p) = self.player.as_mut() {
                         if g == p.gen {
                             if let Some((index, pixels)) = p.take_frame() {
@@ -165,7 +165,7 @@ impl App {
                 if list_source(self.tab, self.mine_detail) == Some(t) {
                     self.loading = false;
                 }
-                if self.page == 0 && list_source(self.tab, self.mine_detail) == Some(t) {
+                if self.page == Page::Home && list_source(self.tab, self.mine_detail) == Some(t) {
                     self.sel = selection;
                     self.status = if len == 0 {
                         "暂无内容".to_string()
@@ -208,7 +208,7 @@ impl App {
                             );
                         }
                         tasks::spawn_covers(t, add, self.tx.clone());
-                        if t == self.tab && self.page == 0 {
+                        if t == self.tab.index() && self.page == Page::Home {
                             self.status = format!("{} 条", self.lists[t].len());
                             self.status_detail.clear();
                         }
@@ -225,7 +225,7 @@ impl App {
                     self.status_detail = tech;
                 } else if list_source(self.tab, self.mine_detail) == Some(t) {
                     self.loading = false;
-                    if self.page == 0 {
+                    if self.page == Page::Home {
                         self.status = friendly;
                         self.status_detail = tech;
                         self.ui.set_bar("加载失败".into());
@@ -234,7 +234,7 @@ impl App {
                 }
             }
             Msg::PlayReady(request, result) => {
-                if self.page != 1 || request != self.play_request {
+                if self.page != Page::Player || request != self.play_request {
                     return;
                 }
                 match result {
@@ -281,7 +281,7 @@ impl App {
                 }
             }
             Msg::QrReady(request, url) => {
-                if request != self.login_request || self.page != 2 {
+                if request != self.login_request || self.page != Page::Login {
                     return;
                 }
                 if let Some(img) = util::make_qr(&url) {
@@ -291,13 +291,13 @@ impl App {
                 self.ui.set_qr_status("请用 B 站 App 扫码".into());
             }
             Msg::QrStatus(request, s) => {
-                if request != self.login_request || self.page != 2 {
+                if request != self.login_request || self.page != Page::Login {
                     return;
                 }
                 self.ui.set_qr_status(s.as_str().into());
             }
             Msg::QrDone(request, ck) => {
-                if request != self.login_request || self.page != 2 {
+                if request != self.login_request || self.page != Page::Login {
                     return;
                 }
                 if !ck.is_empty() {
@@ -375,7 +375,7 @@ impl App {
                 }
             }
             Msg::Detail(request, data, w, h, raw) => {
-                if self.page != 3 || request != self.detail_request {
+                if self.page != Page::Detail || request != self.detail_request {
                     return;
                 }
                 let display = DetailDisplay {
@@ -391,13 +391,13 @@ impl App {
                 self.detail_display = Some(display);
             }
             Msg::DetailError(request, error) => {
-                if self.page == 3 && request == self.detail_request {
+                if self.page == Page::Detail && request == self.detail_request {
                     self.ui.set_detail_loading(false);
                     self.ui.set_detail_error(error.into());
                 }
             }
             Msg::AuthorProfile(request, result) => {
-                if self.page != 5 || request != self.collection_request {
+                if self.page != Page::Collection || request != self.collection_request {
                     return;
                 }
                 match result {
@@ -410,7 +410,7 @@ impl App {
                 }
             }
             Msg::Collection(request, loaded_page, result) => {
-                if self.page != 5 || request != self.collection_request {
+                if self.page != Page::Collection || request != self.collection_request {
                     return;
                 }
                 if loaded_page == self.collection.pending_page {
@@ -468,13 +468,6 @@ impl App {
                     }
                 }
                 self.collection_dirty = true;
-            }
-            Msg::Stats(bvid, result) => {
-                if let Ok(stats) = result {
-                    self.stats_cache.insert(bvid, stats);
-                    self.home_dirty = true;
-                    self.collection_dirty = true;
-                }
             }
         }
     }

@@ -2,18 +2,18 @@ use super::super::*;
 
 impl App {
     pub(in crate::app) fn sync_home(&mut self) {
-        if self.page != 0 && self.page != 5 {
+        if self.page != Page::Home && self.page != Page::Collection {
             return;
         }
-        if self.page == 5 {
+        if self.page == Page::Collection {
             self.sync_collection_header();
         }
 
         // 选中项保持在当前页面范围内
-        if self.page == 0 {
-            let len = if self.tab == 4 {
+        if self.page == Page::Home {
+            let len = if self.tab == HomeTab::Settings {
                 6
-            } else if self.tab == 3 && self.mine_detail < 0 {
+            } else if self.tab == HomeTab::Mine && self.mine_detail < 0 {
                 3
             } else {
                 self.lists[list_source(self.tab, self.mine_detail).unwrap()].len() as i32
@@ -21,15 +21,16 @@ impl App {
             self.sel = self.sel.clamp(0, (len - 1).max(0));
 
             // 视频列表接近底部时自动加载下一页
-            if self.tab < 3
-                && self.loaded[self.tab]
-                && !self.loading_more[self.tab]
-                && self.has_more[self.tab]
-                && !self.lists[self.tab].is_empty()
-                && self.sel as usize + video_columns(self.view) * 2 >= self.lists[self.tab].len()
+            if self.tab.is_video()
+                && self.loaded[self.tab.index()]
+                && !self.loading_more[self.tab.index()]
+                && self.has_more[self.tab.index()]
+                && !self.lists[self.tab.index()].is_empty()
+                && self.sel as usize + video_columns(self.view) * 2
+                    >= self.lists[self.tab.index()].len()
             {
-                self.loading_more[self.tab] = true;
-                if self.tab == 2 {
+                self.loading_more[self.tab.index()] = true;
+                if self.tab == HomeTab::Dynamic {
                     tasks::load_dynamic(
                         self.dynamic_request,
                         self.dynamic_offset.clone(),
@@ -39,14 +40,14 @@ impl App {
                     );
                 } else {
                     tasks::load_more(
-                        self.tab,
-                        (self.pages[self.tab] + 1) as u32,
+                        self.tab.index(),
+                        (self.pages[self.tab.index()] + 1) as u32,
                         self.cookies.clone(),
                         self.tx.clone(),
                     );
                 }
             }
-            if self.tab == 3
+            if self.tab == HomeTab::Mine
                 && self.mine_detail < 0
                 && (self.home_dirty || self.home_view.is_some())
             {
@@ -60,7 +61,7 @@ impl App {
             }
         }
 
-        let collection = self.page == 5;
+        let collection = self.page == Page::Collection;
         let source = if collection {
             5
         } else if let Some(source) = list_source(self.tab, self.mine_detail) {
@@ -68,7 +69,7 @@ impl App {
         } else {
             return;
         };
-        let content_width = if collection || self.settings.menu_position == 0 {
+        let content_width = if collection || self.settings.menu_position == MenuPosition::Top {
             320.0
         } else {
             264.0
@@ -76,13 +77,17 @@ impl App {
         let content_height =
             if collection && matches!(self.collection.source, model::VideoSource::Author(_)) {
                 114.0
-            } else if collection || self.settings.menu_position == 0 {
+            } else if collection || self.settings.menu_position == MenuPosition::Top {
                 126.0
             } else {
                 150.0
             };
         let columns = video_columns(self.view);
-        let cell_height = if self.view == 2 { 113.0 } else { 84.0 };
+        let cell_height = if self.view == VideoLayout::TwoColumns {
+            113.0
+        } else {
+            84.0
+        };
         let context = (
             source as i32,
             self.view,
@@ -103,7 +108,7 @@ impl App {
         };
         self.sel = self.sel.clamp(0, (items.len() as i32 - 1).max(0));
         let selected = self.sel as usize;
-        let (start, end, visible_count) = if self.view == 0 {
+        let (start, end, visible_count) = if self.view == VideoLayout::List {
             let rows = (content_height / 30.0) as usize;
             if selected < self.first_row {
                 self.first_row = selected;
@@ -140,29 +145,6 @@ impl App {
         };
         self.ui.set_first_row(self.first_row as i32);
 
-        // 可视区内缺失的统计信息按需补全
-        let stats_end = if self.view == 0 {
-            end
-        } else {
-            ((self.grid_scroll + content_height) / cell_height).ceil() as usize * columns
-        };
-        for item in items.iter().take(stats_end).skip(start) {
-            let missing = item.views.is_none()
-                || if self.view == 0 {
-                    item.likes.is_none()
-                } else {
-                    item.danmaku.is_none()
-                };
-            if missing
-                && !self.stats_requested.contains(&item.bvid)
-                && self
-                    .stats_queue
-                    .try_send((item.bvid.clone(), self.cookies.clone()))
-                    .is_ok()
-            {
-                self.stats_requested.insert(item.bvid.clone());
-            }
-        }
         if collection {
             if !self.collection.loading
                 && self.collection.error.is_empty()
@@ -189,12 +171,17 @@ impl App {
             .get(selected)
             .map(|item| util::est_w(&item.title, 12.0))
             .unwrap_or(0.0);
-        self.ui
-            .set_title_marquee(self.view == 0 && title_width > content_width - 16.0);
+        self.ui.set_title_marquee(
+            self.view == VideoLayout::List && title_width > content_width - 16.0,
+        );
         self.ui
             .set_title_shift(yoyo_shift(title_width, content_width - 16.0, self.marq_t));
 
-        let grid_start = if self.view == 0 { 0 } else { start };
+        let grid_start = if self.view == VideoLayout::List {
+            0
+        } else {
+            start
+        };
         let current_view = (
             source,
             self.view,
@@ -214,13 +201,13 @@ impl App {
             } else {
                 self.home_dirty = false;
             }
-            if self.view == 0 {
-                sync_list(&self.ui, items, &self.stats_cache);
+            if self.view == VideoLayout::List {
+                sync_list(&self.ui, items);
             } else {
                 let mut rows = Vec::with_capacity(end - start);
                 let mut images = Vec::with_capacity(end - start);
                 for (index, item) in items.iter().enumerate().take(end).skip(start) {
-                    let mut row = video_row(item, &self.stats_cache);
+                    let mut row = video_row(item);
                     row.views = compact_card_count(&row.views);
                     row.danmaku = compact_card_count(&row.danmaku);
                     rows.push(row);

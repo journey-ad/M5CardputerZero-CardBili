@@ -1,3 +1,4 @@
+use crate::{MenuPosition, VideoLayout};
 use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
@@ -5,20 +6,20 @@ use serde::{Deserialize, Serialize};
 #[derive(Deserialize, Serialize)]
 #[serde(default)]
 pub struct Settings {
-    pub list_view: i32,
+    pub list_view: VideoLayout,
     pub danmaku_enabled: bool,
     pub danmaku_opacity: i32,
-    pub menu_position: i32,
+    pub menu_position: MenuPosition,
     pub record_history: bool,
 }
 
 impl Default for Settings {
     fn default() -> Self {
         Self {
-            list_view: 1,
+            list_view: VideoLayout::ThreeColumns,
             danmaku_enabled: true,
             danmaku_opacity: 90,
-            menu_position: 0,
+            menu_position: MenuPosition::Top,
             record_history: true,
         }
     }
@@ -38,9 +39,7 @@ impl Settings {
                 serde_json::from_value(value).ok()
             })
             .unwrap_or_default();
-        settings.list_view = settings.list_view.clamp(0, 2);
         settings.danmaku_opacity = settings.danmaku_opacity.clamp(0, 100);
-        settings.menu_position = settings.menu_position.clamp(0, 2);
         settings
     }
 
@@ -55,5 +54,73 @@ impl Settings {
 
     fn path() -> PathBuf {
         PathBuf::from(crate::util::cookie_path()).with_file_name("settings.json")
+    }
+}
+
+impl VideoLayout {
+    pub fn from_index(index: i32) -> Self {
+        match index.clamp(0, 2) {
+            0 => Self::List,
+            1 => Self::ThreeColumns,
+            _ => Self::TwoColumns,
+        }
+    }
+
+    pub fn index(self) -> i32 {
+        match self {
+            Self::List => 0,
+            Self::ThreeColumns => 1,
+            Self::TwoColumns => 2,
+        }
+    }
+
+    pub fn cycle(self, step: i32) -> Self {
+        Self::from_index((self.index() + step).rem_euclid(3))
+    }
+}
+
+impl Serialize for VideoLayout {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_i32(self.index())
+    }
+}
+
+impl<'de> Deserialize<'de> for VideoLayout {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        i32::deserialize(deserializer).map(Self::from_index)
+    }
+}
+
+impl MenuPosition {
+    pub fn from_index(index: i32) -> Self {
+        match index.clamp(0, 2) {
+            0 => Self::Top,
+            1 => Self::Left,
+            _ => Self::Right,
+        }
+    }
+
+    pub fn index(self) -> i32 {
+        match self {
+            Self::Top => 0,
+            Self::Left => 1,
+            Self::Right => 2,
+        }
+    }
+
+    pub fn cycle(self, step: i32) -> Self {
+        Self::from_index((self.index() + step).rem_euclid(3))
+    }
+}
+
+impl Serialize for MenuPosition {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_i32(self.index())
+    }
+}
+
+impl<'de> Deserialize<'de> for MenuPosition {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        i32::deserialize(deserializer).map(Self::from_index)
     }
 }

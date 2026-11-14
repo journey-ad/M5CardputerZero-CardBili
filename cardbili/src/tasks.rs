@@ -4,7 +4,7 @@ use std::sync::mpsc::Sender;
 use std::thread;
 use std::time::Duration;
 
-use crate::{api, net, util, Msg};
+use crate::{api, util, Msg};
 
 // 先发布缓存，再发布最新数据；刷新失败时保留已展示的缓存
 fn cached_then_refresh<T>(
@@ -164,21 +164,6 @@ pub fn load_author_profile(mid: String, cookies: Option<String>, request: u64, t
     });
 }
 
-pub fn spawn_stats_worker(
-    tx: Sender<Msg>,
-) -> std::sync::mpsc::SyncSender<(String, Option<String>)> {
-    let (queue, requests) = std::sync::mpsc::sync_channel::<(String, Option<String>)>(8);
-    thread::spawn(move || {
-        for (bvid, cookies) in requests {
-            let result = api::video_stats(&bvid, cookies.as_deref());
-            if tx.send(Msg::Stats(bvid, result)).is_err() {
-                break;
-            }
-        }
-    });
-    queue
-}
-
 // 播放就绪后单独拉取弹幕，失败时回空列表，不影响播放
 pub fn start_danmaku(cid: i64, cookies: Option<String>, gen: u64, tx: Sender<Msg>) {
     thread::spawn(move || {
@@ -223,7 +208,7 @@ pub fn start_login(request: u64, tx: Sender<Msg>) {
     thread::spawn(move || {
         let jar = "/tmp/cardbili_qr.jar";
         let _ = std::fs::remove_file(jar);
-        let (url, key) = match net::qr_generate() {
+        let (url, key) = match api::auth::qr_generate() {
             Ok(v) => v,
             Err(e) => {
                 let _ = tx.send(Msg::QrStatus(request, e));
@@ -232,20 +217,20 @@ pub fn start_login(request: u64, tx: Sender<Msg>) {
         };
         let _ = tx.send(Msg::QrReady(request, url));
         loop {
-            match net::qr_poll(&key, jar) {
-                net::Poll::Success(ck) => {
+            match api::auth::qr_poll(&key, jar) {
+                api::auth::Poll::Success(ck) => {
                     let _ = tx.send(Msg::QrDone(request, ck));
                     break;
                 }
-                net::Poll::Scanned => {
+                api::auth::Poll::Scanned => {
                     let _ = tx.send(Msg::QrStatus(request, "已扫码，请在手机上确认".into()));
                 }
-                net::Poll::Pending => {}
-                net::Poll::Expired => {
+                api::auth::Poll::Pending => {}
+                api::auth::Poll::Expired => {
                     let _ = tx.send(Msg::QrStatus(request, "二维码已过期，请刷新".into()));
                     break;
                 }
-                net::Poll::Err(e) => {
+                api::auth::Poll::Err(e) => {
                     let _ = tx.send(Msg::QrStatus(request, e));
                     break;
                 }

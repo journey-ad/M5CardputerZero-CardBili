@@ -25,7 +25,7 @@ impl App {
                 }
             }
         }
-        if self.page == 0 && self.tab < 3 {
+        if self.page == Page::Home && self.tab.is_video() {
             if let Some(t) = self.esc_press {
                 if t.elapsed() >= Duration::from_millis(2000) {
                     self.quit = true;

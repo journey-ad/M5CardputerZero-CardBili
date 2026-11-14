@@ -1,3 +1,5 @@
+use crate::{HomeTab, MenuPosition, Page};
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Action {
     Refresh,
@@ -61,37 +63,37 @@ impl Action {
 
 // 五个槽位依次对应实体 4–8 键，首页菜单使用全部槽位
 pub fn actions(
-    page: i32,
-    tab: usize,
+    page: Page,
+    tab: HomeTab,
     mine_detail: i32,
     help: bool,
     logged: bool,
-    position: i32,
+    position: MenuPosition,
     retry: bool,
 ) -> [Option<Action>; 5] {
     use Action::*;
     let mut slots = [None; 5];
-    let first = usize::from(page != 0 && position == 1);
+    let first = usize::from(page != Page::Home && position == MenuPosition::Left);
     let last = 4;
     if help {
         slots[last] = Some(Back);
         return slots;
     }
     match page {
-        0 => {
-            if tab < 4 {
+        Page::Home => {
+            if tab != HomeTab::Settings {
                 slots[first] = Some(Refresh);
                 if !logged {
                     slots[first + 1] = Some(Login);
                 }
             }
-            if tab < 3 || mine_detail >= 0 {
+            if tab.is_video() || mine_detail >= 0 {
                 slots[2] = Some(Play);
                 slots[3] = Some(Detail);
             }
             slots[4] = Some(if mine_detail >= 0 { Back } else { Help });
         }
-        1 => {
+        Page::Player => {
             return [
                 Some(TogglePlay),
                 Some(Like),
@@ -100,32 +102,31 @@ pub fn actions(
                 Some(Comments),
             ]
         }
-        3 => return [None, Some(Play), Some(Author), Some(Related), Some(Back)],
-        2 => {
+        Page::Detail => return [None, Some(Play), Some(Author), Some(Related), Some(Back)],
+        Page::Login => {
             slots[first] = Some(Refresh);
             slots[last] = Some(Back);
         }
-        4 => slots[last] = Some(Back),
-        8 => {
+        Page::About => slots[last] = Some(Back),
+        Page::Favorites => {
             slots[first] = Some(if retry { Retry } else { Open });
             slots[last] = Some(Back);
         }
-        7 => {
+        Page::Following => {
             slots[first] = Some(if retry { Retry } else { Works });
             slots[last] = Some(Back);
         }
-        6 => {
+        Page::Comments => {
             if retry {
                 slots[first] = Some(Retry);
             }
             slots[last] = Some(Back);
         }
-        5 => {
+        Page::Collection => {
             slots[first] = Some(if retry { Retry } else { Play });
             slots[first + 1] = Some(Detail);
             slots[last] = Some(Back);
         }
-        _ => {}
     }
     slots
 }

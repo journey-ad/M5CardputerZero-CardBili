@@ -13,14 +13,11 @@ pub(super) struct App {
     pub(super) cpath: String,
     pub(super) cookies: Option<String>,
     pub(super) mid: String,
-    pub(super) stats_queue: mpsc::SyncSender<(String, Option<String>)>,
-    pub(super) stats_requested: HashSet<String>,
-    pub(super) stats_cache: HashMap<String, model::VideoStats>,
     pub(super) ph: slint::Image,
-    pub(super) page: i32,
-    pub(super) tab: usize,
+    pub(super) page: Page,
+    pub(super) tab: HomeTab,
     pub(super) settings: Settings,
-    pub(super) view: i32,
+    pub(super) view: VideoLayout,
     pub(super) help: bool,
     pub(super) sel: i32,
     pub(super) lists: Vec<Vec<model::Item>>,
@@ -37,7 +34,7 @@ pub(super) struct App {
     pub(super) acct_loaded: bool,
     pub(super) account_dirty: bool,
     pub(super) home_dirty: bool,
-    pub(super) home_view: Option<(usize, i32, i32, usize, i32)>,
+    pub(super) home_view: Option<(usize, VideoLayout, Page, usize, MenuPosition)>,
     pub(super) menu_view: Option<[Option<menu::Action>; 5]>,
     pub(super) player: Option<player::Player>,
     pub(super) frames_in_seg: u64,
@@ -77,7 +74,7 @@ pub(super) struct App {
     pub(super) back_stack: Vec<BackTarget>,
     pub(super) first_row: usize,
     pub(super) grid_scroll: f64,
-    pub(super) scroll_context: Option<(i32, i32, i32, i32)>,
+    pub(super) scroll_context: Option<(i32, VideoLayout, Page, MenuPosition)>,
     pub(super) about_scroll: f64,
     pub(super) requested_detail: Option<(String, String)>,
     pub(super) detail_scroll: f64,
@@ -110,25 +107,22 @@ impl App {
             .filter(|s| !s.is_empty());
         let mid = cookies.as_deref().map(util::parse_mid).unwrap_or_default();
 
-        let stats_queue = tasks::spawn_stats_worker(tx.clone());
-        let stats_requested = HashSet::new();
-        let stats_cache = HashMap::new();
         ui.set_version(format!("V{}", env!("CARGO_PKG_VERSION")).into());
         ui.set_about_text("作者  journey-ad\n\n项目地址\ngithub.com/journey-ad/CardBili\n\n字体\nFusion Pixel Font\ngithub.com/TakWolf/fusion-pixel-font\n\n接口参考\nPiliPlus\ngithub.com/bggRGjQaUbCoE/PiliPlus\n\n图标\nPixelarticons\ngithub.com/halfmage/pixelarticons".into());
 
         let ph = util::make_placeholder();
-        let mut page: i32 = 0;
-        let tab: usize = std::env::var("BILI_TAB")
+        let mut page = Page::Home;
+        let tab = std::env::var("BILI_TAB")
             .ok()
             .and_then(|s| s.parse::<usize>().ok())
-            .unwrap_or(0)
-            .min(4);
+            .map(HomeTab::from_index)
+            .unwrap_or(HomeTab::Recommended);
         let settings = Settings::load();
-        let mut view: i32 = std::env::var("BILI_VIEW")
+        let mut view = std::env::var("BILI_VIEW")
             .ok()
             .and_then(|s| s.parse::<i32>().ok())
-            .unwrap_or(settings.list_view)
-            .clamp(0, 2);
+            .map(VideoLayout::from_index)
+            .unwrap_or(settings.list_view);
         let help: bool = std::env::var("BILI_HELP").is_ok();
         let sel: i32 = std::env::var("BILI_SEL")
             .ok()
@@ -156,7 +150,7 @@ impl App {
         let danmaku_view = DanmakuView::new(&ui);
         let mut status = String::from("加载中…");
         let mut status_detail = String::new();
-        let loading = tab < 3;
+        let loading = tab.is_video();
 
         // 详情页
         let detail_bvid = String::new();
@@ -186,8 +180,8 @@ impl App {
         let last_tick = Instant::now();
 
         let force0 = std::env::var("BILI_FORCE").is_ok();
-        if tab < 3 {
-            tasks::load_list(tab, cookies.clone(), tx.clone(), force0);
+        if tab.is_video() {
+            tasks::load_list(tab.index(), cookies.clone(), tx.clone(), force0);
         }
 
         if let Ok(b) = std::env::var("BILI_AUTOPLAY") {
@@ -203,11 +197,11 @@ impl App {
             }
         }
         if std::env::var("BILI_ABOUT").is_ok() {
-            page = 4;
+            page = Page::About;
         }
         if std::env::var("BILI_TEST_LOGIN").is_ok() {
-            page = 2;
-            view = 0;
+            page = Page::Login;
+            view = VideoLayout::List;
             ui.set_has_qr(false);
             ui.set_qr_status("正在生成二维码…".into());
             login_request += 1;
@@ -240,9 +234,6 @@ impl App {
             cpath,
             cookies,
             mid,
-            stats_queue,
-            stats_requested,
-            stats_cache,
             ph,
             page,
             tab,

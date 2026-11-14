@@ -1,37 +1,21 @@
 use super::super::*;
 
-pub(in crate::app) fn video_columns(view: i32) -> usize {
+pub(in crate::app) fn video_columns(view: VideoLayout) -> usize {
     match view {
-        0 => 1,
-        2 => 2,
-        _ => 3,
+        VideoLayout::List => 1,
+        VideoLayout::TwoColumns => 2,
+        VideoLayout::ThreeColumns => 3,
     }
 }
 
-pub(in crate::app) fn video_row(
-    item: &model::Item,
-    stats: &HashMap<String, model::VideoStats>,
-) -> VideoRow {
-    let cached = stats.get(&item.bvid);
+pub(in crate::app) fn video_row(item: &model::Item) -> VideoRow {
     VideoRow {
         title: item.title.as_str().into(),
         author: item.meta.as_str().into(),
         duration: item.duration.as_str().into(),
-        views: cached
-            .map(|stats| stats.views.as_str())
-            .or(item.views.as_deref())
-            .unwrap_or("—")
-            .into(),
-        likes: cached
-            .map(|stats| stats.likes.as_str())
-            .or(item.likes.as_deref())
-            .unwrap_or("—")
-            .into(),
-        danmaku: cached
-            .map(|stats| stats.danmaku.as_str())
-            .or(item.danmaku.as_deref())
-            .unwrap_or("—")
-            .into(),
+        views: item.views.as_deref().unwrap_or_default().into(),
+        likes: item.likes.as_deref().unwrap_or_default().into(),
+        danmaku: item.danmaku.as_deref().unwrap_or_default().into(),
     }
 }
 
@@ -45,22 +29,15 @@ pub(in crate::app) fn compact_card_count(value: &str) -> slint::SharedString {
     value.into()
 }
 
-pub(in crate::app) fn sync_list(
-    ui: &AppWindow,
-    items: &[model::Item],
-    stats: &HashMap<String, model::VideoStats>,
-) {
-    let rows = items
-        .iter()
-        .map(|item| video_row(item, stats))
-        .collect::<Vec<_>>();
+pub(in crate::app) fn sync_list(ui: &AppWindow, items: &[model::Item]) {
+    let rows = items.iter().map(video_row).collect::<Vec<_>>();
     ui.set_list_rows(ModelRc::new(VecModel::from(rows)));
 }
 
-pub(in crate::app) fn list_source(tab: usize, mine_detail: i32) -> Option<usize> {
+pub(in crate::app) fn list_source(tab: HomeTab, mine_detail: i32) -> Option<usize> {
     match tab {
-        0..=2 => Some(tab),
-        3 if mine_detail >= 0 => Some(mine_detail as usize),
+        HomeTab::Recommended | HomeTab::Popular | HomeTab::Dynamic => Some(tab.index()),
+        HomeTab::Mine if mine_detail >= 0 => Some(mine_detail as usize),
         _ => None,
     }
 }

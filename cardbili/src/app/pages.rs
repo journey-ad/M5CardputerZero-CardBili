@@ -62,13 +62,13 @@ impl App {
     }
 
     pub(super) fn page_key(&mut self, k: &str) {
-        if self.page == 8 {
+        if self.page == Page::Favorites {
             self.favorites_key(k);
-        } else if self.page == 7 {
+        } else if self.page == Page::Following {
             self.following_key(k);
-        } else if self.page == 6 {
+        } else if self.page == Page::Comments {
             self.comments_key(k);
-        } else if self.page == 2 {
+        } else if self.page == Page::Login {
             match k {
                 "ESC" | "BACKSPACE" => {
                     self.login_uploader = None;
@@ -85,7 +85,7 @@ impl App {
                 }
                 _ => {}
             }
-        } else if self.page == 3 {
+        } else if self.page == Page::Detail {
             match k {
                 "ENTER" | "SPACE" => {
                     if !self.detail_bvid.is_empty() {
@@ -111,7 +111,7 @@ impl App {
                 }
                 _ => {}
             }
-        } else if self.page == 4 {
+        } else if self.page == Page::About {
             let limit = (self.ui.get_about_content_h() as f64 - 150.0).max(0.0);
             match k {
                 "UP" | "f" | "w" | "PGUP" => {
@@ -123,7 +123,7 @@ impl App {
                 "ESC" | "BACKSPACE" | "ENTER" => self.go_back = true,
                 _ => {}
             }
-        } else if self.page == 5 {
+        } else if self.page == Page::Collection {
             match k {
                 "ENTER" => {
                     self.requested_play = self

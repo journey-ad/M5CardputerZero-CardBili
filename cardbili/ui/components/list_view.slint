@@ -22,9 +22,9 @@ export component ListView inherits Rectangle {
         }
         HorizontalLayout {
             x: 8px; y: 17px; width: parent.width - 16px; height: 12px; spacing: 4px; alignment: start;
-            StatItem { icon: Icons.clock; value: row.duration; }
-            StatItem { icon: Icons.play; value: row.views; }
-            StatItem { icon: Icons.thumbs-up; value: row.likes; }
+            if row.duration != "": StatItem { icon: Icons.clock; value: row.duration; }
+            if row.views != "": StatItem { icon: Icons.play; value: row.views; }
+            if row.likes != "": StatItem { icon: Icons.thumbs-up; value: row.likes; }
             if root.show-author: Rectangle {
                 horizontal-stretch: 1; min-width: 0px; preferred-width: 0px; clip: true;
                 Text {

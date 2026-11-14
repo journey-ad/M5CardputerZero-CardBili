@@ -82,7 +82,7 @@ impl App {
     }
 
     pub(in crate::app) fn tick_like(&mut self) {
-        if self.page != 1 {
+        if self.page != Page::Player {
             return;
         }
         if let Some((since, submitted)) = self.controls.like_hold.as_mut() {

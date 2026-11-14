@@ -1,12 +1,13 @@
+import { HomeTab, Page, VideoLayout, MenuPosition } from "types.slint";
 // 页面与组件共用的全局状态
 import { Cmt, DmRow, VideoRow } from "common.slint";
 
 // 导航与交互态
 export global Nav {
-    in-out property <int> page: 0;
-    in-out property <int> tab: 0;
+    in-out property <Page> page: Page.home;
+    in-out property <HomeTab> tab: HomeTab.recommended;
     in-out property <int> sel: 0;
-    in-out property <int> view: 0;
+    in-out property <VideoLayout> view: VideoLayout.list;
     in-out property <bool> help: false;
     in-out property <bool> mine-detail: false;
 }
@@ -32,6 +33,7 @@ export global ListModel {
 // 通用状态文本：首页状态栏、空状态、播放占位共用
 export global Status {
     in-out property <string> status: "";
+    in-out property <int> loading-dots: -1;
     in-out property <string> detail: "";
     in-out property <string> bar: "";
     in-out property <bool> bar-sticky: false;
@@ -80,7 +82,7 @@ export global Danmaku {
 export global Preferences {
     in-out property <bool> record-history: true;
     in-out property <int> danmaku-opacity: 90;
-    in-out property <int> menu-position: 0;
+    in-out property <MenuPosition> menu-position: MenuPosition.top;
 }
 
 // 详情

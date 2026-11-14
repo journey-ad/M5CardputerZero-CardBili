@@ -1,16 +1,17 @@
+import { VideoLayout } from "../types.slint";
 import { Nav, ListModel } from "../state.slint";
 import { ListView } from "list_view.slint";
 import { GridView } from "grid_view.slint";
 
 export component VideoList inherits Rectangle {
     in property <bool> show-author: true;
-    out property <bool> empty: Nav.view == 0 ? ListModel.rows.length == 0 : ListModel.grid-rows.length == 0;
+    out property <bool> empty: Nav.view == VideoLayout.list ? ListModel.rows.length == 0 : ListModel.grid-rows.length == 0;
 
-    if Nav.view == 0: ListView {
+    if Nav.view == VideoLayout.list: ListView {
         x: 0px; y: 0px; width: parent.width; height: parent.height;
         show-author: root.show-author;
     }
-    if Nav.view > 0: GridView {
+    if Nav.view != VideoLayout.list: GridView {
         x: 0px; y: 0px; width: parent.width; height: parent.height;
     }
 }

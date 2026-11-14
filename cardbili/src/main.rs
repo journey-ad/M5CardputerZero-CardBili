@@ -41,7 +41,6 @@ pub enum Msg {
         u64,
         Result<(model::AuthorProfile, Option<cache::Pixels>), String>,
     ),
-    Stats(String, Result<model::VideoStats, String>),
 }
 
 fn main() {

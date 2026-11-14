@@ -40,7 +40,7 @@ impl App {
         page: u32,
         result: Result<model::FollowingPage, String>,
     ) {
-        if self.page != 7 || request != self.following_request {
+        if self.page != Page::Following || request != self.following_request {
             return;
         }
         if page == self.following.pending_page {
@@ -116,7 +116,7 @@ impl App {
     }
 
     pub(super) fn sync_following(&mut self) {
-        if self.page != 7 {
+        if self.page != Page::Following {
             return;
         }
         let selected = self.following.selection;

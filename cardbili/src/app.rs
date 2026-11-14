@@ -18,7 +18,10 @@ mod view;
 
 use crate::player::{HEIGHT, VID_BYTES, WIDTH};
 use crate::settings::Settings;
-use crate::{danmaku, menu, model, player, tasks, util, AppWindow, Cmt, Msg, VideoRow};
+use crate::{
+    danmaku, menu, model, player, tasks, util, AppWindow, Cmt, HomeTab, MenuPosition, Msg, Page,
+    VideoLayout, VideoRow,
+};
 use components::*;
 use detail::{show_detail, show_detail_loading, sync_thumb};
 use navigation::{BackTarget, CollectionState, DetailDisplay};

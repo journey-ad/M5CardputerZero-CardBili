@@ -1,8 +1,10 @@
+pub mod auth;
 pub mod favorites;
 pub mod playback;
+mod wbi;
 
 use crate::cache;
-use crate::model::{self, Account, Comment, Detail, Item, Owner, PlayInfo, Seg, VideoStats};
+use crate::model::{self, Account, Comment, Detail, Item, Owner, PlayInfo, Seg};
 use crate::net;
 use base64::Engine;
 use serde_json::Value;
@@ -94,8 +96,8 @@ pub fn rcmd(cookies: Option<&str>, page: u32) -> Result<Vec<Item>, String> {
     let endpoint = "https://api.bilibili.com/x/web-interface/wbi/index/top/feed/rcmd";
     let cache_key = format!("{}?{}", endpoint, net::query_string(&base));
     let v = cache::api_json_with(&cache_key, cookies, cache::TTL_LIST, || {
-        let mixin = net::fetch_mixin()?;
-        let signed = net::wbi_sign(&base, &mixin);
+        let mixin = wbi::fetch_mixin()?;
+        let signed = wbi::wbi_sign(&base, &mixin);
         let url = format!("{}?{}", endpoint, net::query_string(&signed));
         net::curl_get(&url, cookies)
     })?;
@@ -390,20 +392,6 @@ pub fn video_detail(bvid: &str, cookies: Option<&str>) -> Result<Detail, String>
     })
 }
 
-pub fn video_stats(bvid: &str, cookies: Option<&str>) -> Result<VideoStats, String> {
-    let url = format!("https://api.bilibili.com/x/web-interface/view?bvid={bvid}");
-    let value = cache::api_json(&url, cookies, cache::TTL_DETAIL)?;
-    if value["code"].as_i64() != Some(0) {
-        return Err(api_err("视频信息", &value));
-    }
-    let stats = &value["data"]["stat"];
-    Ok(VideoStats {
-        views: count_text(&stats["view"]).unwrap_or_else(|| "—".into()),
-        likes: count_text(&stats["like"]).unwrap_or_else(|| "—".into()),
-        danmaku: count_text(&stats["danmaku"]).unwrap_or_else(|| "—".into()),
-    })
-}
-
 fn random_base64(length: usize) -> Result<String, String> {
     let mut bytes = vec![0; length];
     std::fs::File::open("/dev/urandom")
@@ -441,8 +429,8 @@ pub fn uploader_videos(
         let mut params = params;
         params.push(("dm_img_str".into(), random_base64(32)?));
         params.push(("dm_cover_img_str".into(), random_base64(64)?));
-        let mixin = net::fetch_mixin()?;
-        let signed = net::wbi_sign(&params, &mixin);
+        let mixin = wbi::fetch_mixin()?;
+        let signed = wbi::wbi_sign(&params, &mixin);
         net::curl_get_with_headers(
             &format!("{}?{}", endpoint, net::query_string(&signed)),
             cookies,

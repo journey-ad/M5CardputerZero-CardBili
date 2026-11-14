@@ -4,7 +4,7 @@ impl App {
     pub(in crate::app) fn sync_playback(&mut self) {
         // --- 应用最新帧 ---
         if let Some((frame_gen, bytes)) = self.latest.take() {
-            if self.page == 1
+            if self.page == Page::Player
                 && self
                     .player
                     .as_ref()
@@ -27,7 +27,7 @@ impl App {
             }
         }
 
-        if self.page == 1 {
+        if self.page == Page::Player {
             self.sync_triple();
             self.ui.set_liked(self.controls.liked.unwrap_or(false));
             self.ui.set_reaction_busy(self.controls.busy);

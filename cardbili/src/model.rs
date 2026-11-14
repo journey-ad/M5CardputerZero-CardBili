@@ -36,12 +36,6 @@ pub struct AuthorProfile {
     pub followers: i64,
 }
 
-pub struct VideoStats {
-    pub views: String,
-    pub likes: String,
-    pub danmaku: String,
-}
-
 pub struct VideoPage {
     pub items: Vec<Item>,
     pub has_more: bool,

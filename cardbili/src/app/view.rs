@@ -8,7 +8,7 @@ impl App {
         self.last_tick = now;
 
         // --- 详情页滚动尺寸 ---
-        if self.page == 3 && !self.ui.get_detail_loading() {
+        if self.page == Page::Detail && !self.ui.get_detail_loading() {
             self.ui.set_detail_title_shift(yoyo_shift(
                 self.ui.get_detail_title_text_width() as f64,
                 self.ui.get_detail_title_width() as f64,
@@ -33,7 +33,7 @@ impl App {
 
         // --- 同步 UI ---
         // 播放中 3 秒无操作隐藏控件；暂停或正在长按调进度时保持显示
-        let controls_show = if self.page == 1 {
+        let controls_show = if self.page == Page::Player {
             self.player
                 .as_ref()
                 .map(|p| {
@@ -58,14 +58,20 @@ impl App {
         }
         self.ui.set_controls_visible(controls_show);
         self.ui.set_page(self.page);
-        self.ui.set_tab(self.tab as i32);
+        self.ui.set_tab(self.tab);
         self.ui.set_sel(self.sel);
-        let status = if self.page == 1 && !self.ui.get_has_frame() && self.status.ends_with('…') {
-            let dots = "·".repeat((self.marq_t / 0.4) as usize % 3 + 1);
-            format!("{}{dots}", self.status.trim_end_matches('…'))
+        let animate_loading =
+            self.page == Page::Player && !self.ui.get_has_frame() && self.status.ends_with('…');
+        let status = if animate_loading {
+            self.status.trim_end_matches('…')
         } else {
-            self.status.clone()
+            self.status.as_str()
         };
+        self.ui.set_loading_dots(if animate_loading {
+            (self.marq_t / 0.4) as i32 % 4
+        } else {
+            -1
+        });
         self.ui.set_status(status.into());
         self.ui
             .set_status_detail(self.status_detail.as_str().into());
@@ -90,9 +96,9 @@ impl App {
 impl App {
     pub(super) fn menu_actions(&self) -> [Option<menu::Action>; 5] {
         let retry = match self.page {
-            6 => !self.comment_page.error.is_empty(),
-            7 => !self.following.error.is_empty(),
-            8 => !self.favorites.error.is_empty(),
+            Page::Comments => !self.comment_page.error.is_empty(),
+            Page::Following => !self.following.error.is_empty(),
+            Page::Favorites => !self.favorites.error.is_empty(),
             _ => !self.collection.error.is_empty(),
         };
         menu::actions(

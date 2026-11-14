@@ -9,7 +9,7 @@ impl App {
             "RIGHT" | "c" | "PGDN" => (1.0, true),
             _ => return false,
         };
-        let height = if self.page == 3 {
+        let height = if self.page == Page::Detail {
             self.ui.get_detail_viewport_h()
         } else {
             self.ui.get_comment_viewport_h()
@@ -29,7 +29,7 @@ impl App {
                 step
             }
         };
-        if self.page == 3 {
+        if self.page == Page::Detail {
             self.detail_scroll = (self.detail_scroll + delta).clamp(0.0, self.detail_maxv);
             self.ui.set_detail_scroll(self.detail_scroll as f32);
             sync_thumb(&self.ui, self.detail_scroll, self.detail_maxv);

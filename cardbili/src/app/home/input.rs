@@ -2,7 +2,7 @@ use super::super::*;
 
 impl App {
     pub(in crate::app) fn home_key(&mut self, k: &str) {
-        if self.tab < 3 && !self.help && (k == "ESC_DOWN" || k == "ESC_UP") {
+        if self.tab.is_video() && !self.help && (k == "ESC_DOWN" || k == "ESC_UP") {
             if k == "ESC_DOWN" {
                 self.esc_press = Some(Instant::now());
                 self.ui.set_bar("长按 2 秒退出".into());
@@ -15,39 +15,43 @@ impl App {
             return;
         }
         if k == "b" && !self.help {
-            self.settings.menu_position = (self.settings.menu_position + 1) % 3;
+            self.settings.menu_position = self.settings.menu_position.cycle(1);
             self.settings_changed = true;
             return;
         }
         if matches!(k, "TAB" | "BACKTAB") && !self.help {
             let step = if k == "TAB" { 1 } else { 4 };
-            self.tab = (self.tab + step) % 5;
+            self.tab = HomeTab::from_index((self.tab.index() + step) % 5);
             self.back_stack.clear();
             self.direction_hold = None;
             self.ui.set_bar("".into());
             self.ui.set_bar_sticky(false);
             self.sel = 0;
             self.mine_detail = -1;
-            if self.tab >= 3 {
+            if !self.tab.is_video() {
                 self.loading = false;
                 self.status.clear();
                 self.status_detail.clear();
                 self.acct_loaded = false;
             } else {
-                if self.loaded[self.tab] {
+                if self.loaded[self.tab.index()] {
                     self.loading = false;
-                    self.status = format!("{} 条", self.lists[self.tab].len());
+                    self.status = format!("{} 条", self.lists[self.tab.index()].len());
                     self.status_detail.clear();
                 } else {
                     self.loading = true;
                     self.status = "加载中…".into();
                     self.status_detail.clear();
                 }
-                self.load_home_list(self.tab, false);
-                if self.loaded[self.tab] && !self.covers_started[self.tab] {
-                    self.covers_started[self.tab] = true;
-                    self.covers[self.tab] = vec![None; self.lists[self.tab].len()];
-                    tasks::spawn_covers(self.tab, self.lists[self.tab].clone(), self.tx.clone());
+                self.load_home_list(self.tab.index(), false);
+                if self.loaded[self.tab.index()] && !self.covers_started[self.tab.index()] {
+                    self.covers_started[self.tab.index()] = true;
+                    self.covers[self.tab.index()] = vec![None; self.lists[self.tab.index()].len()];
+                    tasks::spawn_covers(
+                        self.tab.index(),
+                        self.lists[self.tab.index()].clone(),
+                        self.tx.clone(),
+                    );
                 }
             }
             return;
@@ -58,16 +62,16 @@ impl App {
             }
         } else if k == "h" {
             self.help = true;
-        } else if k == "l" && self.tab < 4 {
+        } else if k == "l" && self.tab != HomeTab::Settings {
             self.requested_login = true;
-        } else if self.tab == 4 {
+        } else if self.tab == HomeTab::Settings {
             match k {
                 "UP" | "f" | "w" => self.sel = (self.sel - 1).max(0),
                 "DOWN" | "x" | "s" => self.sel = (self.sel + 1).min(5),
                 "LEFT" | "z" | "RIGHT" | "c" => {
                     let step = if matches!(k, "LEFT" | "z") { -1 } else { 1 };
                     if self.sel == 0 {
-                        self.view = (self.view + step).rem_euclid(3);
+                        self.view = self.view.cycle(step);
                         self.settings_changed = true;
                     } else if self.sel == 1 {
                         self.toggle_danmaku();
@@ -76,8 +80,7 @@ impl App {
                         self.settings_changed |= opacity != self.settings.danmaku_opacity;
                         self.settings.danmaku_opacity = opacity;
                     } else if self.sel == 3 {
-                        self.settings.menu_position =
-                            (self.settings.menu_position + step).rem_euclid(3);
+                        self.settings.menu_position = self.settings.menu_position.cycle(step);
                         self.settings_changed = true;
                     } else if self.sel == 4 {
                         self.settings.record_history = !self.settings.record_history;
@@ -89,12 +92,12 @@ impl App {
                     self.requested_about = true;
                 }
                 "ESC" | "BACKSPACE" => {
-                    self.tab = 0;
+                    self.tab = HomeTab::Recommended;
                     self.sel = 0;
                 }
                 _ => {}
             }
-        } else if self.tab == 3 {
+        } else if self.tab == HomeTab::Mine {
             if self.mine_detail < 0 {
                 match k {
                     "UP" | "f" | "w" | "LEFT" | "z" => {
@@ -121,7 +124,7 @@ impl App {
                         self.load_favorites(true);
                     }
                     "ESC" | "BACKSPACE" => {
-                        self.tab = 0;
+                        self.tab = HomeTab::Recommended;
                         self.sel = 0;
                         self.mine_detail = -1;
                     }
@@ -165,7 +168,7 @@ impl App {
         } else {
             match k {
                 "ENTER" => {
-                    if let Some(it) = self.lists[self.tab].get(self.sel as usize) {
+                    if let Some(it) = self.lists[self.tab.index()].get(self.sel as usize) {
                         if !it.bvid.is_empty() {
                             self.status = "正在加载视频…".into();
                             self.status_detail.clear();
@@ -177,18 +180,18 @@ impl App {
                     }
                 }
                 "SPACE" => {
-                    if let Some(it) = self.lists[self.tab].get(self.sel as usize) {
+                    if let Some(it) = self.lists[self.tab.index()].get(self.sel as usize) {
                         if !it.bvid.is_empty() {
                             self.requested_detail = Some((it.bvid.clone(), it.title.clone()));
                         }
                     }
                 }
                 "r" => {
-                    self.loaded[self.tab] = false;
+                    self.loaded[self.tab.index()] = false;
                     self.loading = true;
                     self.status = "刷新中…".into();
                     self.status_detail.clear();
-                    self.load_home_list(self.tab, true);
+                    self.load_home_list(self.tab.index(), true);
                 }
                 "ESC_HOLD" => {
                     self.quit = true;

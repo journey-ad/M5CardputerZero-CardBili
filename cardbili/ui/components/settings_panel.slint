@@ -1,3 +1,4 @@
+import { VideoLayout, MenuPosition } from "../types.slint";
 import { Nav, Preferences, Danmaku, Meta } from "../state.slint";
 import { Icon, Icons } from "icons.slint";
 
@@ -34,10 +35,10 @@ export component SettingsPanel inherits Rectangle {
             Text {
                 x: 24px; width: 72px; height: parent.height;
                 text: [
-                    ["列表", "3列", "2列"][Nav.view],
+                    Nav.view == VideoLayout.list ? "列表" : (Nav.view == VideoLayout.three-columns ? "3列" : "2列"),
                     Danmaku.enabled ? "开启" : "关闭",
                     Preferences.danmaku-opacity + "%",
-                    ["顶部", "左侧", "右侧"][Preferences.menu-position],
+                    Preferences.menu-position == MenuPosition.top ? "顶部" : (Preferences.menu-position == MenuPosition.left ? "左侧" : "右侧"),
                     Preferences.record-history ? "开启" : "关闭",
                 ][index];
                 color: index == Nav.sel ? #7fb0ff : #9aa6ba;
