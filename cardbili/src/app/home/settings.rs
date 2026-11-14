@@ -28,16 +28,14 @@ impl App {
                         self.settings.menu_position = self.settings.menu_position.cycle(step);
                         self.settings_changed = true;
                     }
-                    SettingsItem::RecordHistory => {
-                        self.settings.record_history = !self.settings.record_history;
-                        self.history.set_enabled(self.settings.record_history);
-                        self.settings_changed = true;
-                    }
+                    SettingsItem::RecordHistory => self.toggle_record_history(),
                     SettingsItem::DebugLog => self.toggle_debug_log(),
                     _ => {}
                 }
             }
             "ENTER" => match row.item {
+                SettingsItem::Danmaku => self.toggle_danmaku(),
+                SettingsItem::RecordHistory => self.toggle_record_history(),
                 SettingsItem::DebugLog => self.toggle_debug_log(),
                 SettingsItem::Cdn => self.open_cdn(),
                 SettingsItem::Cache => {
@@ -59,6 +57,12 @@ impl App {
             }
             _ => {}
         }
+    }
+
+    fn toggle_record_history(&mut self) {
+        self.settings.record_history = !self.settings.record_history;
+        self.history.set_enabled(self.settings.record_history);
+        self.settings_changed = true;
     }
 
     fn toggle_debug_log(&mut self) {

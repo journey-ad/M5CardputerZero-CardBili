@@ -1,23 +1,22 @@
 import { VideoLayout, MenuPosition, SettingsItem } from "../types.slint";
 import { Nav, Preferences, Danmaku, Meta } from "../state.slint";
 import { Icon, Icons } from "icons.slint";
+import { ToggleSwitch } from "toggle_switch.slint";
 
 export component SettingsPanel inherits Rectangle {
     clip: true;
     property <int> first: max(0, Nav.sel - floor((root.height - 4px) / 24px) + 1);
     for row[index] in Preferences.settings-items: item-row := Rectangle {
+        property <bool> is-toggle: row.item == SettingsItem.danmaku || row.item == SettingsItem.record-history || row.item == SettingsItem.debug-log;
         property <bool> adjustable: row.item != SettingsItem.cdn && row.item != SettingsItem.cache && row.item != SettingsItem.about;
         property <string> value: {
             if row.item == SettingsItem.list-style {
                 return Nav.view == VideoLayout.list ? "列表" : (Nav.view == VideoLayout.three-columns ? "3列" : "2列");
             }
-            if row.item == SettingsItem.danmaku { return Danmaku.enabled ? "开启" : "关闭"; }
             if row.item == SettingsItem.danmaku-opacity { return Preferences.danmaku-opacity + "%"; }
             if row.item == SettingsItem.menu-position {
                 return Preferences.menu-position == MenuPosition.top ? "顶部" : (Preferences.menu-position == MenuPosition.left ? "左侧" : "右侧");
             }
-            if row.item == SettingsItem.record-history { return Preferences.record-history ? "开启" : "关闭"; }
-            if row.item == SettingsItem.debug-log { return Preferences.debug-log ? "开启" : "关闭"; }
             if row.item == SettingsItem.cdn { return Preferences.cdn-name; }
             if row.item == SettingsItem.cache { return Preferences.cache-size; }
             return Meta.version;
@@ -38,7 +37,16 @@ export component SettingsPanel inherits Rectangle {
             font-size: 12px;
             vertical-alignment: center;
         }
-        if item-row.adjustable: Rectangle {
+        if item-row.is-toggle: ToggleSwitch {
+            x: parent.width - self.width - 12px;
+            y: (parent.height - self.height) / 2;
+            checked: {
+                if row.item == SettingsItem.danmaku { return Danmaku.enabled; }
+                if row.item == SettingsItem.record-history { return Preferences.record-history; }
+                return Preferences.debug-log;
+            }
+        }
+        if item-row.adjustable && !item-row.is-toggle: Rectangle {
             x: parent.width - 130px;
             width: 120px;
             height: parent.height;

@@ -1,0 +1,19 @@
+export component ToggleSwitch inherits Rectangle {
+    in property <bool> checked: false;
+
+    width: 34px;
+    height: 18px;
+    border-radius: self.height / 2;
+    background: root.checked ? #5b91e5 : #354258;
+    animate background { duration: 140ms; }
+
+    Rectangle {
+        x: root.checked ? parent.width - self.width - 2px : 2px;
+        y: 2px;
+        width: 14px;
+        height: 14px;
+        border-radius: self.width / 2;
+        background: #e6ebf5;
+        animate x { duration: 140ms; easing: ease-in-out; }
+    }
+}
