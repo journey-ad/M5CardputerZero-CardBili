@@ -6,7 +6,7 @@ import { StatItem } from "stat_item.slint";
 export component ListView inherits Rectangle {
     in property <bool> show-author: true;
     clip: true;
-    property <length> top: ListModel.scroll-top * 1px;
+    property <length> top: ListModel.row-offsets.length > ListModel.first-row ? ListModel.row-offsets[ListModel.first-row] * 1px : 0px;
     for header in ListModel.headers: Text {
         x: 8px; y: header.top * 1px - root.top; width: parent.width - 16px; height: 24px;
         text: header.title; color: #8b95a7;

@@ -17,38 +17,8 @@ pub(in crate::app) fn video_row(item: &model::Item) -> VideoRow {
         views: item.views.as_deref().unwrap_or_default().into(),
         likes: item.likes.as_deref().unwrap_or_default().into(),
         danmaku: item.danmaku.as_deref().unwrap_or_default().into(),
-        progress: progress_text(item),
-        watched: model::watch_time(item.view_at).into(),
-    }
-}
-
-fn progress_text(item: &model::Item) -> slint::SharedString {
-    if item.progress < 0 {
-        return "已看完".into();
-    }
-    if item.progress == 0 {
-        return Default::default();
-    }
-    if item.duration_secs > 0.0 && item.progress as f64 >= item.duration_secs - 1.0 {
-        return "已看完".into();
-    }
-    if item.duration_secs > 0.0 {
-        return format!(
-            "{} / {}",
-            clock_text(item.progress),
-            clock_text(item.duration_secs as i64)
-        )
-        .into();
-    }
-    clock_text(item.progress).into()
-}
-
-fn clock_text(sec: i64) -> String {
-    let sec = sec.max(0);
-    if sec >= 3600 {
-        format!("{}:{:02}:{:02}", sec / 3600, (sec % 3600) / 60, sec % 60)
-    } else {
-        format!("{:02}:{:02}", sec / 60, sec % 60)
+        progress: Default::default(),
+        watched: Default::default(),
     }
 }
 
@@ -62,40 +32,18 @@ pub(in crate::app) fn compact_card_count(value: &str) -> slint::SharedString {
     value.into()
 }
 
-pub(in crate::app) fn sync_list(ui: &AppWindow, items: &[model::Item], group_history: bool, first_row: usize) {
-    let mut rows = Vec::with_capacity(items.len());
-    let mut tops = Vec::with_capacity(items.len());
-    let mut day_starts = Vec::with_capacity(items.len());
-    let mut headers = Vec::new();
-    let mut extra = 0.0f32;
-    let mut last_day = None;
-    for (index, item) in items.iter().enumerate() {
-        let mut day_start = false;
-        if group_history && item.view_at > 0 {
-            let day = (item.view_at + 8 * 3600).div_euclid(86400);
-            if last_day != Some(day) {
-                headers.push(crate::HistoryHeader {
-                    title: model::history_day_label(item.view_at).into(),
-                    top: index as f32 * 30.0 + extra,
-                });
-                extra += 24.0;
-                last_day = Some(day);
-                day_start = true;
-            }
-        }
-        rows.push(video_row(item));
-        tops.push(index as f32 * 30.0 + extra);
-        day_starts.push(day_start);
-    }
-    let scroll_top = tops
-        .get(first_row)
-        .map(|top| if day_starts.get(first_row) == Some(&true) { top - 24.0 } else { *top })
-        .unwrap_or(0.0);
+pub(in crate::app) fn sync_list(
+    ui: &AppWindow,
+    rows: Vec<VideoRow>,
+    headers: Vec<crate::HistoryHeader>,
+    tops: Vec<f32>,
+    offsets: Vec<f32>,
+) {
     let list_model = ui.global::<crate::ListModel>();
     list_model.set_rows(ModelRc::new(VecModel::from(rows)));
     list_model.set_headers(ModelRc::new(VecModel::from(headers)));
     list_model.set_row_tops(ModelRc::new(VecModel::from(tops)));
-    list_model.set_scroll_top(scroll_top);
+    list_model.set_row_offsets(ModelRc::new(VecModel::from(offsets)));
 }
 
 pub(in crate::app) fn list_source(tab: HomeTab, mine_detail: i32) -> Option<usize> {

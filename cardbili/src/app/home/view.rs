@@ -236,7 +236,14 @@ impl App {
                 self.home_dirty = false;
             }
             if layout == VideoLayout::List {
-                sync_list(&self.ui, items, history, self.first_row);
+                if history {
+                    let prepared = build_history_rows(items);
+                    sync_list(&self.ui, prepared.rows, prepared.headers, prepared.tops, prepared.offsets);
+                } else {
+                    let rows: Vec<VideoRow> = items.iter().map(video_row).collect();
+                    let tops: Vec<f32> = (0..items.len()).map(|i| i as f32 * 30.0).collect();
+                    sync_list(&self.ui, rows, Vec::new(), tops.clone(), tops);
+                }
             } else {
                 let mut rows = Vec::with_capacity(end - start);
                 let mut images = Vec::with_capacity(end - start);
