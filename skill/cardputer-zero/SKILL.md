@@ -19,7 +19,7 @@ allowed-tools: Bash Read Write Edit
 1. **屏幕不是 wayland 输出**：内部 320x170 面板由 launcher 直写 `/dev/fb0`（= `/dev/fb_lcd`），`wlr-randr` 只看到无头 1920x1080。第三方程序也必须直接 mmap 写 `/dev/fb0`。RGB565 小端、stride=640、整帧 108800 字节。
 2. **没有方向键**：方向键是 `Z`=左、`X`=下、`C`=右、`F`=上；数字键 `1`~`0` 实为 F1~F10（自定义 keycode，见 `references/key-layout.md`）。不要假设标准 evdev 数字码 2..11。
 3. **launcher 只打开 `/dev/fb0` 和 `/dev/input/event3`**，且不收 uinput 注入；SSH 无法模拟按键，按键相关必须真机手按验证。
-4. **安装应用 = 可执行放到 `/usr/share/APPLaunch/bin/` + 图标 `share/images/` + `applications/*.desktop`**，然后 `systemctl --user restart APPLaunch.service`（需 export XDG_RUNTIME_DIR / DBUS_SESSION_BUS_ADDRESS）。APPLaunch 是**用户级** systemd 服务，必须用 `systemctl --user`；用 `sudo systemctl` 会报 `Unit APPLaunch.service not found`。CardBili 部署直接跑 `scripts/deploy.sh` 一键完成（scp + 远程 install + 用户级重启 + md5 校验）。
+4. **安装应用 = 可执行放到 `/usr/share/APPLaunch/bin/` + 图标 `share/images/` + `applications/*.desktop`**，然后 `systemctl --user restart APPLaunch.service`（需 export XDG_RUNTIME_DIR / DBUS_SESSION_BUS_ADDRESS）。APPLaunch 是**用户级** systemd 服务，必须用 `systemctl --user`；用 `sudo systemctl` 会报 `Unit APPLaunch.service not found`。CardBili 部署在仓库根执行 `bash skill/cardputer-zero/scripts/deploy.sh` 一键完成（scp + 远程 install + 用户级重启 + md5 校验）。
 5. **Rust+Slint 交叉编译**要 `EmbedFiles` + `software-renderer-systemfonts` + 内嵌 zpix 字体，且渲染循环用常驻 buffer + 仅在 `draw_if_needed` 为真时写屏，否则静态页会黑屏。
 
 ## 访问设备
@@ -35,7 +35,7 @@ allowed-tools: Bash Read Write Edit
 - `references/debugging-playbook.md` — 抓帧调试循环、黑屏/字体子集/僵尸进程等教训
 - `scripts/fbcap.py` — 从设备 `/dev/fb0` 抓一帧存 PNG
 - `scripts/r.sh` / `scripts/askpass.sh` — 免交互 SSH 包装
-- `scripts/deploy.sh` — 一键部署二进制到设备并重启 APPLaunch（用户级服务），含 md5 校验
+- `scripts/deploy.sh` — 一键部署二进制到设备并重启 APPLaunch（用户级服务），含 md5 校验；在仓库根执行 `bash skill/cardputer-zero/scripts/deploy.sh`
 
 ## 备注
 这是本机自用技能；设备地址与口令不写入本文件，统一放在项目根 `.secrets/device.env`（已 git 忽略），请勿外传。

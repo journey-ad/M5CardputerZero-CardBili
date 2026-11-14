@@ -1,6 +1,6 @@
 #!/bin/sh
 # 一键部署 CardBili 到 CardputerZero 并重启 APPLaunch（用户级 systemd 服务）
-# 用法: ./deploy.sh [本地二进制路径]
+# 用法: bash skill/cardputer-zero/scripts/deploy.sh [本地二进制路径]（任意目录执行均可）
 # 默认部署 <项目根>/cardbili/target/aarch64-unknown-linux-musl/release/cardbili
 set -e
 DIR=$(cd "$(dirname "$0")" && pwd)

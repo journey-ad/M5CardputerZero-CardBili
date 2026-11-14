@@ -29,7 +29,7 @@ systemctl --user stop|start|restart APPLaunch.service
 - 打开外部 app：launcher exec 子进程并暂停自身，返回时日志 `[cp0] Returned to launcher`。
 
 ## 装机套路（自研 app）
-一键部署（scp + 远程 install + 用户级重启 + md5 校验）直接跑 `scripts/deploy.sh`（默认部署 CardBili，可传二进制路径）。手工分步时注意：`install` 必须在**设备上**执行，本机 `sudo` 写不到设备；用 ssh 远程执行：
+一键部署（scp + 远程 install + 用户级重启 + md5 校验）在仓库根执行 `bash skill/cardputer-zero/scripts/deploy.sh`（默认部署 CardBili，可传二进制路径）。手工分步时注意：`install` 必须在**设备上**执行，本机 `sudo` 写不到设备；用 ssh 远程执行：
 ```sh
 source .secrets/device.env
 # 1) 传产物到设备

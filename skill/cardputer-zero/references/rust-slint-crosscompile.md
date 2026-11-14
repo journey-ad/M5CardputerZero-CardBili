@@ -95,5 +95,5 @@ cd /home/developer/src/cardbili-dev/cardbili
 cargo build --release --target aarch64-unknown-linux-musl
 # 产物 target/aarch64-unknown-linux-musl/release/cardbili （静态 musl ELF）
 ```
-部署：一键 `skill/cardputer-zero/scripts/deploy.sh`（scp 到 `/var/tmp/cardbili` → 远程 `sudo install` 到 `/usr/share/APPLaunch/bin/M5CardputerZero-CardBili` → 用户级 `systemctl --user restart APPLaunch.service` → md5 校验）。
+部署：回到仓库根 `/home/developer/src/cardbili-dev` 执行 `bash skill/cardputer-zero/scripts/deploy.sh`（scp 到 `/var/tmp/cardbili` → 远程 `sudo install` 到 `/usr/share/APPLaunch/bin/M5CardputerZero-CardBili` → 用户级 `systemctl --user restart APPLaunch.service` → md5 校验）。
 含 zpix 嵌入后产物约 6.6MB；纯 Slint 无大字体约 1MB。
