@@ -18,7 +18,7 @@ Linux 的 `cardbili-ffmpeg` 与主程序放在同一目录。macOS 桌面预览�
 
 WBI 签名从导航接口取得图像文件名并生成 mixin key，对排序后的参数计算签名。应用请求实现位于 `src/api/wbi.rs` 和 `src/api/playback.rs`
 
-TV/HD 扫码登录使用 `auth_code` 与 `poll` 接口，签名凭据由 `BILI_APP_KEY` / `BILI_APP_SECRET` 环境变量提供。仓库与 skill 保留变量名及空值模板，应用密钥由使用者配置
+TV/HD 扫码登录使用 `auth_code` 与 `poll` 接口，程序内置与 PiliPlus 一致的 Android HD 客户端通用签名参数，用户通过 B 站 App 扫码完成登录。实现位于 `src/api/auth.rs`，参考 [PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus/blob/217fb54f51f6764176319bbdedab2a7522d75401/lib/http/login.dart)
 
 ## 登录数据
 

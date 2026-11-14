@@ -118,7 +118,7 @@ impl App {
         let mid = cookies.as_deref().map(util::parse_mid).unwrap_or_default();
 
         meta.set_version(format!("V{}", env!("CARGO_PKG_VERSION")).into());
-        meta.set_about_text("作者  journey-ad\n\n项目地址\ngithub.com/journey-ad/CardBili\n\n字体\nFusion Pixel Font\ngithub.com/TakWolf/fusion-pixel-font\n\n接口参考\nPiliPlus\ngithub.com/bggRGjQaUbCoE/PiliPlus\n\n图标\nPixelarticons\ngithub.com/halfmage/pixelarticons".into());
+        meta.set_about_text("作者  journey-ad\n\n项目地址\ngithub.com/journey-ad/M5CardputerZero-CardBili\n\n字体\nFusion Pixel Font\ngithub.com/TakWolf/fusion-pixel-font\n\n接口参考\nPiliPlus\ngithub.com/bggRGjQaUbCoE/PiliPlus\n\n图标\nPixelarticons\ngithub.com/halfmage/pixelarticons".into());
 
         let ph = util::make_placeholder();
         let mut page = Page::Home;

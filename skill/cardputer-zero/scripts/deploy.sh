@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# 上传发布包并在设备上运行安装脚本
+# 上传 Debian 包并在设备上通过 APT 安装
 set -euo pipefail
 DIR=$(cd "$(dirname "$0")" && pwd)
-PACKAGE=${1:?用法：deploy.sh 发布包.tar.gz}
+PACKAGE=${1:?用法：deploy.sh 安装包.deb}
 ENV_FILE=${DEVICE_ENV_FILE:-.secrets/device.env}
 if [[ -f "$ENV_FILE" ]]; then
     set -a
@@ -21,9 +21,9 @@ test -f "$PACKAGE"
 REMOTE_DIR=$(ssh "$DEVICE_HOST" 'mktemp -d /var/tmp/cardbili.XXXXXXXX')
 [[ "$REMOTE_DIR" =~ ^/var/tmp/cardbili\.[a-zA-Z0-9]+$ ]]
 trap 'ssh "$DEVICE_HOST" "rm -rf -- '"'"'$REMOTE_DIR'"'"'"' EXIT
-scp "$PACKAGE" "$DEVICE_HOST:$REMOTE_DIR/package.tar.gz"
+scp "$PACKAGE" "$DEVICE_HOST:$REMOTE_DIR/package.deb"
 LOCAL_SHA=$(shasum -a 256 "$PACKAGE" | cut -d ' ' -f 1)
 # shellcheck disable=SC2029
-REMOTE_SHA=$(ssh "$DEVICE_HOST" "sha256sum '$REMOTE_DIR/package.tar.gz'" | cut -d ' ' -f 1)
+REMOTE_SHA=$(ssh "$DEVICE_HOST" "sha256sum '$REMOTE_DIR/package.deb'" | cut -d ' ' -f 1)
 [[ "$LOCAL_SHA" == "$REMOTE_SHA" ]] || { printf '发布包校验失败\n' >&2; exit 1; }
-ssh -t "$DEVICE_HOST" "cd '$REMOTE_DIR' && tar -xzf package.tar.gz && bash cardbili-*/install.sh"
+ssh -t "$DEVICE_HOST" "chmod 755 '$REMOTE_DIR' && chmod 644 '$REMOTE_DIR/package.deb' && sudo apt install '$REMOTE_DIR/package.deb'"

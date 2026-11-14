@@ -18,7 +18,7 @@ MIT 允许将项目代码与 GPLv3 组件组合分发。默认构建静态链接
 
 Slint Royalty-free 2.0 适用于其定义的桌面、移动和 Web 应用，并明确排除嵌入式系统。本项目的设备构建采用 GPLv3 路径；采用其他 Slint 授权时，应按对应条款另行确认分发条件
 
-源码附件包含构建脚本、字体资源、锁定的 Rust 依赖，以及 FFmpeg 修改源码。安装脚本允许设备用户安装自己重新构建的二进制，项目没有签名锁定步骤
+源码附件包含构建脚本、字体资源、锁定的 Rust 依赖，以及 FFmpeg 修改源码。设备用户可以通过 APT 安装自己重新构建的 Debian 包，项目没有签名锁定步骤
 
 ## FFmpeg 修改
 
@@ -30,4 +30,4 @@ FFmpeg 通过独立进程与 CardBili 通信。当前构建未启用 GPL 或 non
 
 Bilibili 接口行为参考了 [PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus) 等社区资料。网络返回的视频、封面、头像、弹幕与账号内容保留其原有权利归属
 
-`docs/screenshots/` 中保留项目设置与关于页面的截图，截图说明记录其来源与用途
+`docs/screenshots/` 展示应用界面，视频、封面、评论与头像等内容保留原有权利归属

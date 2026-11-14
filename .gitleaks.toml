@@ -8,6 +8,11 @@ description = "FNV-1a offset basis used to hash danmaku glyphs"
 regexTarget = "match"
 regexes = ['''key = 0xcbf2_9ce4_8422_2325u64''']
 
+[[allowlists]]
+description = "Public Android HD signing constants from PiliPlus lib/common/constants.dart"
+regexTarget = "secret"
+regexes = ['''^dfca71928277209b$''', '''^b5475a8825547a4fc26c7d518eaaa02e$''']
+
 [[rules]]
 id = "hardcoded-login-credential"
 description = "Literal Bilibili application credential"

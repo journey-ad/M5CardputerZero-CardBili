@@ -29,8 +29,8 @@ systemctl --user status APPLaunch.service
 
 ## CardBili 安装
 
-使用 `scripts/deploy.sh /path/to/cardbili-<version>-aarch64-linux-musl.tar.gz`。脚本接收发布包，上传到设备临时目录，核对 SHA-256，并通过交互终端运行包内 `install.sh`
+使用 `scripts/deploy.sh /path/to/cardbili_<version>_arm64.deb`。脚本将 Debian 包上传到设备临时目录，核对 SHA-256，并通过交互终端执行 `sudo apt install`
 
 安装内容包括主程序、解码器、desktop 文件、两种尺寸图标和许可证。sudo 授权由设备终端提示，SSH 凭据按 [access.md](access.md) 配置
 
-安装后检查文件权限、用户服务状态和 journal，最终在设备启动器中确认图标并打开应用
+APPLaunch 会检测新的启动项，未刷新时再重启用户服务。安装后检查文件权限、用户服务状态和 journal，最终在设备启动器中确认图标并打开应用

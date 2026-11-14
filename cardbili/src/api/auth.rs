@@ -7,21 +7,17 @@ use serde_json::Value;
 
 const AUTH_CODE: &str = "https://passport.bilibili.com/x/passport-tv-login/qrcode/auth_code";
 const POLL: &str = "https://passport.bilibili.com/x/passport-tv-login/qrcode/poll";
-fn signed(mut params: Vec<(String, String)>) -> Result<Vec<(String, String)>, String> {
-    let credential = |name| {
-        std::env::var(name)
-            .ok()
-            .filter(|value| !value.trim().is_empty())
-            .ok_or_else(|| "请配置 BILI_APP_KEY 和 BILI_APP_SECRET 后登录".to_string())
-    };
-    let app_key = credential("BILI_APP_KEY")?;
-    let app_secret = credential("BILI_APP_SECRET")?;
-    params.push(("appkey".into(), app_key));
+// Android HD 客户端通用签名参数，来源见 https://github.com/bggRGjQaUbCoE/PiliPlus/blob/217fb54f51f6764176319bbdedab2a7522d75401/lib/common/constants.dart#L7
+const APP_KEY: &str = "dfca71928277209b";
+const APP_SECRET: &str = "b5475a8825547a4fc26c7d518eaaa02e";
+
+fn signed(mut params: Vec<(String, String)>) -> Vec<(String, String)> {
+    params.push(("appkey".into(), APP_KEY.into()));
     params.push(("ts".into(), net::now_secs().to_string()));
     params.sort_by(|a, b| a.0.cmp(&b.0));
-    let signature = Md5::digest(format!("{}{app_secret}", net::query_string(&params)));
+    let signature = Md5::digest(format!("{}{APP_SECRET}", net::query_string(&params)));
     params.push(("sign".into(), format!("{signature:x}")));
-    Ok(params)
+    params
 }
 
 pub fn qr_generate(client: &ureq::Agent) -> Result<(String, String), String> {
@@ -30,7 +26,7 @@ pub fn qr_generate(client: &ureq::Agent) -> Result<(String, String), String> {
         ("local_id".into(), "0".into()),
         ("platform".into(), "android".into()),
         ("mobi_app".into(), "android_hd".into()),
-    ])?;
+    ]);
     let value = net::post_query_with_agent(client, AUTH_CODE, &params)?;
     if value["code"].as_i64() != Some(0) {
         return Err(format!(
@@ -56,13 +52,10 @@ pub enum Poll {
 }
 
 pub fn qr_poll(key: &str, client: &ureq::Agent) -> Poll {
-    let params = match signed(vec![
+    let params = signed(vec![
         ("auth_code".into(), key.into()),
         ("local_id".into(), "0".into()),
-    ]) {
-        Ok(params) => params,
-        Err(error) => return Poll::Err(error),
-    };
+    ]);
     let value = match net::post_query_with_agent(client, POLL, &params) {
         Ok(value) => value,
         Err(error) => return Poll::Err(error),

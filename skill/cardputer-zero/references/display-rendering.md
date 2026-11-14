@@ -21,3 +21,9 @@ python3 /tmp/fbcap.py /tmp/shot.png --dev /dev/fb0 --w 320 --h 170
 脚本适用于紧密排列的 RGB565 帧缓冲，输出 PNG。其他 stride 或像素格式需要按设备参数调整。放大查看使用最近邻插值，可保留像素边界
 
 调试截图保存在项目忽略的目录。公开图片前检查登录二维码、账号昵称、UID、个人列表和错误详情
+
+## 更新项目截图
+
+桌面预览截图保存到 `docs/screenshots/`，尺寸为 320 × 170 PNG。播放片段保存为 `player.webp`，保留每帧时长
+
+运行 `python3 scripts/make-promo.py` 更新 `docs/media/` 中的图片与动图。脚本的 `PAGE_SPEED`、`VIDEO_SPEED` 控制展示速度，最后一帧保留原始暂停时长

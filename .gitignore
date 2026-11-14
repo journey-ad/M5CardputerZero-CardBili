@@ -1,7 +1,6 @@
 .DS_Store
 .secrets/*
 !.secrets/device.env.example
-!.secrets/bilibili.env.example
 .env
 .env.*
 !.env.example
