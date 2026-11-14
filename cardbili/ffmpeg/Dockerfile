@@ -5,6 +5,9 @@ ADD --checksum=sha256:de668509caf9e35e3cd162473441fdb29538c6d96ed080292b3cf9e6fc
     https://ffmpeg.org/releases/ffmpeg-7.1.5.tar.xz /tmp/ffmpeg.tar.xz
 WORKDIR /build
 RUN tar -xf /tmp/ffmpeg.tar.xz --strip-components=1
+COPY args.c fftools/cardbili_args.c
+RUN sed -i 's/^int main(int argc, char \*\*argv)/int ffmpeg_main(int argc, char **argv);\nint ffmpeg_main(int argc, char **argv)/' fftools/ffmpeg.c \
+    && sed -i '/^OBJS-ffmpeg +=/i OBJS-ffmpeg += fftools/cardbili_args.o' fftools/Makefile
 RUN ./configure \
     --disable-autodetect --disable-everything \
     --disable-shared --enable-static --enable-small --disable-debug --disable-doc \

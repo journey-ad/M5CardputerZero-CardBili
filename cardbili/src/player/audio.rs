@@ -16,6 +16,8 @@ pub(super) fn start(frames: Arc<Frames>) -> std::io::Result<(Child, OwnedFd)> {
             "--channels=2",
             "--latency-msec=300",
             "--process-time-msec=10",
+            // 播放期间使用 2048 采样周期，给声卡调度留出余量
+            "--property=node.force-quantum=2048",
             "--verbose",
             "--client-name=CardBili",
             "--stream-name=CardBili",
@@ -29,7 +31,7 @@ pub(super) fn start(frames: Arc<Frames>) -> std::io::Result<(Child, OwnedFd)> {
     let stderr = child.stderr.take().unwrap();
     let pid = child.id();
     diagnostics::write(format_args!(
-        "[音频 pid={pid}] 目标缓冲 300ms，使用实际播放时间同步，每 50ms 更新"
+        "[音频 pid={pid}] 目标总延迟 300ms，PipeWire 处理周期 2048 采样，使用实际播放时间同步，每 50ms 更新"
     ));
     thread::spawn(move || {
         let mut reader = BufReader::new(stderr);
