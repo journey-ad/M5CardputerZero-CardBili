@@ -21,19 +21,22 @@ export component PlayPage inherits Rectangle {
         opacity: Preferences.danmaku-opacity / 100;
     }
     if !Player.has-frame: Rectangle {
-        x: (parent.width - self.width) / 2; y: parent.height / 2 - 8px;
-        width: loading-text.preferred-width + (Status.loading-dots >= 0 ? 15px : 0px);
-        height: 16px;
+        x: (parent.width - self.width) / 2; y: (parent.height - self.height) / 2;
+        width: min(parent.width - 32px, loading-text.preferred-width + root.loading-dots-width);
+        height: max(16px, loading-text.preferred-height);
         loading-text := Text {
-            height: parent.height; text: Status.status; color: #9aa6ba;
+            width: parent.width - root.loading-dots-width; height: parent.height;
+            text: Status.status; color: #9aa6ba; wrap: word-wrap;
+            horizontal-alignment: center;
             font-size: 12px; vertical-alignment: center;
         }
         for index in 3: Rectangle {
-            x: loading-text.preferred-width + 6px + index * 3px; y: 11px;
+            x: loading-text.width + 6px + index * 3px; y: parent.height / 2 + 3px;
             width: 1px; height: 1px; background: #9aa6ba;
             visible: index < Status.loading-dots;
         }
     }
+    property <length> loading-dots-width: Status.loading-dots >= 0 ? 15px : 0px;
 
     // 暂停时在画面中央显示继续播放按钮
     if Player.paused && Player.triple-phase == 0: Rectangle {

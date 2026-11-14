@@ -73,6 +73,7 @@ impl App {
         if let (Some(info), Some(cookies)) = (&self.current_play, &self.cookies) {
             self.controls.busy = true;
             tasks::playback::react(
+                info.aid,
                 info.bvid.clone(),
                 cookies.clone(),
                 action,

@@ -1,4 +1,5 @@
 use crate::diagnostics;
+use std::io::Read;
 use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
@@ -112,7 +113,25 @@ fn request(
         if !response.status().is_success() {
             return Err(ureq::Error::StatusCode(status));
         }
-        let bytes = response.body_mut().with_config().read_to_vec()?;
+        let deflate = response
+            .headers()
+            .get("Content-Encoding")
+            .is_some_and(|value| value == "deflate");
+        let mut bytes = response.body_mut().with_config().read_to_vec()?;
+        if deflate {
+            let mut decoded = Vec::new();
+            // HTTP deflate 使用 zlib 封装，弹幕接口返回原始 DEFLATE 数据
+            if flate2::read::ZlibDecoder::new(bytes.as_slice())
+                .read_to_end(&mut decoded)
+                .is_err()
+            {
+                decoded.clear();
+                flate2::read::DeflateDecoder::new(bytes.as_slice())
+                    .read_to_end(&mut decoded)
+                    .map_err(|error| ureq::Error::Decompress("deflate", error))?;
+            }
+            bytes = decoded;
+        }
         Ok((status, bytes))
     })();
     match result {

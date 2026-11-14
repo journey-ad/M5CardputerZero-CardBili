@@ -8,9 +8,16 @@ pub fn fetch_liked(bvid: String, cookies: String, request: u64, tx: Sender<Msg>)
     });
 }
 
-pub fn react(bvid: String, cookies: String, action: VideoAction, request: u64, tx: Sender<Msg>) {
+pub fn react(
+    aid: i64,
+    bvid: String,
+    cookies: String,
+    action: VideoAction,
+    request: u64,
+    tx: Sender<Msg>,
+) {
     thread::spawn(move || {
-        let result = api::playback::react(&bvid, &cookies, action);
+        let result = api::playback::react(aid, &bvid, &cookies, action);
         let _ = tx.send(Msg::Reaction(request, result));
     });
 }

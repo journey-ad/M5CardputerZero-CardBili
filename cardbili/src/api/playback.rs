@@ -12,7 +12,12 @@ pub fn liked(bvid: &str, cookies: &str) -> Result<bool, String> {
     Ok(value["data"].as_i64() == Some(1))
 }
 
-pub fn react(bvid: &str, cookies: &str, action: VideoAction) -> Result<ReactionResult, String> {
+pub fn react(
+    aid: i64,
+    bvid: &str,
+    cookies: &str,
+    action: VideoAction,
+) -> Result<ReactionResult, String> {
     let name = match action {
         VideoAction::Like(true) => "点赞",
         VideoAction::Like(false) => "取消点赞",
@@ -20,14 +25,16 @@ pub fn react(bvid: &str, cookies: &str, action: VideoAction) -> Result<ReactionR
     };
     crate::diagnostics::write(format_args!("[互动] {name} bvid={bvid}"));
     let csrf = csrf(cookies)?;
-    let mut params = vec![("bvid".into(), bvid.into()), ("csrf".into(), csrf.into())];
+    let mut params = vec![("csrf".into(), csrf.into())];
     let endpoint = match action {
         VideoAction::Like(liked) => {
+            params.push(("bvid".into(), bvid.into()));
             params.push(("like".into(), if liked { "1" } else { "2" }.into()));
             "like"
         }
         VideoAction::Triple => {
             params.extend([
+                ("aid".into(), aid.to_string()),
                 ("eab_x".into(), "2".into()),
                 ("ramval".into(), "0".into()),
                 ("source".into(), "web_normal".into()),

@@ -229,6 +229,7 @@ name = "cardbili"
 version = "0.1.0"
 dependencies = [
  "base64 0.22.1",
+ "flate2",
  "fontdue",
  "image 0.25.10",
  "libc",
