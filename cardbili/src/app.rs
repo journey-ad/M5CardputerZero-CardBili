@@ -1,4 +1,5 @@
 mod account;
+mod cdn;
 mod comments;
 mod components;
 mod detail;
@@ -75,6 +76,7 @@ pub fn run() {
             .recv_timeout(tick_end.saturating_duration_since(Instant::now()))
             .ok();
     }
+    app.close_cdn();
     app.report_history(true, false);
     if let Some(mut player) = app.player.take() {
         player.stop();

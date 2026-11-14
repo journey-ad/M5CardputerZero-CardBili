@@ -3,6 +3,8 @@ use crate::{HomeTab, MenuPosition, Page};
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Action {
     Sections,
+    Select,
+    SpeedTest,
     Refresh,
     Login,
     Help,
@@ -25,6 +27,8 @@ impl Action {
     pub fn label(self) -> &'static str {
         match self {
             Self::Sections => "选集",
+            Self::Select => "选择",
+            Self::SpeedTest => "测速",
             Self::Refresh => "刷新",
             Self::Login => "登录",
             Self::Help => "说明",
@@ -47,6 +51,8 @@ impl Action {
     pub fn key(self) -> &'static str {
         match self {
             Self::Sections => "p",
+            Self::Select => "ENTER",
+            Self::SpeedTest => "r",
             Self::Refresh | Self::Retry => "r",
             Self::Login => "l",
             Self::Help => "h",

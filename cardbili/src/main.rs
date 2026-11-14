@@ -1,6 +1,7 @@
 mod api;
 mod app;
 mod cache;
+mod cdn;
 mod danmaku;
 mod diagnostics;
 mod fonts;
@@ -15,6 +16,7 @@ mod util;
 slint::include_modules!();
 
 pub enum Msg {
+    CdnSpeed(u64, usize, String),
     Chapters(i64, Result<Vec<model::Chapter>, String>),
     Watching(u64, Result<String, String>),
     Liked(u64, Result<bool, String>),

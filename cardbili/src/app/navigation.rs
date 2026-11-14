@@ -260,6 +260,7 @@ impl App {
                 self.requested_cid.take(),
                 self.cookies.clone(),
                 self.play_request,
+                self.settings.cdn.clone(),
                 self.tx.clone(),
             );
         }
@@ -508,6 +509,7 @@ impl App {
             }
         }
         if self.return_home {
+            self.close_cdn();
             self.return_home = false;
             self.back_stack.clear();
             self.login_uploader = None;

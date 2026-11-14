@@ -1,3 +1,4 @@
+import { CdnPanel } from "components/cdn_panel.slint";
 import { SectionsPanel } from "components/sections_panel.slint";
 export { HomeTab, Page, VideoLayout, MenuPosition } from "types.slint";
 import { HomeTab, Page, VideoLayout, MenuPosition } from "types.slint";
@@ -106,6 +107,12 @@ export component AppWindow inherits Window {
     in-out property <int> danmaku-opacity <=> Preferences.danmaku-opacity;
     in-out property <MenuPosition> menu-position <=> Preferences.menu-position;
     in-out property <bool> record-history <=> Preferences.record-history;
+    in-out property <string> cdn-name <=> Preferences.cdn-name;
+    in-out property <bool> cdn-open: false;
+    in-out property <bool> cdn-testing: false;
+    in-out property <int> cdn-current: 1;
+    in-out property <int> cdn-selected: 1;
+    in-out property <[Cmt]> cdn-rows;
     in-out property <string> collection-title <=> Collection.title;
     in-out property <string> collection-empty <=> Collection.empty;
     in-out property <string> collection-name <=> Collection.name;
@@ -164,6 +171,7 @@ export component AppWindow inherits Window {
         rows: root.favorite-folders; selected: root.favorite-selected;
         loading: root.favorite-loading; error: root.favorite-error;
     }
+    if root.cdn-open: CdnPanel { rows: root.cdn-rows; selected: root.cdn-selected; current: root.cdn-current; testing: root.cdn-testing; }
     if root.sections-open: SectionsPanel { rows: root.sections-rows; selected: root.sections-selected; loading: root.sections-loading; error: root.sections-error; }
     if page != Page.player || root.sections-open: BottomBar {
         x: 0px;

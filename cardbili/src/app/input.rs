@@ -120,6 +120,10 @@ impl App {
     }
 
     fn dispatch_key(&mut self, key: &str, repeat: bool) {
+        if self.ui.get_cdn_open() {
+            self.cdn_key(key);
+            return;
+        }
         if self.sections.open {
             self.sections_key(key);
             return;

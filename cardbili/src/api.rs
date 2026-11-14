@@ -234,6 +234,7 @@ pub fn play_info(
     bvid: &str,
     selected_cid: Option<i64>,
     cookies: Option<&str>,
+    cdn: &str,
 ) -> Result<PlayInfo, String> {
     let vurl = format!(
         "https://api.bilibili.com/x/web-interface/view?bvid={}",
@@ -254,14 +255,7 @@ pub fn play_info(
     } else {
         d["title"].as_str().unwrap_or_default().into()
     };
-    let purl = format!(
-        "https://api.bilibili.com/x/player/playurl?bvid={}&cid={}&qn=16&fnval=16&fourk=0",
-        bvid, cid
-    );
-    let p = cache::api_json(&purl, cookies, cache::TTL_PLAYURL)?;
-    if p["code"].as_i64() != Some(0) {
-        return Err(api_err("播放地址", &p));
-    }
+    let p = play_urls(bvid, cid, cookies)?;
     let dash = &p["data"]["dash"];
     let video = dash["video"]
         .as_array()
@@ -269,15 +263,22 @@ pub fn play_info(
         .flatten()
         .filter(|stream| stream["codecid"].as_i64() == Some(7))
         .min_by_key(|stream| stream["bandwidth"].as_u64().unwrap_or(u64::MAX))
-        .and_then(|stream| stream["baseUrl"].as_str())
         .ok_or("无可用 H.264 视频流")?;
     let audio = dash["audio"]
         .as_array()
         .into_iter()
         .flatten()
         .min_by_key(|stream| stream["bandwidth"].as_u64().unwrap_or(u64::MAX))
-        .and_then(|stream| stream["baseUrl"].as_str())
         .ok_or("无可用音频流")?;
+    let cdn = &crate::cdn::OPTIONS[crate::cdn::index(cdn)];
+    let video = cdn.url(video)?;
+    let audio = cdn.url(audio)?;
+    crate::diagnostics::write(format_args!(
+        "[CDN] 播放选路 线路={} 视频={} 音频={}",
+        cdn.id,
+        crate::cdn::host(&video),
+        crate::cdn::host(&audio)
+    ));
     let duration = model::dur_of(&p["data"]["timelength"]) / 1000.0;
     Ok(PlayInfo {
         aid: d["aid"].as_i64().unwrap_or(0),
@@ -290,6 +291,18 @@ pub fn play_info(
         cid,
         parts,
     })
+}
+
+pub fn play_urls(bvid: &str, cid: i64, cookies: Option<&str>) -> Result<Value, String> {
+    let purl = format!(
+        "https://api.bilibili.com/x/player/playurl?bvid={}&cid={}&qn=16&fnval=16&fourk=0",
+        bvid, cid
+    );
+    let p = cache::api_json(&purl, cookies, cache::TTL_PLAYURL)?;
+    if p["code"].as_i64() != Some(0) {
+        return Err(api_err("播放地址", &p));
+    }
+    Ok(p)
 }
 
 // 拉取视频弹幕 XML 并解析为条目

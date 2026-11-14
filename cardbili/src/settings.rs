@@ -11,6 +11,7 @@ pub struct Settings {
     pub danmaku_opacity: i32,
     pub menu_position: MenuPosition,
     pub record_history: bool,
+    pub cdn: String,
 }
 
 impl Default for Settings {
@@ -21,6 +22,7 @@ impl Default for Settings {
             danmaku_opacity: 90,
             menu_position: MenuPosition::Top,
             record_history: true,
+            cdn: "backup".into(),
         }
     }
 }
@@ -44,6 +46,9 @@ impl Settings {
                 Self::default()
             });
         settings.danmaku_opacity = settings.danmaku_opacity.clamp(0, 100);
+        settings.cdn = crate::cdn::OPTIONS[crate::cdn::index(&settings.cdn)]
+            .id
+            .into();
         diagnostics::write(format_args!("[设置] 已加载 {settings:?}"));
         settings
     }

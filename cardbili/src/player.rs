@@ -164,6 +164,10 @@ impl Player {
             args.extend([
                 "-threads".into(),
                 "4".into(),
+                "-probesize".into(),
+                "65536".into(),
+                "-analyzeduration".into(),
+                "100000".into(),
                 "-protocol_whitelist".into(),
                 "file,pipe,crypto,http,https,tcp,tls".into(),
                 "-user_agent".into(),

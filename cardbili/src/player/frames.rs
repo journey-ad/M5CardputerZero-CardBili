@@ -64,7 +64,7 @@ impl Frames {
 
     #[cfg(target_os = "linux")]
     pub fn update_audio_clock(&self, time: f64) {
-        if !time.is_finite() || time < 0.0 {
+        if !time.is_finite() || time <= 0.0 {
             return;
         }
         let mut state = self.state.lock().unwrap();
@@ -144,7 +144,7 @@ impl Frames {
                 continue;
             }
             #[cfg(target_os = "linux")]
-            if index > 1 {
+            if !state.paused {
                 if state.audio_sample.is_none() {
                     state = self.changed.wait(state).unwrap();
                     continue;

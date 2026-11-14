@@ -67,7 +67,7 @@ impl App {
         } else if self.tab == HomeTab::Settings {
             match k {
                 "UP" | "f" | "w" => self.sel = (self.sel - 1).max(0),
-                "DOWN" | "x" | "s" => self.sel = (self.sel + 1).min(5),
+                "DOWN" | "x" | "s" => self.sel = (self.sel + 1).min(6),
                 "LEFT" | "z" | "RIGHT" | "c" => {
                     let step = if matches!(k, "LEFT" | "z") { -1 } else { 1 };
                     if self.sel == 0 {
@@ -89,6 +89,9 @@ impl App {
                     }
                 }
                 "ENTER" if self.sel == 5 => {
+                    self.open_cdn();
+                }
+                "ENTER" if self.sel == 6 => {
                     self.requested_about = true;
                 }
                 "ESC" | "BACKSPACE" => {

@@ -82,6 +82,13 @@ impl App {
         self.ui.set_danmaku_opacity(self.settings.danmaku_opacity);
         self.ui.set_menu_position(self.settings.menu_position);
         self.ui.set_record_history(self.settings.record_history);
+        self.ui
+            .set_cdn_current(crate::cdn::index(&self.settings.cdn) as i32);
+        self.ui.set_cdn_name(
+            crate::cdn::OPTIONS[crate::cdn::index(&self.settings.cdn)]
+                .name
+                .into(),
+        );
         self.ui.set_about_scroll(self.about_scroll as f32);
         self.ui.set_help(self.help);
         self.ui.set_mine_detail(self.mine_detail >= 0);
@@ -97,6 +104,15 @@ impl App {
 
 impl App {
     pub(super) fn menu_actions(&self) -> [Option<menu::Action>; 5] {
+        if self.ui.get_cdn_open() {
+            return [
+                Some(menu::Action::SpeedTest),
+                Some(menu::Action::Select),
+                None,
+                None,
+                Some(menu::Action::Back),
+            ];
+        }
         if self.sections.open {
             return [
                 None,

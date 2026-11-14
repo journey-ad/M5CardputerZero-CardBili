@@ -1,0 +1,44 @@
+import { Cmt } from "../common.slint";
+
+export component CdnPanel inherits Rectangle {
+    in property <[Cmt]> rows;
+    in property <int> selected;
+    in property <int> current;
+    in property <bool> testing;
+    property <int> first: max(0, root.selected - 2);
+    width: 100%; height: 100%; background: #0b0f17;
+    Rectangle {
+        x: 0px; y: 0px; width: parent.width; height: 24px; background: #121a2a;
+        Text {
+            x: 8px; height: parent.height;
+            text: "CDN 设置"; color: #7fb0ff; font-size: 12px; vertical-alignment: center;
+        }
+        Text {
+            x: 100px; width: parent.width - 108px; height: parent.height;
+            text: (root.testing ? "测速中 · " : "") + (root.selected + 1) + "/" + root.rows.length;
+            color: #9aa6ba; font-size: 10px; font-family: "Fusion Pixel 10px Prop zh-Hans";
+            horizontal-alignment: right; vertical-alignment: center;
+        }
+    }
+    Rectangle {
+        y: 26px; width: parent.width; height: parent.height - 48px; clip: true;
+        for row[index] in root.rows: Rectangle {
+            x: 6px; y: (index - root.first) * 40px; width: parent.width - 12px; height: 38px;
+            background: index == root.selected ? #1f2b45 : #101726; border-radius: 3px;
+            Text {
+                x: 8px; y: 3px; width: parent.width - 60px; height: 16px;
+                text: row.user; font-size: 12px; color: #e6ebf5; overflow: elide;
+            }
+            Text {
+                x: parent.width - 48px; y: 3px; width: 40px; height: 16px;
+                text: index == root.current ? "已选" : ""; color: #7fb0ff; font-size: 12px;
+                horizontal-alignment: right;
+            }
+            Text {
+                x: 8px; y: 21px; width: parent.width - 16px; height: 14px;
+                text: row.text; color: #9aa6ba; font-size: 10px; font-family: "Fusion Pixel 10px Prop zh-Hans";
+                overflow: elide;
+            }
+        }
+    }
+}

@@ -3,6 +3,7 @@ use super::*;
 impl App {
     pub(super) fn handle_message(&mut self, m: Msg) {
         match m {
+            Msg::CdnSpeed(request, index, result) => self.cdn_result(request, index, result),
             Msg::Chapters(cid, result) => {
                 if self.sections.cid == cid {
                     self.sections.loading = false;
@@ -189,7 +190,12 @@ impl App {
                             p.position(self.frames_in_seg),
                             self.frames_in_seg
                         ));
-                        self.status = "播放结束，按 ESC 返回".into();
+                        self.status = if self.frames_in_seg == 0 {
+                            "播放失败，按播放键重试"
+                        } else {
+                            "播放结束，按 ESC 返回"
+                        }
+                        .into();
                         self.status_detail.clear();
                     }
                 }
