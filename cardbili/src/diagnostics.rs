@@ -164,6 +164,13 @@ pub(crate) fn spawn(
         .with_file_name("cardbili-ffmpeg");
     write(format_args!("[{kind}] 解码器={}", executable.display()));
     let mut command = Command::new(executable);
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        // 桌面版没有控制台，避免每个 ffmpeg 子进程弹出控制台窗口
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        command.creation_flags(CREATE_NO_WINDOW);
+    }
     command
         .stdin(Stdio::piped())
         .stdout(stdout)
