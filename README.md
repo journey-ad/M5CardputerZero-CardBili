@@ -2,7 +2,7 @@
 
 适用于 M5Stack [CardputerZero](https://github.com/CardputerZero) 的非官方 BiliBili 客户端
 
-<img src="docs/media/cardbili-demo.webp" alt="CardBili" style="zoom: 50%;" />
+<img src="docs/media/cardbili-demo.webp" alt="CardBili" width="316" />
 
 ## 功能
 
