@@ -54,7 +54,13 @@ pub enum Msg {
 }
 
 fn main() {
+    let mut settings = settings::Settings::load();
+    if let Err(error) = diagnostics::set_enabled(settings.debug_log) {
+        settings.debug_log = false;
+        eprintln!("开启调试日志失败: {error}");
+    }
     diagnostics::write(format_args!("[应用] 启动 pid={}", std::process::id()));
-    app::run();
+    diagnostics::write(format_args!("[设置] 已加载 {settings:?}"));
+    app::run(settings);
     diagnostics::write(format_args!("[应用] 已退出"));
 }

@@ -64,7 +64,10 @@ impl App {
         }
     }
 
-    pub(super) fn comments_key(&mut self, key: &str) {
+    pub(super) fn comments_key(&mut self, key: &str, repeat: bool) {
+        if self.scroll_key(key, repeat) {
+            return;
+        }
         match key {
             "r" => self.load_comments(),
             "ESC" | "BACKSPACE" => self.go_back = true,

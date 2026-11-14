@@ -11,6 +11,7 @@ pub struct Settings {
     pub danmaku_opacity: i32,
     pub menu_position: MenuPosition,
     pub record_history: bool,
+    pub debug_log: bool,
     pub cdn: String,
 }
 
@@ -22,6 +23,7 @@ impl Default for Settings {
             danmaku_opacity: 90,
             menu_position: MenuPosition::Top,
             record_history: true,
+            debug_log: false,
             cdn: "backup".into(),
         }
     }
@@ -31,16 +33,7 @@ impl Settings {
     pub fn load() -> Self {
         let mut settings: Self = std::fs::read(Self::path())
             .map_err(|error| error.to_string())
-            .and_then(|data| {
-                let mut value: serde_json::Value =
-                    serde_json::from_slice(&data).map_err(|error| error.to_string())?;
-                if value.get("danmaku_opacity").is_none() {
-                    if let Some(transparency) = value["danmaku_transparency"].as_i64() {
-                        value["danmaku_opacity"] = (100 - transparency.clamp(0, 100)).into();
-                    }
-                }
-                serde_json::from_value(value).map_err(|error| error.to_string())
-            })
+            .and_then(|data| serde_json::from_slice(&data).map_err(|error| error.to_string()))
             .unwrap_or_else(|error| {
                 diagnostics::write(format_args!("[设置] 使用默认值，读取失败: {error}"));
                 Self::default()
@@ -49,7 +42,6 @@ impl Settings {
         settings.cdn = crate::cdn::OPTIONS[crate::cdn::index(&settings.cdn)]
             .id
             .into();
-        diagnostics::write(format_args!("[设置] 已加载 {settings:?}"));
         settings
     }
 

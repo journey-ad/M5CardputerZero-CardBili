@@ -68,3 +68,46 @@ pub(in crate::app) fn show_detail_loading(ui: &AppWindow, title: &str) {
     ui.set_detail_scroll(0.0);
     ui.set_detail_thumb_h(0.0);
 }
+
+impl App {
+    pub(super) fn detail_key(&mut self, k: &str, repeat: bool) {
+        if k == "p" {
+            self.sections.open = true;
+            self.sections.dirty = true;
+            return;
+        }
+        if self.scroll_key(k, repeat) {
+            return;
+        }
+        match k {
+            "ENTER" | "SPACE" => {
+                if !self.detail_bvid.is_empty() {
+                    self.status = "正在加载视频…".into();
+                    self.status_detail.clear();
+                    self.requested_play = Some(self.detail_bvid.clone());
+                }
+            }
+            "u" => {
+                self.requested_uploader = self
+                    .detail_display
+                    .as_ref()
+                    .map(|display| display.data.owner.clone())
+                    .filter(|owner| !owner.mid.is_empty());
+            }
+            "RELATED" => {
+                self.requested_related = Some(self.detail_bvid.clone());
+            }
+            "r" => {
+                if !self.comment_page.error.is_empty() {
+                    self.load_comments();
+                } else if !self.detail_bvid.is_empty() {
+                    self.requested_related = Some(self.detail_bvid.clone());
+                }
+            }
+            "ESC" | "BACKSPACE" => {
+                self.go_back = true;
+            }
+            _ => {}
+        }
+    }
+}

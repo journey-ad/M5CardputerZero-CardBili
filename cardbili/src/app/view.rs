@@ -82,6 +82,7 @@ impl App {
         self.ui.set_danmaku_opacity(self.settings.danmaku_opacity);
         self.ui.set_menu_position(self.settings.menu_position);
         self.ui.set_record_history(self.settings.record_history);
+        self.ui.set_debug_log(self.settings.debug_log);
         self.ui
             .set_cdn_current(crate::cdn::index(&self.settings.cdn) as i32);
         self.ui.set_cdn_name(

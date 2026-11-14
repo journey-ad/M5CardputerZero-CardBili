@@ -107,7 +107,7 @@ pub(super) struct App {
 }
 
 impl App {
-    pub(super) fn new(ui: AppWindow, tx: mpsc::Sender<Msg>) -> Self {
+    pub(super) fn new(ui: AppWindow, tx: mpsc::Sender<Msg>, settings: Settings) -> Self {
         let cpath = util::cookie_path();
         let cookies: Option<String> = std::fs::read_to_string(&cpath)
             .inspect_err(|error| {
@@ -132,7 +132,6 @@ impl App {
             .and_then(|s| s.parse::<usize>().ok())
             .map(HomeTab::from_index)
             .unwrap_or(HomeTab::Recommended);
-        let settings = Settings::load();
         let mut view = std::env::var("BILI_VIEW")
             .ok()
             .and_then(|s| s.parse::<i32>().ok())

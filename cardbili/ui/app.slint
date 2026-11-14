@@ -2,8 +2,8 @@ import "../fonts/fusion12.ttf";
 import { ConfirmDialog } from "components/confirm_dialog.slint";
 import { CdnPanel } from "components/cdn_panel.slint";
 import { SectionsPanel } from "components/sections_panel.slint";
-export { HomeTab, Page, VideoLayout, MenuPosition } from "types.slint";
-import { HomeTab, Page, VideoLayout, MenuPosition } from "types.slint";
+export { HomeTab, Page, VideoLayout, MenuPosition, SettingsItem } from "types.slint";
+import { HomeTab, Page, VideoLayout, MenuPosition, SettingsRow } from "types.slint";
 // 主窗口通过双向绑定向 Rust 暴露全局状态
 import { Cmt, DmRow, VideoRow, FollowingRow, FavoriteRow } from "common.slint";
 import { Nav, ListModel, Status, Account, Player, Danmaku, Detail, Login, Meta, Preferences, Collection, Menu, Comments } from "state.slint";
@@ -109,6 +109,8 @@ export component AppWindow inherits Window {
     in-out property <int> danmaku-opacity <=> Preferences.danmaku-opacity;
     in-out property <MenuPosition> menu-position <=> Preferences.menu-position;
     in-out property <bool> record-history <=> Preferences.record-history;
+    in-out property <bool> debug-log <=> Preferences.debug-log;
+    out property <[SettingsRow]> settings-items: Preferences.settings-items;
     in-out property <string> cdn-name <=> Preferences.cdn-name;
     in-out property <string> cache-size <=> Preferences.cache-size;
     in-out property <bool> cache-busy <=> Preferences.cache-busy;

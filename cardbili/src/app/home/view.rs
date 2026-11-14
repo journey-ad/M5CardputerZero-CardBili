@@ -1,4 +1,5 @@
 use super::super::*;
+use slint::Model;
 
 impl App {
     pub(in crate::app) fn sync_home(&mut self) {
@@ -12,7 +13,7 @@ impl App {
         // 选中项保持在当前页面范围内
         if self.page == Page::Home {
             let len = if self.tab == HomeTab::Settings {
-                8
+                self.ui.get_settings_items().row_count() as i32
             } else if self.tab == HomeTab::Mine && self.mine_detail < 0 {
                 3
             } else {

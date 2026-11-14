@@ -1,11 +1,27 @@
-import { VideoLayout, MenuPosition } from "../types.slint";
+import { VideoLayout, MenuPosition, SettingsItem } from "../types.slint";
 import { Nav, Preferences, Danmaku, Meta } from "../state.slint";
 import { Icon, Icons } from "icons.slint";
 
 export component SettingsPanel inherits Rectangle {
     clip: true;
     property <int> first: max(0, Nav.sel - floor((root.height - 4px) / 24px) + 1);
-    for label[index] in ["视频列表风格", "弹幕开关", "弹幕不透明度", "首页布局", "记录播放历史", "CDN 设置", "缓存占用", "关于"]: Rectangle {
+    for row[index] in Preferences.settings-items: item-row := Rectangle {
+        property <bool> adjustable: row.item != SettingsItem.cdn && row.item != SettingsItem.cache && row.item != SettingsItem.about;
+        property <string> value: {
+            if row.item == SettingsItem.list-style {
+                return Nav.view == VideoLayout.list ? "列表" : (Nav.view == VideoLayout.three-columns ? "3列" : "2列");
+            }
+            if row.item == SettingsItem.danmaku { return Danmaku.enabled ? "开启" : "关闭"; }
+            if row.item == SettingsItem.danmaku-opacity { return Preferences.danmaku-opacity + "%"; }
+            if row.item == SettingsItem.menu-position {
+                return Preferences.menu-position == MenuPosition.top ? "顶部" : (Preferences.menu-position == MenuPosition.left ? "左侧" : "右侧");
+            }
+            if row.item == SettingsItem.record-history { return Preferences.record-history ? "开启" : "关闭"; }
+            if row.item == SettingsItem.debug-log { return Preferences.debug-log ? "开启" : "关闭"; }
+            if row.item == SettingsItem.cdn { return Preferences.cdn-name; }
+            if row.item == SettingsItem.cache { return Preferences.cache-size; }
+            return Meta.version;
+        }
         x: 6px;
         y: 4px + (index - root.first) * 24px;
         width: parent.width - 12px;
@@ -17,12 +33,12 @@ export component SettingsPanel inherits Rectangle {
             x: 10px;
             width: parent.width - 144px;
             height: parent.height;
-            text: label;
+            text: row.label;
             color: index == Nav.sel ? #e6ebf5 : #9aa6ba;
             font-size: 12px;
             vertical-alignment: center;
         }
-        if index < 5: Rectangle {
+        if item-row.adjustable: Rectangle {
             x: parent.width - 130px;
             width: 120px;
             height: parent.height;
@@ -30,17 +46,11 @@ export component SettingsPanel inherits Rectangle {
                 x: 2px; y: 1px; width: 20px; height: 20px;
                 source: Icons.left;
                 colorize: index == Nav.sel ? #7fb0ff : #6f7c92;
-                opacity: index == 2 && Preferences.danmaku-opacity == 0 ? 0.3 : 1;
+                opacity: row.item == SettingsItem.danmaku-opacity && Preferences.danmaku-opacity == 0 ? 0.3 : 1;
             }
             Text {
                 x: 24px; width: 72px; height: parent.height;
-                text: [
-                    Nav.view == VideoLayout.list ? "列表" : (Nav.view == VideoLayout.three-columns ? "3列" : "2列"),
-                    Danmaku.enabled ? "开启" : "关闭",
-                    Preferences.danmaku-opacity + "%",
-                    Preferences.menu-position == MenuPosition.top ? "顶部" : (Preferences.menu-position == MenuPosition.left ? "左侧" : "右侧"),
-                    Preferences.record-history ? "开启" : "关闭",
-                ][index];
+                text: item-row.value;
                 color: index == Nav.sel ? #7fb0ff : #9aa6ba;
                 font-size: 12px;
                 horizontal-alignment: center;
@@ -50,18 +60,18 @@ export component SettingsPanel inherits Rectangle {
                 x: 98px; y: 1px; width: 20px; height: 20px;
                 source: Icons.right;
                 colorize: index == Nav.sel ? #7fb0ff : #6f7c92;
-                opacity: index == 2 && Preferences.danmaku-opacity == 100 ? 0.3 : 1;
+                opacity: row.item == SettingsItem.danmaku-opacity && Preferences.danmaku-opacity == 100 ? 0.3 : 1;
             }
         }
-        if index >= 5: Text {
-            x: parent.width - (index == 6 ? 154px : 130px); width: index == 6 ? 118px : 94px; height: parent.height;
-            text: [Preferences.cdn-name, Preferences.cache-size, Meta.version][index - 5];
+        if !item-row.adjustable: Text {
+            x: parent.width - (row.item == SettingsItem.cache ? 154px : 130px); width: row.item == SettingsItem.cache ? 118px : 94px; height: parent.height;
+            text: item-row.value;
             overflow: elide; color: #9aa6ba;
-            font-size: index == 6 ? 10px : 12px;
-            font-family: index == 6 ? "Fusion Pixel 10px Prop zh-Hans" : "Fusion Pixel 12px Prop zh-Hans";
+            font-size: row.item == SettingsItem.cache ? 10px : 12px;
+            font-family: row.item == SettingsItem.cache ? "Fusion Pixel 10px Prop zh-Hans" : "Fusion Pixel 12px Prop zh-Hans";
             horizontal-alignment: right; vertical-alignment: center;
         }
-        if index >= 5: Icon {
+        if !item-row.adjustable: Icon {
             x: parent.width - 32px; y: 1px; width: 20px; height: 20px;
             source: Icons.right;
             colorize: index == Nav.sel ? #7fb0ff : #6f7c92;

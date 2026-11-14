@@ -1,4 +1,6 @@
 mod input;
+mod mine;
+mod settings;
 mod view;
 
 impl crate::HomeTab {

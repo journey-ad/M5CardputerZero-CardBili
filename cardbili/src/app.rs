@@ -1,6 +1,8 @@
+mod about;
 mod account;
 mod cache;
 mod cdn;
+mod collection;
 mod comments;
 mod components;
 mod confirmation;
@@ -10,9 +12,9 @@ mod following;
 mod history;
 mod home;
 mod input;
+mod login;
 mod messages;
 mod navigation;
-mod pages;
 mod platform;
 mod playback;
 mod scroll;
@@ -36,7 +38,7 @@ use std::sync::mpsc;
 use std::thread;
 use std::time::{Duration, Instant};
 
-pub fn run() {
+pub fn run(settings: Settings) {
     crate::cache::init();
     let (tx, rx) = mpsc::channel();
     let (ktx, krx) = mpsc::channel();
@@ -50,7 +52,7 @@ pub fn run() {
     ui.on_confirm_result(move |accepted| {
         let _ = confirm_tx.send(Msg::Confirmed(accepted));
     });
-    let mut app = App::new(ui, tx);
+    let mut app = App::new(ui, tx, settings);
     let mut pending = None;
     while !app.quit {
         let tick_end = Instant::now() + Duration::from_millis(16);

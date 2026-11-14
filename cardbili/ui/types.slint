@@ -6,3 +6,10 @@ export enum VideoLayout { list, three-columns, two-columns }
 export enum MenuPosition { top, left, right }
 
 export enum HomeTab { recommended, popular, dynamic, mine, settings }
+
+export enum SettingsItem {
+    list-style, danmaku, danmaku-opacity, menu-position, record-history,
+    debug-log, cdn, cache, about,
+}
+
+export struct SettingsRow { item: SettingsItem, label: string }

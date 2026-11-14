@@ -1,6 +1,6 @@
 use std::fmt;
-use std::fs::OpenOptions;
-use std::io::{BufRead, BufReader, Write};
+use std::fs::{File, OpenOptions};
+use std::io::{self, BufRead, BufReader, Write};
 #[cfg(target_os = "linux")]
 use std::os::fd::FromRawFd;
 use std::os::fd::{AsRawFd, OwnedFd};
@@ -8,30 +8,64 @@ use std::os::fd::{AsRawFd, OwnedFd};
 use std::os::unix::net::UnixStream;
 use std::os::unix::process::CommandExt;
 use std::process::{Child, Command, Stdio};
+use std::sync::Mutex;
 use std::thread;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+const MAX_FILES: usize = 5;
+
+struct Logger {
+    file: Option<File>,
+    started: bool,
+}
+
+static LOG: Mutex<Logger> = Mutex::new(Logger {
+    file: None,
+    started: false,
+});
+
 pub(crate) fn path() -> &'static std::path::Path {
     static PATH: std::sync::OnceLock<std::path::PathBuf> = std::sync::OnceLock::new();
-    PATH.get_or_init(|| {
-        let directory = crate::util::state_dir();
-        let _ = std::fs::create_dir_all(&directory);
-        directory.join("player.log")
-    })
+    PATH.get_or_init(|| crate::util::state_dir().join("player.log"))
+}
+
+pub(crate) fn set_enabled(enabled: bool) -> io::Result<()> {
+    let mut log = LOG.lock().unwrap();
+    if enabled {
+        std::fs::create_dir_all(path().parent().unwrap())?;
+        if !log.started {
+            for index in (1..MAX_FILES).rev() {
+                let source = if index == 1 {
+                    path().to_path_buf()
+                } else {
+                    path().with_file_name(format!("player.{}.log", index - 1))
+                };
+                let target = path().with_file_name(format!("player.{index}.log"));
+                match std::fs::rename(source, target) {
+                    Ok(()) => {}
+                    Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+                    Err(error) => return Err(error),
+                }
+            }
+        }
+        log.file = Some(OpenOptions::new().create(true).append(true).open(path())?);
+        log.started = true;
+    } else {
+        log.file = None;
+    }
+    Ok(())
 }
 
 pub(crate) fn write(message: fmt::Arguments<'_>) {
+    let mut log = LOG.lock().unwrap();
+    let Some(file) = log.file.as_mut() else {
+        return;
+    };
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default();
     let line = format!("[{}.{:03}] {message}\n", now.as_secs(), now.subsec_millis());
-    eprint!("{line}");
-    let result = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(path())
-        .and_then(|mut file| file.write_all(line.as_bytes()));
-    if let Err(error) = result {
+    if let Err(error) = file.write_all(line.as_bytes()) {
         eprintln!("写入诊断日志失败 {}: {error}", path().display());
     }
 }

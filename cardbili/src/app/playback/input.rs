@@ -2,6 +2,11 @@ use super::super::*;
 
 impl App {
     pub(in crate::app) fn play_key(&mut self, k: &str, repeat: bool) {
+        if k == "p" {
+            self.sections.open = true;
+            self.sections.dirty = true;
+            return;
+        }
         match k {
             "l" => {
                 self.like_press();

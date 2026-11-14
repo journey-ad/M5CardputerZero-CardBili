@@ -1,4 +1,4 @@
-import { HomeTab, Page, VideoLayout, MenuPosition } from "types.slint";
+import { HomeTab, Page, VideoLayout, MenuPosition, SettingsItem, SettingsRow } from "types.slint";
 // 页面与组件共用的全局状态
 import { Cmt, DmRow, VideoRow } from "common.slint";
 
@@ -82,7 +82,19 @@ export global Danmaku {
 
 // 应用设置
 export global Preferences {
+    out property <[SettingsRow]> settings-items: [
+        { item: SettingsItem.list-style, label: "视频列表风格" },
+        { item: SettingsItem.danmaku, label: "弹幕开关" },
+        { item: SettingsItem.danmaku-opacity, label: "弹幕不透明度" },
+        { item: SettingsItem.menu-position, label: "首页布局" },
+        { item: SettingsItem.record-history, label: "记录播放历史" },
+        { item: SettingsItem.debug-log, label: "调试日志" },
+        { item: SettingsItem.cdn, label: "CDN 设置" },
+        { item: SettingsItem.cache, label: "缓存占用" },
+        { item: SettingsItem.about, label: "关于" },
+    ];
     in-out property <bool> record-history: true;
+    in-out property <bool> debug-log: false;
     in-out property <string> cdn-name: "";
     in-out property <string> cache-size: "统计中…";
     in-out property <bool> cache-busy: false;

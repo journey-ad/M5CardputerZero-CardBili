@@ -73,3 +73,29 @@ pub(in crate::app) fn refresh_first_page(
         .map(|index| index as i32)
         .unwrap_or(selection.clamp(0, (items.len() as i32 - 1).max(0)))
 }
+
+impl App {
+    pub(in crate::app) fn video_list_key(&mut self, key: &str, len: usize) -> bool {
+        if key == "v" {
+            self.view = self.view.cycle(1);
+            self.settings_changed = true;
+            return true;
+        }
+        let columns = video_columns(self.view) as i32;
+        let step = match key {
+            "UP" => Some(-columns),
+            "DOWN" => Some(columns),
+            "LEFT" => Some(-1),
+            "RIGHT" => Some(1),
+            _ => None,
+        };
+        if let Some(step) = step {
+            let next = (self.sel + step).max(0);
+            if next < len as i32 {
+                self.sel = next;
+            }
+            return true;
+        }
+        false
+    }
+}

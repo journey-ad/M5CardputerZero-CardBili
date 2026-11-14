@@ -132,47 +132,16 @@ impl App {
             self.sections_key(key);
             return;
         }
-        if key == "p" && matches!(self.page, Page::Detail | Page::Player) {
-            self.sections.open = true;
-            self.sections.dirty = true;
-            return;
-        }
-        if matches!(self.page, Page::Detail | Page::Comments) && self.scroll_key(key, repeat) {
-            return;
-        }
-        let video_len = if self.page == Page::Collection {
-            Some(self.collection.items.len())
-        } else if self.page == Page::Home {
-            list_source(self.tab, self.mine_detail).map(|source| self.lists[source].len())
-        } else {
-            None
-        };
-        if let Some(len) = video_len.filter(|_| !self.help) {
-            if key == "v" {
-                self.view = self.view.cycle(1);
-                self.settings_changed = true;
-                return;
-            }
-            let columns = video_columns(self.view) as i32;
-            let step = match key {
-                "UP" => Some(-columns),
-                "DOWN" => Some(columns),
-                "LEFT" => Some(-1),
-                "RIGHT" => Some(1),
-                _ => None,
-            };
-            if let Some(step) = step {
-                let next = (self.sel + step).max(0);
-                if next < len as i32 {
-                    self.sel = next;
-                }
-                return;
-            }
-        }
         match self.page {
             Page::Home => self.home_key(key),
             Page::Player => self.play_key(key, repeat),
-            _ => self.page_key(key),
+            Page::Login => self.login_key(key),
+            Page::Detail => self.detail_key(key, repeat),
+            Page::About => self.about_key(key),
+            Page::Collection => self.collection_key(key),
+            Page::Comments => self.comments_key(key, repeat),
+            Page::Following => self.following_key(key),
+            Page::Favorites => self.favorites_key(key),
         }
     }
 }
