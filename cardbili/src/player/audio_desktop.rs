@@ -3,21 +3,19 @@ use crate::diagnostics;
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use std::collections::VecDeque;
 use std::io::Read;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread;
 
 // Windows 桌面版没有可用的 ffmpeg 音频输出设备，解码后的 PCM 由 cpal 播放
-pub(super) fn start(mut pcm: impl Read + Send + 'static, frames: Arc<Frames>) {
+pub(super) fn start(mut pcm: impl Read + Send + 'static, _frames: Arc<Frames>) {
     thread::spawn(move || {
-        if let Err(error) = run(&mut pcm, frames.clone()) {
+        if let Err(error) = run(&mut pcm) {
             diagnostics::write(format_args!("[音频] 输出失败: {error}"));
-            frames.finish_audio();
         }
     });
 }
 
-fn run(pcm: &mut impl Read, frames: Arc<Frames>) -> Result<(), Box<dyn std::error::Error>> {
+fn run(pcm: &mut impl Read) -> Result<(), Box<dyn std::error::Error>> {
     let host = cpal::default_host();
     let device = host
         .default_output_device()
@@ -36,11 +34,8 @@ fn run(pcm: &mut impl Read, frames: Arc<Frames>) -> Result<(), Box<dyn std::erro
         .config();
     let channels = config.channels as usize;
     let queue = Arc::new(Mutex::new(VecDeque::<f32>::new()));
-    let played = Arc::new(AtomicU64::new(0));
 
     let callback_queue = queue.clone();
-    let callback_played = played.clone();
-    let callback_frames = frames.clone();
     let stream = device.build_output_stream(
         &config,
         move |data: &mut [f32], _| {
@@ -51,11 +46,6 @@ fn run(pcm: &mut impl Read, frames: Arc<Frames>) -> Result<(), Box<dyn std::erro
                     *value = sample;
                 }
             }
-            let samples = callback_played.fetch_add(
-                (data.len() / channels) as u64,
-                Ordering::Relaxed,
-            );
-            callback_frames.update_audio_clock(samples as f64 / 44100.0);
         },
         |error| diagnostics::write(format_args!("[音频] 输出流错误: {error}")),
         None,
@@ -79,6 +69,5 @@ fn run(pcm: &mut impl Read, frames: Arc<Frames>) -> Result<(), Box<dyn std::erro
             thread::sleep(std::time::Duration::from_millis(5));
         }
     }
-    frames.finish_audio();
     Ok(())
 }
