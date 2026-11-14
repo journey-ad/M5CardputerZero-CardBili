@@ -2,15 +2,16 @@ import { Icon } from "icons.slint";
 
 export component StatItem inherits Rectangle {
     in property <image> icon;
+    in property <bool> show-icon: true;
     in property <string> value;
     in property <length> icon-gap: 2px;
     in property <length> text-size: 10px;
     in property <string> text-font: "Fusion Pixel 10px Prop zh-Hans";
     width: label.x + label.preferred-width;
     height: 12px;
-    Icon { x: 0px; y: 0px; source: root.icon; }
+    if root.show-icon: Icon { x: 0px; y: 0px; source: root.icon; }
     label := Text {
-        x: 12px + root.icon-gap; y: 0px; height: 12px;
+        x: root.show-icon ? 12px + root.icon-gap : 0px; y: 0px; height: 12px;
         text: root.value; color: #8b95a7;
         font-family: root.text-font; font-size: root.text-size;
         vertical-alignment: center;

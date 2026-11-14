@@ -75,6 +75,7 @@ fn video_items(value: &Value) -> Vec<Item> {
                 views: count_text(&it["stat"]["view"]),
                 likes: count_text(&it["stat"]["like"]),
                 danmaku: count_text(&it["stat"]["danmaku"]),
+                ..Default::default()
             });
         }
     }
@@ -157,6 +158,9 @@ pub fn history(
                 views: count_text(&it["stat"]["view"]),
                 likes: count_text(&it["stat"]["like"]),
                 danmaku: count_text(&it["stat"]["danmaku"]),
+                progress: it["progress"].as_i64().unwrap_or_default(),
+                view_at: it["view_at"].as_i64().unwrap_or_default(),
+                duration_secs: d,
             });
         }
     }
@@ -215,6 +219,7 @@ pub fn dynamic(cookies: &str, offset: &str) -> Result<model::DynamicPage, String
                 danmaku: count_text(&archive["stat"]["danmaku"]),
                 bvid: bvid.to_string(),
                 pic,
+                ..Default::default()
             });
         }
     }
@@ -485,6 +490,7 @@ pub fn uploader_videos(
                 views: count_text(&video["play"]),
                 likes: count_text(&video["like"]),
                 danmaku: count_text(&video["video_review"]),
+                ..Default::default()
             });
         }
     }

@@ -6,8 +6,15 @@ import { StatItem } from "stat_item.slint";
 export component ListView inherits Rectangle {
     in property <bool> show-author: true;
     clip: true;
+    property <length> top: ListModel.scroll-top * 1px;
+    for header in ListModel.headers: Text {
+        x: 8px; y: header.top * 1px - root.top; width: parent.width - 16px; height: 24px;
+        text: header.title; color: #8b95a7;
+        font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
+        vertical-alignment: center;
+    }
     for row[i] in ListModel.rows: Rectangle {
-        x: 0px; y: (i - ListModel.first-row) * 30px;
+        x: 0px; y: ListModel.row-tops[i] * 1px - root.top;
         width: parent.width; height: 30px;
         background: i == Nav.sel ? #1f2b45 : transparent;
         Rectangle { y: 29px; width: parent.width; height: 1px; background: #151d2c; }
@@ -22,18 +29,18 @@ export component ListView inherits Rectangle {
         }
         HorizontalLayout {
             x: 8px; y: 17px; width: parent.width - 16px; height: 12px; spacing: 4px; alignment: start;
-            if row.duration != "": StatItem { icon: Icons.clock; value: row.duration; }
+            if row.duration != "" && row.progress == "": StatItem { icon: Icons.clock; value: row.duration; }
             if row.views != "": StatItem { icon: Icons.play; value: row.views; }
             if row.likes != "": StatItem { icon: Icons.thumbs-up; value: row.likes; }
-            if root.show-author: Rectangle {
-                horizontal-stretch: 1; min-width: 0px; preferred-width: 0px; clip: true;
-                Text {
-                    x: 0px; y: 0px; width: parent.width; height: 12px;
-                    text: row.author; color: #6f7c92;
-                    font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
-                    horizontal-alignment: right; vertical-alignment: center;
-                }
-            }
+            if row.progress != "": StatItem { icon: Icons.play; show-icon: row.progress != "已看完"; value: row.progress; }
+            if row.watched != "": StatItem { icon: Icons.clock; value: row.watched; }
+        }
+        Text {
+            x: 8px; y: 17px; width: parent.width - 16px; height: 12px;
+            visible: root.show-author;
+            text: row.author; color: #8b95a7;
+            font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
+            horizontal-alignment: right; vertical-alignment: center;
         }
     }
 }

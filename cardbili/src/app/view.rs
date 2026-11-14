@@ -82,7 +82,12 @@ impl App {
         g_status.set_status(status.into());
         g_status.set_detail(self.status_detail.as_str().into());
         self.ui.global::<crate::ListModel>().set_loading(self.loading);
-        nav.set_view(self.view);
+        let layout = if self.tab == HomeTab::Mine && self.mine_detail == 3 {
+            VideoLayout::List
+        } else {
+            self.view
+        };
+        nav.set_view(layout);
         self.ui.global::<crate::Danmaku>().set_enabled(self.settings.danmaku_enabled);
         preferences.set_danmaku_opacity(self.settings.danmaku_opacity);
         preferences.set_menu_position(self.settings.menu_position);

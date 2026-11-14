@@ -110,15 +110,17 @@ impl App {
             } else {
                 150.0
             };
-        let columns = video_columns(self.view);
-        let cell_height = if self.view == VideoLayout::TwoColumns {
+        let history = self.tab == HomeTab::Mine && self.mine_detail == 3;
+        let layout = if history { VideoLayout::List } else { self.view };
+        let columns = video_columns(layout);
+        let mut cell_height = if layout == VideoLayout::TwoColumns {
             113.0
         } else {
             84.0
         };
         let context = (
             source as i32,
-            self.view,
+            layout,
             self.page,
             self.settings.menu_position,
         );
@@ -134,10 +136,17 @@ impl App {
         } else {
             (&self.lists[source], &self.covers[source])
         };
+        let has_stats = items.iter().any(|item| {
+            item.views.as_deref().is_some_and(|v| !v.is_empty())
+                || item.danmaku.as_deref().is_some_and(|v| !v.is_empty())
+        });
+        if !has_stats {
+            cell_height -= 12.0;
+        }
         self.sel = self.sel.clamp(0, (items.len() as i32 - 1).max(0));
         let selected = self.sel as usize;
-        let (start, end, visible_count) = if self.view == VideoLayout::List {
-            let rows = (content_height / 30.0) as usize;
+        let (start, end, visible_count) = if layout == VideoLayout::List {
+            let rows = ((content_height - if history { 24.0f64 } else { 0.0f64 }) / 30.0f64).max(1.0f64) as usize;
             if selected < self.first_row {
                 self.first_row = selected;
             }
@@ -198,18 +207,18 @@ impl App {
             .map(|item| util::est_w(&item.title, 12.0))
             .unwrap_or(0.0);
         list_model.set_title_marquee(
-            self.view == VideoLayout::List && title_width > content_width - 16.0,
+            layout == VideoLayout::List && title_width > content_width - 16.0,
         );
         list_model.set_title_shift(yoyo_shift(title_width, content_width - 16.0, self.marq_t));
 
-        let grid_start = if self.view == VideoLayout::List {
+        let grid_start = if layout == VideoLayout::List {
             0
         } else {
             start
         };
         let current_view = (
             source,
-            self.view,
+            layout,
             self.page,
             grid_start,
             self.settings.menu_position,
@@ -226,8 +235,8 @@ impl App {
             } else {
                 self.home_dirty = false;
             }
-            if self.view == VideoLayout::List {
-                sync_list(&self.ui, items);
+            if layout == VideoLayout::List {
+                sync_list(&self.ui, items, history, self.first_row);
             } else {
                 let mut rows = Vec::with_capacity(end - start);
                 let mut images = Vec::with_capacity(end - start);

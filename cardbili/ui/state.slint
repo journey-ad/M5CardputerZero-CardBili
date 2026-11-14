@@ -1,6 +1,6 @@
 import { HomeTab, Page, VideoLayout, MenuPosition, SettingsItem, SettingsRow } from "types.slint";
 // 页面与组件共用的全局状态
-import { Cmt, DmRow, VideoRow, FavoriteRow, FollowingRow } from "common.slint";
+import { Cmt, DmRow, VideoRow, FavoriteRow, FollowingRow, HistoryHeader } from "common.slint";
 
 // 导航与交互态
 export global Nav {
@@ -15,6 +15,9 @@ export global Nav {
 // 列表数据与状态
 export global ListModel {
     in-out property <[VideoRow]> rows: [];
+    in-out property <[HistoryHeader]> headers: [];
+    in-out property <[float]> row-tops: [];
+    in-out property <float> scroll-top: 0;
     in-out property <int> first-row: 0;
     in-out property <length> grid-offset: 0px;
     in-out property <string> history-count: "";

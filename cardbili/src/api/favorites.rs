@@ -50,6 +50,7 @@ pub fn videos(folder: i64, page: u32, cookies: &str) -> Result<model::VideoPage,
                 views: count_text(&item["cnt_info"]["play"]),
                 likes: count_text(&item["cnt_info"]["thumb_up"]),
                 danmaku: count_text(&item["cnt_info"]["danmaku"]),
+                ..Default::default()
             })
         })
         .collect();
