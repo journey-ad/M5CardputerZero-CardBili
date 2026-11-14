@@ -98,15 +98,9 @@ impl App {
 
     pub(in crate::app) fn change_speed(&mut self) {
         if let Some(player) = self.player.as_mut() {
-            let position = self
-                .seek_pending
-                .take()
-                .unwrap_or_else(|| player.position(self.frames_in_seg));
-            self.seek_deadline = None;
-            player.cycle_rate(position);
-            self.frames_in_seg = 0;
-            self.ui.set_has_frame(false);
-            self.status = "加载中…".into();
+            if let Err(error) = player.cycle_rate() {
+                self.toast(&error.replace('\n', " · "));
+            }
         }
     }
 

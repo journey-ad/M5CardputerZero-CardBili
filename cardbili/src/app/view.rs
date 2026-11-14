@@ -90,18 +90,28 @@ impl App {
         self.sync_comments();
         self.sync_following();
         self.sync_favorites();
+        self.sync_sections();
     }
 }
 
 impl App {
     pub(super) fn menu_actions(&self) -> [Option<menu::Action>; 5] {
+        if self.sections.open {
+            return [
+                None,
+                Some(menu::Action::Play),
+                None,
+                None,
+                Some(menu::Action::Back),
+            ];
+        }
         let retry = match self.page {
             Page::Comments => !self.comment_page.error.is_empty(),
             Page::Following => !self.following.error.is_empty(),
             Page::Favorites => !self.favorites.error.is_empty(),
             _ => !self.collection.error.is_empty(),
         };
-        menu::actions(
+        let mut actions = menu::actions(
             self.page,
             self.tab,
             self.mine_detail,
@@ -109,6 +119,15 @@ impl App {
             self.cookies.is_some(),
             self.settings.menu_position,
             retry,
-        )
+        );
+        if self.page == Page::Detail && self.back_stack.last().is_some_and(|target| {
+            matches!(target, BackTarget::Collection(collection) if matches!(collection.source, model::VideoSource::Author(_)))
+        }) {
+            actions[2] = None;
+        }
+        if self.page == Page::Detail && self.sections.available() {
+            actions[0] = Some(menu::Action::Sections);
+        }
+        actions
     }
 }

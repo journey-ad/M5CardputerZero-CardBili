@@ -17,7 +17,6 @@ export component PlaybackBar inherits Rectangle {
     Icon {
         x: 100px; y: 11px; source: Icons.thumbs-up;
         colorize: Player.liked ? #ff77a8 : #cfd8e6;
-        opacity: Player.reaction-busy ? 0.5 : 1;
     }
     TouchArea {
         x: 79px; y: 8px; width: 54px; height: 20px;

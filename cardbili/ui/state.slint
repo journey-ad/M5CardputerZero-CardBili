@@ -64,6 +64,7 @@ export global Player {
     in-out property <image> frame;
     in-out property <bool> has-frame: false;
     in-out property <string> ptitle: "";
+    in-out property <string> watching: "";
     in-out property <bool> ptitle-marquee: false;
     in-out property <length> ptitle-shift: 0px;
     in-out property <float> progress: 0.0;
@@ -95,7 +96,6 @@ export global Detail {
     in-out property <[string]> metrics: [];
     in-out property <string> desc: "";
     in-out property <string> owner: "";
-    in-out property <[Cmt]> comments: [];
     in-out property <image> cover;
     in-out property <bool> has-cover: false;
     in-out property <length> scroll: 0px;
@@ -137,6 +137,7 @@ export global Menu {
 }
 
 export global Comments {
+    in-out property <bool> finished: false;
     in-out property <[Cmt]> rows: [];
     in-out property <bool> loading: false;
     in-out property <string> error: "";

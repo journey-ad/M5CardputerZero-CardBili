@@ -214,6 +214,16 @@ impl App {
                 self.tx.clone(),
                 force,
             );
+        } else if source == 3 {
+            self.history_request += 1;
+            self.loading_more[3] = false;
+            tasks::load_history(
+                None,
+                self.cookies.clone(),
+                self.history_request,
+                force,
+                self.tx.clone(),
+            );
         } else {
             tasks::load_list(source, self.cookies.clone(), self.tx.clone(), force);
         }

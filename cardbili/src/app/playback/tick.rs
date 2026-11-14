@@ -37,6 +37,7 @@ impl App {
                 self.ui.set_bar("".into());
                 self.ui.set_bar_sticky(false);
                 self.bar_until = None;
+                self.back_hint = false;
             }
         }
     }

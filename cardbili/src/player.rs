@@ -4,10 +4,10 @@ mod diagnostics;
 mod frames;
 pub mod volume;
 
-use crate::model::{PlayInfo, Seg};
+use crate::model::PlayInfo;
 use crate::net::{REFERER, UA};
 use crate::Msg;
-use std::io::Read;
+use std::io::{Read, Write};
 use std::process::{Child, Command, Stdio};
 use std::sync::{mpsc::Sender, Arc};
 use std::thread;
@@ -16,10 +16,6 @@ pub const WIDTH: u32 = 320;
 pub const HEIGHT: u32 = 170;
 pub const FPS: f64 = 30.0;
 pub const VID_BYTES: usize = (WIDTH as usize) * (HEIGHT as usize) * 3;
-
-fn cum_len(segs: &[Seg], upto: usize) -> f64 {
-    segs.iter().take(upto).map(|s| s.len).sum()
-}
 
 fn headers(cookies: &str) -> String {
     let mut h = format!("Referer: {}\r\nOrigin: {}\r\n", REFERER, REFERER);
@@ -65,17 +61,24 @@ impl Default for PlaybackState {
     }
 }
 
+struct Speed {
+    output: f64,
+    position: f64,
+    rate: f64,
+}
+
 pub struct Player {
     pub gen: u64,
     pub title: String,
     pub duration: f64,
-    pub base: f64,
+    base: f64,
+    speeds: Vec<Speed>,
     pub paused: bool,
     pub rate: f64,
     pub finished: bool,
     ready: bool,
-    segs: Vec<Seg>,
-    seg_idx: usize,
+    video_url: String,
+    audio_url: String,
     cookies: String,
     child: Option<Child>,
     audio: Option<Child>,
@@ -96,24 +99,30 @@ impl Player {
             title: info.title.clone(),
             duration: info.duration,
             base: 0.0,
+            speeds: Vec::new(),
             paused: state.paused,
             rate: state.rate,
             ready: false,
             finished: false,
-            segs: info.segs.clone(),
-            seg_idx: 0,
+            video_url: info.video_url.clone(),
+            audio_url: info.audio_url.clone(),
             cookies,
             child: None,
             audio: None,
             tx,
             frames: Arc::new(frames::Frames::default()),
         };
-        let offset = p.set_position(state.position);
-        p.spawn(offset);
+        p.base = state.position.clamp(0.0, p.duration);
+        p.spawn(p.base);
         p
     }
 
     fn spawn(&mut self, ss: f64) {
+        self.speeds = vec![Speed {
+            output: 0.0,
+            position: ss,
+            rate: self.rate,
+        }];
         stop_child(&mut self.child, "音视频");
         stop_child(&mut self.audio, "音频");
         self.frames.stop();
@@ -135,42 +144,40 @@ impl Player {
         self.ready = false;
         self.finished = false;
         diagnostics::write(format_args!(
-            "开始解码 gen={} 分段={}/{} 跳转={ss:.3}s 倍速={} 日志=/tmp/cardbili-player.log",
-            self.gen,
-            self.seg_idx + 1,
-            self.segs.len(),
-            self.rate
+            "开始解码 gen={} 跳转={ss:.3}s 倍速={} 日志=/tmp/cardbili-player.log",
+            self.gen, self.rate
         ));
-        let seg = self.segs.get(self.seg_idx).cloned().unwrap_or_default();
         let hd = headers(&self.cookies);
         let vf = format!(
-            "setpts=(PTS-STARTPTS)/{},fps=30,scale={}:{}:force_original_aspect_ratio=decrease:force_divisible_by=2:flags=fast_bilinear,pad={}:{}:(ow-iw)/2:(oh-ih)/2:color=black",
+            "setpts@speed='if(isnan(PREV_OUTPTS),0,PREV_OUTPTS+(PTS-PREV_INPTS)/{})',fps=30,scale={}:{}:force_original_aspect_ratio=decrease:force_divisible_by=2:flags=fast_bilinear,pad={}:{}:(ow-iw)/2:(oh-ih)/2:color=black",
             self.rate, WIDTH, HEIGHT, WIDTH, HEIGHT
         );
         let mut args: Vec<String> = vec![
             "-hide_banner".into(),
             "-loglevel".into(),
             "error".into(),
-            "-nostdin".into(),
-            "-threads".into(),
-            "4".into(),
+            "-nostats".into(),
             "-filter_threads".into(),
             "2".into(),
-            "-protocol_whitelist".into(),
-            "file,pipe,crypto,http,https,tcp,tls".into(),
-            "-user_agent".into(),
-            UA.into(),
-            "-referer".into(),
-            REFERER.into(),
-            "-headers".into(),
-            hd,
         ];
-        if ss > 0.0 {
-            args.push("-ss".into());
-            args.push(format!("{:.3}", ss));
+        for url in [&self.video_url, &self.audio_url] {
+            args.extend([
+                "-threads".into(),
+                "4".into(),
+                "-protocol_whitelist".into(),
+                "file,pipe,crypto,http,https,tcp,tls".into(),
+                "-user_agent".into(),
+                UA.into(),
+                "-referer".into(),
+                REFERER.into(),
+                "-headers".into(),
+                hd.clone(),
+            ]);
+            if ss > 0.0 {
+                args.extend(["-ss".into(), format!("{ss:.3}")]);
+            }
+            args.extend(["-i".into(), url.clone()]);
         }
-        args.push("-i".into());
-        args.push(seg.url.clone());
         args.push("-map".into());
         args.push("0:v:0".into());
         args.push("-vf".into());
@@ -185,15 +192,13 @@ impl Player {
 
         args.extend([
             "-map".into(),
-            "0:a:0".into(),
+            "1:a:0".into(),
             "-ac".into(),
             "2".into(),
             "-ar".into(),
             "44100".into(),
         ]);
-        if self.rate != 1.0 {
-            args.extend(["-af".into(), format!("atempo={}", self.rate)]);
-        }
+        args.extend(["-af".into(), format!("atempo@speed={}", self.rate)]);
         if cfg!(target_os = "linux") {
             args.extend(["-f".into(), "s16le".into(), "pipe:3".into()]);
         } else {
@@ -235,7 +240,7 @@ impl Player {
                             None => break,
                         }
                     }
-                    let _ = tx.send(Msg::SegEnd(gen));
+                    let _ = tx.send(Msg::PlaybackEnded(gen));
                 });
             }
             self.child = Some(ch);
@@ -243,17 +248,48 @@ impl Player {
     }
 
     pub fn position(&self, frames_in_seg: u64) -> f64 {
-        (self.base + self.frames.position(frames_in_seg) * self.rate).min(self.duration)
+        let output = self.frames.position(frames_in_seg);
+        let speed = self
+            .speeds
+            .iter()
+            .rfind(|speed| speed.output <= output)
+            .unwrap();
+        (speed.position + (output - speed.output) * speed.rate).min(self.duration)
     }
 
-    pub fn cycle_rate(&mut self, position: f64) {
-        self.rate = match self.rate {
+    pub fn cycle_rate(&mut self) -> Result<(), String> {
+        let rate = match self.rate {
             0.5 => 1.0,
             1.0 => 1.5,
             1.5 => 2.0,
             _ => 0.5,
         };
-        self.seek(position);
+        // 音视频在相同媒体时间切换，已进入输出缓冲区的内容按原速播放
+        let last = self.speeds.last().unwrap();
+        let output = (self.frames.position(0) + 2.0).max(last.output + 1.2);
+        let position = last.position + (output - last.output) * last.rate;
+        let input_time = position - self.base;
+        let command = format!(
+            "Catempo@speed {input_time:.6} tempo {rate}\nCsetpts@speed {input_time:.6} expr (PTS-{input_time:.6}/TB)/{rate}+{output:.6}/TB\n"
+        );
+        let input = self
+            .child
+            .as_mut()
+            .and_then(|child| child.stdin.as_mut())
+            .ok_or("播放器尚未就绪")?;
+        input
+            .write_all(command.as_bytes())
+            .map_err(|error| format!("倍速切换失败\n{error}"))?;
+        self.speeds.push(Speed {
+            output,
+            position,
+            rate,
+        });
+        self.rate = rate;
+        diagnostics::write(format_args!(
+            "运行中切换倍速 rate={rate} position={position:.3}"
+        ));
+        Ok(())
     }
 
     pub fn pause_toggle(&mut self) {
@@ -291,40 +327,10 @@ impl Player {
     }
 
     pub fn seek(&mut self, target: f64) -> f64 {
-        let offset = self.set_position(target);
+        self.base = target.clamp(0.0, self.duration);
         self.gen += 1;
-        self.spawn(offset);
+        self.spawn(self.base);
         self.base
-    }
-
-    fn set_position(&mut self, target: f64) -> f64 {
-        let target = target.max(0.0).min(self.duration.max(0.0));
-        let mut idx = 0usize;
-        let mut acc = 0.0;
-        for (i, s) in self.segs.iter().enumerate() {
-            if target < acc + s.len || i + 1 == self.segs.len() {
-                idx = i;
-                break;
-            }
-            acc += s.len;
-        }
-        let ss = (target - acc).max(0.0);
-        self.seg_idx = idx;
-        self.base = acc + ss;
-        ss
-    }
-
-    pub fn advance(&mut self) -> bool {
-        if self.seg_idx + 1 < self.segs.len() {
-            self.seg_idx += 1;
-            self.base = cum_len(&self.segs, self.seg_idx);
-            self.gen += 1;
-            self.spawn(0.0);
-            true
-        } else {
-            self.finished = true;
-            false
-        }
     }
 
     pub fn stop(&mut self) {

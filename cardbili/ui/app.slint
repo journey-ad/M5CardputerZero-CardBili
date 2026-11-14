@@ -1,7 +1,8 @@
+import { SectionsPanel } from "components/sections_panel.slint";
 export { HomeTab, Page, VideoLayout, MenuPosition } from "types.slint";
 import { HomeTab, Page, VideoLayout, MenuPosition } from "types.slint";
 // 主窗口通过双向绑定向 Rust 暴露全局状态
-import { Cmt, DmRow, VideoRow, FollowingRow } from "common.slint";
+import { Cmt, DmRow, VideoRow, FollowingRow, FavoriteRow } from "common.slint";
 import { Nav, ListModel, Status, Account, Player, Danmaku, Detail, Login, Meta, Preferences, Collection, Menu, Comments } from "state.slint";
 import { StatusBar } from "components/status_bar.slint";
 import { BottomBar } from "components/bottom_bar.slint";
@@ -31,6 +32,7 @@ export component AppWindow inherits Window {
     in-out property <bool> help <=> Nav.help;
     in-out property <bool> mine-detail <=> Nav.mine-detail;
     in-out property <[Cmt]> comment-rows <=> Comments.rows;
+    in-out property <bool> comment-finished <=> Comments.finished;
     in-out property <bool> comment-loading <=> Comments.loading;
     in-out property <string> comment-error <=> Comments.error;
     in-out property <length> comment-scroll <=> Comments.scroll;
@@ -71,12 +73,13 @@ export component AppWindow inherits Window {
     in-out property <image> frame <=> Player.frame;
     in-out property <bool> has-frame <=> Player.has-frame;
     in-out property <string> ptitle <=> Player.ptitle;
+    in-out property <string> watching <=> Player.watching;
     in-out property <bool> ptitle-marquee <=> Player.ptitle-marquee;
     in-out property <length> ptitle-shift <=> Player.ptitle-shift;
     in-out property <float> progress <=> Player.progress;
     in-out property <string> time-text <=> Player.time-text;
     in-out property <bool> paused <=> Player.paused;
-    in-out property <[Cmt]> favorite-folders;
+    in-out property <[FavoriteRow]> favorite-folders;
     in-out property <int> favorite-selected;
     in-out property <bool> favorite-loading;
     in-out property <string> favorite-error;
@@ -125,7 +128,6 @@ export component AppWindow inherits Window {
     in-out property <[string]> detail-metrics <=> Detail.metrics;
     in-out property <string> detail-desc <=> Detail.desc;
     in-out property <string> detail-owner <=> Detail.owner;
-    in-out property <[Cmt]> comments <=> Detail.comments;
     in-out property <image> detail-cover <=> Detail.cover;
     in-out property <bool> has-detail-cover <=> Detail.has-cover;
     in-out property <length> detail-scroll <=> Detail.scroll;
@@ -138,6 +140,12 @@ export component AppWindow inherits Window {
 
     out property <length> detail-content-h: detail-page.content-height;
     out property <length> detail-viewport-h: detail-page.viewport-height;
+
+    in-out property <bool> sections-open: false;
+    in-out property <[Cmt]> sections-rows;
+    in-out property <int> sections-selected;
+    in-out property <bool> sections-loading;
+    in-out property <string> sections-error;
 
     // 页面组件根据父级尺寸布局
     if page == Page.home: HomePage {}
@@ -155,7 +163,8 @@ export component AppWindow inherits Window {
         rows: root.favorite-folders; selected: root.favorite-selected;
         loading: root.favorite-loading; error: root.favorite-error;
     }
-    if page != Page.player: BottomBar {
+    if root.sections-open: SectionsPanel { rows: root.sections-rows; selected: root.sections-selected; loading: root.sections-loading; error: root.sections-error; }
+    if page != Page.player || root.sections-open: BottomBar {
         x: 0px;
         y: parent.height - self.height;
         width: parent.width;

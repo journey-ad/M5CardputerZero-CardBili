@@ -22,14 +22,14 @@ export component PlayPage inherits Rectangle {
     }
     if !Player.has-frame: Rectangle {
         x: (parent.width - self.width) / 2; y: parent.height / 2 - 8px;
-        width: loading-text.preferred-width + (Status.loading-dots >= 0 ? 12px : 0px);
+        width: loading-text.preferred-width + (Status.loading-dots >= 0 ? 15px : 0px);
         height: 16px;
         loading-text := Text {
             height: parent.height; text: Status.status; color: #9aa6ba;
             font-size: 12px; vertical-alignment: center;
         }
         for index in 3: Rectangle {
-            x: loading-text.preferred-width + 3px + index * 3px; y: 11px;
+            x: loading-text.preferred-width + 6px + index * 3px; y: 11px;
             width: 1px; height: 1px; background: #9aa6ba;
             visible: index < Status.loading-dots;
         }
@@ -39,7 +39,7 @@ export component PlayPage inherits Rectangle {
     if Player.paused && Player.triple-phase == 0: Rectangle {
         x: (root.width - self.width) / 2; y: (root.height - self.height) / 2;
         width: 32px; height: 32px; background: #00000070; border-radius: 16px;
-        Icon { x: 4px; y: 4px; width: 24px; height: 24px; source: Icons.play; colorize: #ffffffee; }
+        Icon { x: 6px; y: 4px; width: 24px; height: 24px; source: Icons.play; colorize: #ffffffee; }
         TouchArea { clicked => { Player.key("SPACE"); } }
     }
 
@@ -58,6 +58,19 @@ export component PlayPage inherits Rectangle {
             }
         }
     }
+
+    title-measure := Text {
+        visible: false; text: Player.ptitle;
+        font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
+    }
+    online := Text {
+        x: root.width - self.preferred-width - 6px; y: 0px; height: 20px;
+        text: Player.watching; color: #9aa6ba;
+        font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
+        vertical-alignment: center;
+        visible: Player.controls-visible && title-measure.preferred-width + self.preferred-width + 18px <= root.width;
+    }
+    TouchArea { x: 0px; y: 0px; width: parent.width; height: 20px; enabled: Player.controls-visible; clicked => { Player.key("p"); } }
 
     PlaybackBar {
         visible: Player.controls-visible;

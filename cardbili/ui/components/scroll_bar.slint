@@ -1,0 +1,12 @@
+export component ScrollBar inherits Rectangle {
+    in property <length> content-height;
+    in property <length> scroll;
+    width: 4px; background: #10141c;
+    visible: root.content-height > root.height;
+    property <length> thumb-height: min(root.height, max(14px, root.height * root.height / max(root.height, root.content-height)));
+    Rectangle {
+        width: parent.width; height: root.thumb-height;
+        y: min(1, max(0, root.scroll / max(1px, root.content-height - root.height))) * (root.height - self.height);
+        background: #3a4a66; border-radius: 2px;
+    }
+}

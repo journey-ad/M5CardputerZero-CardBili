@@ -1,10 +1,11 @@
 pub mod auth;
 pub mod favorites;
 pub mod playback;
+pub mod sections;
 mod wbi;
 
 use crate::cache;
-use crate::model::{self, Account, Comment, Detail, Item, Owner, PlayInfo, Seg};
+use crate::model::{self, Account, Detail, Item, Owner, PlayInfo};
 use crate::net;
 use base64::Engine;
 use serde_json::Value;
@@ -110,8 +111,23 @@ pub fn rcmd(cookies: Option<&str>, page: u32) -> Result<Vec<Item>, String> {
 pub const HISTORY_URL: &str =
     "https://api.bilibili.com/x/web-interface/history/cursor?max=0&view_at=0&business=";
 
-pub fn history(cookies: &str) -> Result<Vec<Item>, String> {
-    let v = cache::api_json(HISTORY_URL, Some(cookies), cache::TTL_LIST)?;
+pub fn history(
+    cookies: &str,
+    cursor: Option<&model::HistoryCursor>,
+) -> Result<model::HistoryPage, String> {
+    let url = cursor
+        .map(|cursor| {
+            format!(
+                "https://api.bilibili.com/x/web-interface/history/cursor?{}",
+                net::query_string(&[
+                    ("max".into(), cursor.max.to_string()),
+                    ("view_at".into(), cursor.view_at.to_string()),
+                    ("business".into(), cursor.business.clone())
+                ])
+            )
+        })
+        .unwrap_or_else(|| HISTORY_URL.into());
+    let v = cache::api_json(&url, Some(cookies), cache::TTL_LIST)?;
     if v["code"].as_i64() != Some(0) {
         return Err(api_err("历史记录", &v));
     }
@@ -143,7 +159,23 @@ pub fn history(cookies: &str) -> Result<Vec<Item>, String> {
             });
         }
     }
-    Ok(out)
+    let next = &v["data"]["cursor"];
+    let next = model::HistoryCursor {
+        max: next["max"].as_i64().unwrap_or_default(),
+        view_at: next["view_at"].as_i64().unwrap_or_default(),
+        business: next["business"].as_str().unwrap_or_default().into(),
+    };
+    let has_more = v["data"]["list"]
+        .as_array()
+        .is_some_and(|items| !items.is_empty())
+        && (next.max > 0 || next.view_at > 0)
+        && cursor
+            .is_none_or(|previous| previous.max != next.max || previous.view_at != next.view_at);
+    Ok(model::HistoryPage {
+        items: out,
+        cursor: next,
+        has_more,
+    })
 }
 
 pub fn dynamic(cookies: &str, offset: &str) -> Result<model::DynamicPage, String> {
@@ -197,7 +229,11 @@ pub fn dynamic(cookies: &str, offset: &str) -> Result<model::DynamicPage, String
     })
 }
 
-pub fn play_info(bvid: &str, cookies: Option<&str>) -> Result<PlayInfo, String> {
+pub fn play_info(
+    bvid: &str,
+    selected_cid: Option<i64>,
+    cookies: Option<&str>,
+) -> Result<PlayInfo, String> {
     let vurl = format!(
         "https://api.bilibili.com/x/web-interface/view?bvid={}",
         bvid
@@ -207,46 +243,51 @@ pub fn play_info(bvid: &str, cookies: Option<&str>) -> Result<PlayInfo, String> 
         return Err(api_err("视频信息", &v));
     }
     let d = &v["data"];
-    let cid = d["cid"].as_i64().ok_or("no cid")?;
-    let title = d["title"].as_str().unwrap_or("").to_string();
-    let view_dur = model::dur_of(&d["duration"]);
-
+    let parts = sections::parts(d);
+    let cid = selected_cid
+        .or_else(|| d["cid"].as_i64())
+        .ok_or("视频缺少分 P 信息")?;
+    let part = parts.iter().find(|part| part.cid == cid);
+    let title = if parts.len() > 1 {
+        part.map(|part| part.title.clone()).unwrap_or_default()
+    } else {
+        d["title"].as_str().unwrap_or_default().into()
+    };
     let purl = format!(
-        "https://api.bilibili.com/x/player/playurl?bvid={}&cid={}&qn=16&fnval=1&fourk=0&platform=html5&high_quality=1",
+        "https://api.bilibili.com/x/player/playurl?bvid={}&cid={}&qn=16&fnval=16&fourk=0",
         bvid, cid
     );
     let p = cache::api_json(&purl, cookies, cache::TTL_PLAYURL)?;
     if p["code"].as_i64() != Some(0) {
         return Err(api_err("播放地址", &p));
     }
-    let durl = p["data"]["durl"].as_array();
-    let mut segs = Vec::new();
-    if let Some(arr) = durl {
-        for s in arr {
-            let url = s["url"].as_str().unwrap_or("").to_string();
-            if url.is_empty() {
-                continue;
-            }
-            let ms = model::dur_of(&s["length"]);
-            segs.push(Seg {
-                url,
-                len: ms / 1000.0,
-            });
-        }
-    }
-    if segs.is_empty() {
-        return Err("无可用视频流（可能需要登录或为受限内容）".into());
-    }
-    let sum: f64 = segs.iter().map(|s| s.len).sum();
-    let duration = if view_dur > 0.0 { view_dur } else { sum };
+    let dash = &p["data"]["dash"];
+    let video = dash["video"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|stream| stream["codecid"].as_i64() == Some(7))
+        .min_by_key(|stream| stream["bandwidth"].as_u64().unwrap_or(u64::MAX))
+        .and_then(|stream| stream["baseUrl"].as_str())
+        .ok_or("无可用 H.264 视频流")?;
+    let audio = dash["audio"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .min_by_key(|stream| stream["bandwidth"].as_u64().unwrap_or(u64::MAX))
+        .and_then(|stream| stream["baseUrl"].as_str())
+        .ok_or("无可用音频流")?;
+    let duration = model::dur_of(&p["data"]["timelength"]) / 1000.0;
     Ok(PlayInfo {
         aid: d["aid"].as_i64().unwrap_or(0),
         bvid: bvid.to_string(),
         owner: owner(&d["owner"]),
         title,
-        segs,
+        video_url: video.into(),
+        audio_url: audio.into(),
         duration,
         cid,
+        parts,
     })
 }
 
@@ -345,39 +386,10 @@ pub fn video_detail(bvid: &str, cookies: Option<&str>) -> Result<Detail, String>
     let aid = d["aid"].as_i64().unwrap_or(0);
     let stat = &d["stat"];
 
-    let mut comments = Vec::new();
-    if aid > 0 {
-        const MAX_C: usize = 200;
-        let mut pn = 1u32;
-        while comments.len() < MAX_C && pn <= 12 {
-            let curl = format!(
-                "https://api.bilibili.com/x/v2/reply?type=1&oid={}&pn={}&ps=20&sort=2&nohot=1",
-                aid, pn
-            );
-            let mut got = 0usize;
-            if let Ok(rv) = cache::api_json(&curl, cookies, cache::TTL_REPLY) {
-                if let Some(arr) = rv["data"]["replies"].as_array() {
-                    for r in arr {
-                        let user = r["member"]["uname"].as_str().unwrap_or("").to_string();
-                        let text = r["content"]["message"].as_str().unwrap_or("").to_string();
-                        if !text.is_empty() {
-                            comments.push(Comment { user, text });
-                            got += 1;
-                            if comments.len() >= MAX_C {
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-            if got == 0 {
-                break;
-            }
-            pn += 1;
-        }
-    }
-
     Ok(Detail {
+        aid,
+        cid: d["cid"].as_i64().unwrap_or_default(),
+        parts: sections::parts(d),
         title: d["title"].as_str().unwrap_or("").to_string(),
         pic: d["pic"].as_str().unwrap_or("").to_string(),
         duration: model::dur_of(&d["duration"]),
@@ -388,7 +400,6 @@ pub fn video_detail(bvid: &str, cookies: Option<&str>) -> Result<Detail, String>
         favorites: stat["favorite"].as_i64().unwrap_or(0),
         danmaku: stat["danmaku"].as_i64().unwrap_or(0),
         desc: d["desc"].as_str().unwrap_or("").to_string(),
-        comments,
     })
 }
 

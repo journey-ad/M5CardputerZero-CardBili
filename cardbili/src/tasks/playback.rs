@@ -21,3 +21,21 @@ pub fn comments(aid: i64, page: u32, cookies: Option<String>, request: u64, tx: 
         let _ = tx.send(Msg::Comments(request, page, result));
     });
 }
+
+pub fn chapters(bvid: String, cid: i64, cookies: Option<String>, tx: Sender<Msg>) {
+    thread::spawn(move || {
+        let _ = tx.send(Msg::Chapters(
+            cid,
+            api::sections::chapters(&bvid, cid, cookies.as_deref()),
+        ));
+    });
+}
+
+pub fn watching(bvid: String, cid: i64, cookies: Option<String>, request: u64, tx: Sender<Msg>) {
+    thread::spawn(move || {
+        let _ = tx.send(Msg::Watching(
+            request,
+            api::sections::watching(&bvid, cid, cookies.as_deref()),
+        ));
+    });
+}

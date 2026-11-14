@@ -1,6 +1,6 @@
 use super::*;
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub(super) struct Comments {
     pub aid: i64,
     pub items: Vec<model::Comment>,
@@ -15,6 +15,10 @@ pub(super) struct Comments {
 impl App {
     pub(super) fn open_comments(&mut self, aid: i64) {
         self.page = Page::Comments;
+        self.start_comments(aid);
+    }
+
+    pub(super) fn start_comments(&mut self, aid: i64) {
         self.comment_page = Comments {
             aid,
             has_more: true,
@@ -24,8 +28,8 @@ impl App {
         self.load_comments();
     }
 
-    fn load_comments(&mut self) {
-        if self.comment_page.loading {
+    pub(super) fn load_comments(&mut self) {
+        if self.comment_page.loading || !self.comment_page.has_more {
             return;
         }
         self.comment_page.loading = true;
@@ -45,7 +49,7 @@ impl App {
         page: u32,
         result: Result<model::CommentPage, String>,
     ) {
-        if self.page != Page::Comments || request != self.comments_request {
+        if !matches!(self.page, Page::Comments | Page::Detail) || request != self.comments_request {
             return;
         }
         self.comment_page.loading = false;
@@ -83,7 +87,7 @@ impl App {
     }
 
     pub(super) fn sync_comments(&mut self) {
-        if self.page != Page::Comments {
+        if !matches!(self.page, Page::Comments | Page::Detail) {
             return;
         }
         if self.comment_page.dirty {
@@ -99,6 +103,8 @@ impl App {
             )));
             self.comment_page.dirty = false;
         }
+        self.ui
+            .set_comment_finished(self.comment_page.page > 0 && !self.comment_page.has_more);
         self.ui.set_comment_loading(self.comment_page.loading);
         self.ui
             .set_comment_error(self.comment_page.error.as_str().into());

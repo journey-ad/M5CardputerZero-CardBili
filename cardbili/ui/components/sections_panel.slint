@@ -1,0 +1,24 @@
+import { Cmt } from "../common.slint";
+
+export component SectionsPanel inherits Rectangle {
+    in property <[Cmt]> rows;
+    in property <int> selected;
+    in property <bool> loading;
+    in property <string> error;
+    width: 100%; height: 100%; background: #0b0f17;
+    Rectangle {
+        x: 0px; y: 0px; width: parent.width; height: 24px; background: #121a2a;
+        Text { x: 8px; height: parent.height; text: "选集与章节"; color: #7fb0ff; font-size: 12px; vertical-alignment: center; }
+    }
+    for row[index] in root.rows: Rectangle {
+        x: 6px; y: 26px + index * 24px; width: parent.width - 12px; height: 22px;
+        background: index == root.selected ? #1f2b45 : #101726;
+        Text { x: 4px; width: parent.width - 60px; height: parent.height; text: row.user; font-size: 12px; color: #e6ebf5; overflow: elide; vertical-alignment: center; }
+        Text { x: parent.width - 54px; width: 50px; height: parent.height; text: row.text; font-size: 10px; font-family: "Fusion Pixel 10px Prop zh-Hans"; color: #9aa6ba; horizontal-alignment: right; vertical-alignment: center; }
+    }
+    if root.rows.length == 0: Text {
+        x: 8px; y: 24px; width: parent.width - 16px; height: parent.height - 44px;
+        text: root.loading ? "章节加载中…" : (root.error != "" ? "章节加载失败，按 R 重试" : "暂无分 P 或章节");
+        color: #9aa6ba; font-size: 12px; horizontal-alignment: center; vertical-alignment: center;
+    }
+}

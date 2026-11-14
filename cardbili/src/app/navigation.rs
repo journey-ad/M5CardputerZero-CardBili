@@ -36,6 +36,8 @@ pub(super) enum BackTarget {
     Detail {
         bvid: String,
         display: Option<DetailDisplay>,
+        comments: comments::Comments,
+        sections: sections::Sections,
         scroll: f64,
     },
     Collection(CollectionState),
@@ -51,6 +53,7 @@ pub(super) enum BackTarget {
         paused: bool,
         rate: f64,
         engine: Option<danmaku::Engine>,
+        sections: sections::Sections,
     },
 }
 
@@ -77,6 +80,14 @@ impl App {
             self.requested_favorites = false;
             self.login_favorites = true;
             self.requested_login = true;
+        }
+        if self.go_back
+            && self.page == Page::Detail
+            && self.detail_scroll >= self.ui.get_detail_viewport_h() as f64
+        {
+            self.go_back = false;
+            self.detail_scroll = 0.0;
+            self.ui.set_detail_scroll(0.0);
         }
         let navigating = self.requested_favorites
             || self.requested_folder.is_some()
@@ -107,6 +118,8 @@ impl App {
                 Page::Detail => Some(BackTarget::Detail {
                     bvid: self.detail_bvid.clone(),
                     display: self.detail_display.clone(),
+                    comments: std::mem::take(&mut self.comment_page),
+                    sections: self.sections.clone(),
                     scroll: self.detail_scroll,
                 }),
                 Page::Favorites => Some(BackTarget::Favorites {
@@ -125,21 +138,24 @@ impl App {
                     self.collection.grid_scroll = self.grid_scroll;
                     Some(BackTarget::Collection(std::mem::take(&mut self.collection)))
                 }
-                Page::Player => self.current_play.take().map(|info| BackTarget::Play {
-                    info,
-                    position: self
-                        .player
-                        .as_ref()
-                        .map(|player| player.position(self.frames_in_seg))
-                        .unwrap_or(0.0),
-                    paused: self.player.as_ref().is_some_and(|player| player.paused),
-                    rate: self
-                        .player
-                        .as_ref()
-                        .map(|player| player.rate)
-                        .unwrap_or(1.0),
-                    engine: self.danmaku.take(),
-                }),
+                Page::Player if self.requested_play.is_none() => {
+                    self.current_play.take().map(|info| BackTarget::Play {
+                        info,
+                        position: self
+                            .player
+                            .as_ref()
+                            .map(|player| player.position(self.frames_in_seg))
+                            .unwrap_or(0.0),
+                        paused: self.player.as_ref().is_some_and(|player| player.paused),
+                        rate: self
+                            .player
+                            .as_ref()
+                            .map(|player| player.rate)
+                            .unwrap_or(1.0),
+                        engine: self.danmaku.take(),
+                        sections: self.sections.clone(),
+                    })
+                }
                 _ => None,
             };
             if let Some(target) = target {
@@ -156,12 +172,18 @@ impl App {
             self.controls.like_hold = None;
             self.controls.triple = None;
             self.ui.set_triple_phase(0);
-            self.ui.set_bar("".into());
-            self.ui.set_bar_sticky(false);
+            if !self.back_hint {
+                self.ui.set_bar("".into());
+                self.ui.set_bar_sticky(false);
+            }
             self.detail_request += 1;
             self.collection_request += 1;
             self.following_request += 1;
             self.current_play = None;
+            if self.requested_play.is_none() {
+                self.play_start = 0.0;
+                self.requested_cid = None;
+            }
             self.danmaku = None;
             self.frames_in_seg = 0;
             self.seek_pending = None;
@@ -220,13 +242,22 @@ impl App {
         if let Some(bvid) = self.requested_play.take() {
             self.controls = playback::Controls::default();
             self.page = Page::Player;
+            if self.sections.bvid != bvid {
+                self.sections = sections::Sections {
+                    loading: true,
+                    dirty: true,
+                    ..Default::default()
+                };
+            }
             self.ui.set_ptitle("".into());
+            self.ui.set_watching("".into());
             self.ui.set_progress(0.0);
             self.ui.set_time_text("0:00 / 0:00".into());
             self.status = "加载中…".into();
             self.status_detail.clear();
             tasks::start_play(
                 bvid,
+                self.requested_cid.take(),
                 self.cookies.clone(),
                 self.play_request,
                 self.tx.clone(),
@@ -236,6 +267,12 @@ impl App {
             self.page = Page::Detail;
             self.detail_bvid = bvid.clone();
             self.detail_display = None;
+            self.sections = sections::Sections::default();
+            self.comment_page = comments::Comments {
+                loading: true,
+                dirty: true,
+                ..Default::default()
+            };
             self.detail_scroll = std::env::var("BILI_DSCROLL")
                 .ok()
                 .and_then(|value| value.parse().ok())
@@ -316,12 +353,25 @@ impl App {
                 Some(BackTarget::Detail {
                     bvid,
                     display,
+                    comments,
+                    sections,
                     scroll,
                 }) => {
                     self.page = Page::Detail;
                     self.detail_bvid = bvid;
                     self.detail_scroll = scroll;
                     self.detail_display = display;
+                    self.comment_page = comments;
+                    self.sections = sections;
+                    if self.sections.loading {
+                        self.load_chapters();
+                    }
+                    let resume_comments = self.comment_page.loading;
+                    self.comment_page.loading = false;
+                    self.comment_page.dirty = true;
+                    if resume_comments && self.comment_page.aid > 0 {
+                        self.load_comments();
+                    }
                     self.marq_t = 0.0;
                     self.ui.set_detail_bvid(self.detail_bvid.as_str().into());
                     if let Some(display) = &self.detail_display {
@@ -393,15 +443,17 @@ impl App {
                     if !missing_covers.is_empty() {
                         tasks::spawn_covers(5, missing_covers, self.tx.clone());
                     }
-                    self.collection.loading = self.collection.items.is_empty();
-                    self.collection.pending_page = 1;
-                    tasks::load_collection(
-                        self.collection.source.clone(),
-                        1,
-                        self.cookies.clone(),
-                        self.collection_request,
-                        self.tx.clone(),
-                    );
+                    if !matches!(self.collection.source, model::VideoSource::Related(_)) {
+                        self.collection.loading = self.collection.items.is_empty();
+                        self.collection.pending_page = 1;
+                        tasks::load_collection(
+                            self.collection.source.clone(),
+                            1,
+                            self.cookies.clone(),
+                            self.collection_request,
+                            self.tx.clone(),
+                        );
+                    }
                     if self.collection.profile.is_none() {
                         self.load_author_profile();
                     }
@@ -412,8 +464,21 @@ impl App {
                     paused,
                     rate,
                     engine,
+                    sections,
                 }) => {
                     self.page = Page::Player;
+                    self.sections = sections;
+                    if self.sections.loading {
+                        self.load_chapters();
+                    }
+                    self.ui.set_watching("".into());
+                    tasks::playback::watching(
+                        info.bvid.clone(),
+                        info.cid,
+                        self.cookies.clone(),
+                        self.play_request,
+                        self.tx.clone(),
+                    );
                     self.gen += 1;
                     self.player = Some(player::Player::start(
                         &info,
@@ -463,8 +528,9 @@ impl App {
                 self.load_home_list(0, false);
             }
         }
-        if std::mem::take(&mut self.back_hint) {
-            self.toast("长按返回首页");
+        if self.back_hint {
+            self.ui.set_bar("长按返回首页".into());
+            self.ui.set_bar_sticky(true);
         }
     }
 }

@@ -1,3 +1,4 @@
+import { CommentList } from "../components/comment_list.slint";
 // 详情页：封面、标题、统计与正文统一滚动
 import { Icons } from "../components/icons.slint";
 import { StatItem } from "../components/stat_item.slint";
@@ -60,21 +61,7 @@ export component DetailPage inherits Rectangle {
             Text { text: Detail.desc; color: #cfd8e6; font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px; wrap: word-wrap; }
             Rectangle { height: 1px; background: #25314a; }
             Text { text: "评论"; color: #ffcf6e; font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px; }
-            if Detail.comments.length == 0: Text { text: "（暂无评论）"; color: #8b95a7; font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px; }
-            for c[index] in Detail.comments: Rectangle {
-                width: parent.width;
-                background: Math.mod(index, 2) == 0 ? #101726 : #0d131f;
-                VerticalLayout {
-                    padding-left: 4px; padding-right: 4px; padding-top: 2px; padding-bottom: 2px; spacing: 1px;
-                    Text { text: c.user; color: #7fb0ff; font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px; overflow: elide; }
-                    Text { text: c.text; color: #cfd8e6; font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px; wrap: word-wrap; }
-                }
-            }
-            if Detail.comments.length >= 200: Rectangle {
-                width: parent.width; height: 26px;
-                Rectangle { x: 0px; y: 0px; width: parent.width; height: 1px; background: #3a4a66; }
-                Text { x: 0px; y: 1px; width: parent.width; height: 24px; text: "最大 200 条"; color: #8b95a7; font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px; horizontal-alignment: center; vertical-alignment: center; }
-            }
+            CommentList {}
         }
     }
     if !Detail.loading && Detail.error == "" && Detail.thumb-h > 0px: Rectangle {

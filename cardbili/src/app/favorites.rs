@@ -3,6 +3,7 @@ use super::*;
 #[derive(Default)]
 pub(super) struct Favorites {
     pub folders: Vec<model::FavoriteFolder>,
+    pub covers: HashMap<i64, slint::Image>,
     pub selection: usize,
     pub first: usize,
     pub loaded: bool,
@@ -85,9 +86,17 @@ impl App {
                     .iter()
                     .skip(self.favorites.first)
                     .take(4)
-                    .map(|folder| Cmt {
-                        user: folder.title.as_str().into(),
-                        text: format!("{} 条", folder.count).into(),
+                    .map(|folder| crate::FavoriteRow {
+                        title: folder.title.as_str().into(),
+                        count: format!("{} 条", folder.count).into(),
+                        visibility: if folder.private { "私密" } else { "公开" }.into(),
+                        cover: self
+                            .favorites
+                            .covers
+                            .get(&folder.id)
+                            .cloned()
+                            .unwrap_or_default(),
+                        has_cover: self.favorites.covers.contains_key(&folder.id),
                     })
                     .collect::<Vec<_>>(),
             )));

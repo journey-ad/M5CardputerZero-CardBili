@@ -20,19 +20,23 @@ impl App {
                     .1
                     .is_some_and(|last| now.duration_since(last) < Duration::from_secs(1));
                 self.back_taps = (
-                    if consecutive { self.back_taps.0 + 1 } else { 1 },
+                    if consecutive {
+                        self.back_taps.0.saturating_add(1)
+                    } else {
+                        1
+                    },
                     Some(now),
                 );
-                if self.back_taps.0 > 3 {
+                if self.back_taps.0 > 3 || self.back_hint {
                     self.back_hint = true;
-                    self.back_taps.0 = 0;
+                    self.bar_until = Some(now + Duration::from_secs(3));
                 }
                 self.dispatch_key("ESC", false);
             }
             return;
         }
         if let Ok(number @ 4..=8) = key.parse::<usize>() {
-            if self.page == Page::Player && !self.ui.get_controls_visible() {
+            if self.page == Page::Player && !self.sections.open && !self.ui.get_controls_visible() {
                 self.last_input = Instant::now();
                 return;
             }
@@ -66,6 +70,7 @@ impl App {
         self.last_input = Instant::now();
         if !key.ends_with("_UP") && key != "POINTER" {
             self.back_taps = (0, None);
+            self.back_hint = false;
         }
         let direction = match key.as_str() {
             "UP" | "f" | "w" => Some("UP"),
@@ -98,6 +103,7 @@ impl App {
         {
             self.return_hold = None;
             self.return_home = true;
+            self.back_hint = false;
             self.back_taps = (0, None);
         }
         let repeat = self.direction_hold.as_mut().and_then(|hold| {
@@ -114,6 +120,15 @@ impl App {
     }
 
     fn dispatch_key(&mut self, key: &str, repeat: bool) {
+        if self.sections.open {
+            self.sections_key(key);
+            return;
+        }
+        if key == "p" && matches!(self.page, Page::Detail | Page::Player) {
+            self.sections.open = true;
+            self.sections.dirty = true;
+            return;
+        }
         if matches!(self.page, Page::Detail | Page::Comments) && self.scroll_key(key, repeat) {
             return;
         }

@@ -48,13 +48,34 @@ impl App {
                 }
             }
             if self.tab == HomeTab::Mine
+                && self.mine_detail == 3
+                && self.has_more[3]
+                && self.loaded[3]
+                && !self.loading_more[3]
+                && self.sel as usize + video_columns(self.view) * 2 >= self.lists[3].len()
+            {
+                self.loading_more[3] = true;
+                tasks::load_history(
+                    Some(self.history_cursor.clone()),
+                    self.cookies.clone(),
+                    self.history_request,
+                    true,
+                    self.tx.clone(),
+                );
+            }
+            if self.tab == HomeTab::Mine
                 && self.mine_detail < 0
                 && (self.home_dirty || self.home_view.is_some())
             {
                 self.home_dirty = false;
                 self.home_view = None;
                 self.ui.set_history_count(if self.loaded[3] {
-                    format!("{} 条", self.lists[3].len()).into()
+                    format!(
+                        "{}{} 条",
+                        self.lists[3].len(),
+                        if self.has_more[3] { "+" } else { "" }
+                    )
+                    .into()
                 } else {
                     "".into()
                 });

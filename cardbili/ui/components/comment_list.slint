@@ -1,0 +1,19 @@
+import { Comments } from "../state.slint";
+
+export component CommentList inherits VerticalLayout {
+    spacing: 4px;
+    for comment in Comments.rows: Rectangle {
+        background: #101726;
+        VerticalLayout {
+            padding: 4px; spacing: 3px;
+            Text { text: comment.user; color: #7fb0ff; font-size: 10px; font-family: "Fusion Pixel 10px Prop zh-Hans"; overflow: elide; }
+            Text { text: comment.text; color: #cfd8e6; font-size: 10px; font-family: "Fusion Pixel 10px Prop zh-Hans"; wrap: word-wrap; }
+        }
+    }
+    if Comments.finished && Comments.rows.length > 0: Rectangle { height: 1px; background: #3a4a66; }
+    if Comments.loading || Comments.error != "" || Comments.finished: Text {
+        text: Comments.loading ? "评论加载中…" : (Comments.error != "" ? "评论加载失败，按 R 重试" : (Comments.rows.length == 0 ? "暂无评论" : "全部评论已加载完毕"));
+        color: #8b95a7; font-size: 10px; font-family: "Fusion Pixel 10px Prop zh-Hans";
+        wrap: word-wrap; horizontal-alignment: center;
+    }
+}

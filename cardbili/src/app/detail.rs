@@ -35,15 +35,6 @@ pub(in crate::app) fn show_detail(ui: &AppWindow, display: &DetailDisplay) {
         }
         .into(),
     );
-    let comments = detail
-        .comments
-        .iter()
-        .map(|comment| Cmt {
-            user: comment.user.as_str().into(),
-            text: comment.text.as_str().into(),
-        })
-        .collect::<Vec<_>>();
-    ui.set_comments(ModelRc::new(VecModel::from(comments)));
     let metrics = [
         model::mmss(detail.duration),
         model::fmt_num(detail.views),
@@ -76,5 +67,4 @@ pub(in crate::app) fn show_detail_loading(ui: &AppWindow, title: &str) {
     ui.set_has_detail_cover(false);
     ui.set_detail_scroll(0.0);
     ui.set_detail_thumb_h(0.0);
-    ui.set_comments(ModelRc::new(VecModel::from(Vec::<Cmt>::new())));
 }

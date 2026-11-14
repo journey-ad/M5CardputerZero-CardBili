@@ -13,6 +13,7 @@ mod pages;
 mod platform;
 mod playback;
 mod scroll;
+mod sections;
 mod state;
 mod view;
 

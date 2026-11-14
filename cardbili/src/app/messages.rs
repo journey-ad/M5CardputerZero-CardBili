@@ -3,6 +3,20 @@ use super::*;
 impl App {
     pub(super) fn handle_message(&mut self, m: Msg) {
         match m {
+            Msg::Chapters(cid, result) => {
+                if self.sections.cid == cid {
+                    self.sections.loading = false;
+                    match result {
+                        Ok(chapters) => self.sections.chapters = chapters,
+                        Err(error) => self.sections.error = error,
+                    }
+                    self.sections.dirty = true;
+                }
+            }
+            Msg::Watching(request, Ok(text)) if request == self.play_request => {
+                self.ui.set_watching(text.into())
+            }
+            Msg::Watching(_, _) => {}
             Msg::Liked(request, result) => {
                 if self.page == Page::Player && request == self.play_request {
                     self.controls.busy = false;
@@ -46,11 +60,25 @@ impl App {
                         {
                             self.favorites.selection = index;
                         }
+                        let missing = folders
+                            .iter()
+                            .filter(|folder| !self.favorites.covers.contains_key(&folder.id))
+                            .cloned()
+                            .collect();
+                        tasks::load_favorite_covers(missing, request, self.tx.clone());
                         self.favorites.folders = folders;
                         self.favorites.loaded = true;
                         self.favorites.dirty = true;
                     }
                     Err(error) => self.favorites.error = error,
+                }
+            }
+            Msg::FavoriteCover(request, id, (w, h, pixels)) => {
+                if request == self.favorites.request {
+                    self.favorites
+                        .covers
+                        .insert(id, util::raw_to_image(w, h, &pixels));
+                    self.favorites.dirty = true;
                 }
             }
             Msg::Following(request, page, result) => self.following_loaded(request, page, result),
@@ -91,6 +119,33 @@ impl App {
                     }
                 }
             }
+            Msg::History(request, first, result) => {
+                if request != self.history_request {
+                    return;
+                }
+                if !first {
+                    self.loading_more[3] = false;
+                }
+                match result {
+                    Ok(page) => {
+                        let update_cursor = !first || self.pages[3] <= 1 && !self.loading_more[3];
+                        self.handle_message(if first {
+                            Msg::ListLoaded(3, page.items)
+                        } else {
+                            Msg::ListMore(3, page.items)
+                        });
+                        if update_cursor {
+                            self.history_cursor = page.cursor;
+                            self.has_more[3] = page.has_more;
+                        }
+                    }
+                    Err(error) => {
+                        self.loading_more[3] = false;
+                        self.has_more[3] = false;
+                        self.handle_message(Msg::Err(3, error));
+                    }
+                }
+            }
             Msg::Comments(request, page, result) => self.comments_loaded(request, page, result),
             Msg::Volume(result) => {
                 if self.page == Page::Player {
@@ -118,7 +173,7 @@ impl App {
                     }
                 }
             }
-            Msg::SegEnd(g) => {
+            Msg::PlaybackEnded(g) => {
                 if self.player.as_ref().is_some_and(|p| p.gen == g)
                     && self.current_play.as_ref().is_some_and(|info| {
                         self.player.as_ref().unwrap().position(self.frames_in_seg)
@@ -129,12 +184,9 @@ impl App {
                 }
                 if let Some(p) = self.player.as_mut() {
                     if g == p.gen {
-                        if p.advance() {
-                            self.frames_in_seg = 0;
-                        } else {
-                            self.status = "播放结束，按 ESC 返回".into();
-                            self.status_detail.clear();
-                        }
+                        p.finished = true;
+                        self.status = "播放结束，按 ESC 返回".into();
+                        self.status_detail.clear();
                     }
                 }
             }
@@ -246,12 +298,23 @@ impl App {
                             self.cookies.clone().unwrap_or_default(),
                             self.gen,
                             self.tx.clone(),
-                            player::PlaybackState::default(),
+                            player::PlaybackState {
+                                position: std::mem::take(&mut self.play_start),
+                                ..Default::default()
+                            },
                         ));
                         tasks::start_danmaku(
                             info.cid,
                             self.cookies.clone(),
                             self.gen,
+                            self.tx.clone(),
+                        );
+                        self.setup_sections(info.bvid.clone(), info.cid, info.parts.clone());
+                        tasks::playback::watching(
+                            info.bvid.clone(),
+                            info.cid,
+                            self.cookies.clone(),
+                            self.play_request,
                             self.tx.clone(),
                         );
                         self.current_play = Some(info);
@@ -260,14 +323,14 @@ impl App {
                         self.status_detail.clear();
                     }
                     Err(error) => {
+                        self.play_start = 0.0;
                         self.status = error;
                         self.status_detail.clear();
                     }
                 }
             }
-            Msg::Danmaku(g, list) => {
+            Msg::Danmaku(g, eng) => {
                 if g == self.gen {
-                    let eng = danmaku::Engine::new(list);
                     self.danmaku_view.clear();
                     let t = self
                         .player
@@ -386,6 +449,14 @@ impl App {
                         Some(util::raw_to_image(w, h, &raw))
                     },
                 };
+                if self.comment_page.aid != display.data.aid {
+                    self.start_comments(display.data.aid);
+                }
+                self.setup_sections(
+                    self.detail_bvid.clone(),
+                    display.data.cid,
+                    display.data.parts.clone(),
+                );
                 self.marq_t = 0.0;
                 show_detail(&self.ui, &display);
                 self.detail_display = Some(display);

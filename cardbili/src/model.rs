@@ -43,20 +43,16 @@ pub struct VideoPage {
 }
 
 #[derive(Clone, Default)]
-pub struct Seg {
-    pub url: String,
-    pub len: f64,
-}
-
-#[derive(Clone, Default)]
 pub struct PlayInfo {
     pub aid: i64,
     pub bvid: String,
     pub owner: Owner,
     pub title: String,
-    pub segs: Vec<Seg>,
+    pub video_url: String,
+    pub audio_url: String,
     pub duration: f64,
     pub cid: i64,
+    pub parts: Vec<VideoPart>,
 }
 
 #[derive(Clone, Default)]
@@ -77,6 +73,9 @@ pub struct Comment {
 
 #[derive(Clone, Default)]
 pub struct Detail {
+    pub aid: i64,
+    pub cid: i64,
+    pub parts: Vec<VideoPart>,
     pub title: String,
     pub pic: String,
     pub duration: f64,
@@ -87,7 +86,6 @@ pub struct Detail {
     pub favorites: i64,
     pub danmaku: i64,
     pub desc: String,
-    pub comments: Vec<Comment>,
 }
 
 pub fn mmss(sec: f64) -> String {
@@ -162,4 +160,32 @@ pub struct FavoriteFolder {
     pub id: i64,
     pub title: String,
     pub count: u64,
+    pub private: bool,
+    pub cover: String,
+}
+
+#[derive(Clone, Default)]
+pub struct HistoryCursor {
+    pub max: i64,
+    pub view_at: i64,
+    pub business: String,
+}
+
+pub struct HistoryPage {
+    pub items: Vec<Item>,
+    pub cursor: HistoryCursor,
+    pub has_more: bool,
+}
+
+#[derive(Clone)]
+pub struct VideoPart {
+    pub cid: i64,
+    pub title: String,
+    pub duration: f64,
+}
+
+#[derive(Clone)]
+pub struct Chapter {
+    pub title: String,
+    pub start: f64,
 }

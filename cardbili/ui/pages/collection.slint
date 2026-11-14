@@ -13,15 +13,18 @@ export component CollectionPage inherits Rectangle {
             if Collection.has-avatar: Image { width: 100%; height: 100%; source: Collection.avatar; image-fit: cover; }
             if !Collection.has-avatar: Icon { x: 6px; y: 6px; width: 16px; height: 16px; source: Icons.user; colorize: #7fb0ff; }
         }
-        if Collection.is-author: Text {
-            x: 42px; y: 2px; width: parent.width - 84px; height: 16px;
-            text: Collection.name; color: #e6ebf5; font-size: 12px;
-            vertical-alignment: center; overflow: elide;
-        }
-        if Collection.is-author: Text {
-            x: parent.width - 36px; y: 4px; width: 30px; height: 12px;
-            text: Collection.level; color: #ffcf6e; font-size: 10px;
-            font-family: "Fusion Pixel 10px Prop zh-Hans"; horizontal-alignment: right;
+        if Collection.is-author: HorizontalLayout {
+            x: 42px; y: 2px; width: parent.width - 48px; height: 16px;
+            spacing: 4px; alignment: start;
+            Text {
+                max-width: parent.width - 34px; text: Collection.name;
+                color: #e6ebf5; font-size: 12px; overflow: elide;
+                vertical-alignment: center;
+            }
+            Text {
+                text: Collection.level; color: #ffcf6e; font-size: 10px;
+                font-family: "Fusion Pixel 10px Prop zh-Hans"; vertical-alignment: center;
+            }
         }
         if Collection.is-author: Text {
             x: 42px; y: 18px; width: parent.width - 48px; height: 16px;

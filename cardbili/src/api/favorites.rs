@@ -1,23 +1,32 @@
 use super::*;
 
 pub fn folders(mid: &str, cookies: &str) -> Result<Vec<model::FavoriteFolder>, String> {
-    let url = format!("https://api.bilibili.com/x/v3/fav/folder/created/list-all?up_mid={mid}&web_location=333.1387");
-    let value = cache::api_json(&url, Some(cookies), cache::TTL_LIST)?;
-    if value["code"].as_i64() != Some(0) {
-        return Err(api_err("收藏夹", &value));
-    }
-    Ok(value["data"]["list"]
-        .as_array()
-        .into_iter()
-        .flatten()
-        .filter_map(|folder| {
+    let mut folders = Vec::new();
+    let mut page = 1;
+    loop {
+        let url = format!(
+            "https://api.bilibili.com/x/v3/fav/folder/created/list?up_mid={mid}&pn={page}&ps=50"
+        );
+        let value = cache::api_json(&url, Some(cookies), cache::TTL_LIST)?;
+        if value["code"].as_i64() != Some(0) {
+            return Err(api_err("收藏夹", &value));
+        }
+        let items = value["data"]["list"].as_array().into_iter().flatten();
+        folders.extend(items.filter_map(|folder| {
             Some(model::FavoriteFolder {
                 id: folder["id"].as_i64()?,
                 title: folder["title"].as_str().unwrap_or_default().into(),
                 count: folder["media_count"].as_u64().unwrap_or_default(),
+                private: folder["attr"].as_u64().unwrap_or_default() & 1 != 0,
+                cover: folder["cover"].as_str().unwrap_or_default().into(),
             })
-        })
-        .collect())
+        }));
+        if !value["data"]["has_more"].as_bool().unwrap_or(false) {
+            break;
+        }
+        page += 1;
+    }
+    Ok(folders)
 }
 
 pub fn videos(folder: i64, page: u32, cookies: &str) -> Result<model::VideoPage, String> {

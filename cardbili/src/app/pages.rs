@@ -101,8 +101,13 @@ impl App {
                         .map(|display| display.data.owner.clone())
                         .filter(|owner| !owner.mid.is_empty());
                 }
+                "RELATED" => {
+                    self.requested_related = Some(self.detail_bvid.clone());
+                }
                 "r" => {
-                    if !self.detail_bvid.is_empty() {
+                    if !self.comment_page.error.is_empty() {
+                        self.load_comments();
+                    } else if !self.detail_bvid.is_empty() {
                         self.requested_related = Some(self.detail_bvid.clone());
                     }
                 }

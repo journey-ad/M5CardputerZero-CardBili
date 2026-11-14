@@ -44,7 +44,7 @@ pub(super) fn spawn(
     let mut command = Command::new("ffmpeg");
     command
         .args(args)
-        .stdin(Stdio::null())
+        .stdin(Stdio::piped())
         .stdout(stdout)
         .stderr(Stdio::piped());
     if let Some(audio) = audio.as_ref() {

@@ -223,8 +223,11 @@ fn assign_lanes(groups: &mut [Group]) {
                     } else if pk == Kind::Scroll {
                         // 固定弹幕等待前一条滚动弹幕移出屏幕
                         dt >= LIFE
+                    } else if g.kind == Kind::Scroll {
+                        // 固定弹幕入场后短暂保留轨道，随后允许滚动弹幕进入
+                        dt >= 0.4
                     } else {
-                        // 等待前一条固定弹幕结束
+                        // 固定弹幕之间按展示时长错开
                         dt >= FIX_SECS
                     }
                 }

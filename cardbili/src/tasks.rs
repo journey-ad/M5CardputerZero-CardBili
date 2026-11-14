@@ -40,10 +40,6 @@ pub fn load_list(tab: usize, cookies: Option<String>, tx: Sender<Msg>, force: bo
             || match tab {
                 0 => api::rcmd(cookies.as_deref(), 1),
                 1 => api::popular(cookies.as_deref(), 1),
-                3 => cookies
-                    .as_deref()
-                    .ok_or_else(|| "未登录，请先登录".to_string())
-                    .and_then(api::history),
                 _ => Err("未知视频列表".into()),
             },
             |result| {
@@ -112,9 +108,15 @@ pub fn load_more(tab: usize, page: u32, cookies: Option<String>, tx: Sender<Msg>
     });
 }
 
-pub fn start_play(bvid: String, cookies: Option<String>, request: u64, tx: Sender<Msg>) {
+pub fn start_play(
+    bvid: String,
+    cid: Option<i64>,
+    cookies: Option<String>,
+    request: u64,
+    tx: Sender<Msg>,
+) {
     thread::spawn(move || {
-        let result = api::play_info(&bvid, cookies.as_deref());
+        let result = api::play_info(&bvid, cid, cookies.as_deref());
         let _ = tx.send(Msg::PlayReady(request, result));
     });
 }
@@ -127,6 +129,12 @@ pub fn load_collection(
     tx: Sender<Msg>,
 ) {
     thread::spawn(move || {
+        if let crate::model::VideoSource::Related(bvid) = &source {
+            crate::cache::set_force(true);
+            let result = api::related_videos(bvid, cookies.as_deref());
+            let _ = tx.send(Msg::Collection(request, page, result));
+            return;
+        }
         cached_then_refresh(
             page > 1,
             || match &source {
@@ -168,7 +176,8 @@ pub fn load_author_profile(mid: String, cookies: Option<String>, request: u64, t
 pub fn start_danmaku(cid: i64, cookies: Option<String>, gen: u64, tx: Sender<Msg>) {
     thread::spawn(move || {
         let list = api::danmaku_list(cid, cookies.as_deref()).unwrap_or_default();
-        let _ = tx.send(Msg::Danmaku(gen, list));
+        let engine = crate::danmaku::Engine::new(list);
+        let _ = tx.send(Msg::Danmaku(gen, engine));
     });
 }
 
@@ -299,5 +308,47 @@ pub fn load_favorites(mid: String, cookies: String, request: u64, force: bool, t
                 let _ = tx.send(Msg::Favorites(request, result));
             },
         );
+    });
+}
+
+pub fn load_history(
+    cursor: Option<crate::model::HistoryCursor>,
+    cookies: Option<String>,
+    request: u64,
+    force: bool,
+    tx: Sender<Msg>,
+) {
+    thread::spawn(move || {
+        cached_then_refresh(
+            force || cursor.is_some(),
+            || {
+                cookies
+                    .as_deref()
+                    .ok_or_else(|| "未登录，请先登录".to_string())
+                    .and_then(|cookies| api::history(cookies, cursor.as_ref()))
+            },
+            |result| {
+                let _ = tx.send(Msg::History(request, cursor.is_none(), result));
+            },
+        );
+    });
+}
+
+pub fn load_favorite_covers(
+    folders: Vec<crate::model::FavoriteFolder>,
+    request: u64,
+    tx: Sender<Msg>,
+) {
+    thread::spawn(move || {
+        for folder in folders {
+            if let Some(image) = crate::cache::avatar(&folder.cover) {
+                if tx
+                    .send(Msg::FavoriteCover(request, folder.id, image))
+                    .is_err()
+                {
+                    break;
+                }
+            }
+        }
     });
 }
