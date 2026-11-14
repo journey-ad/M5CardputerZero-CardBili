@@ -57,8 +57,7 @@ fn cached_only_on() -> bool {
 }
 
 fn base() -> PathBuf {
-    PathBuf::from(std::env::var_os("HOME").unwrap_or_else(|| "/var/tmp".into()))
-        .join(".cache/cardbili")
+    crate::util::cache_dir()
 }
 
 fn api_dir() -> PathBuf {

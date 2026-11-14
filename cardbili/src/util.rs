@@ -185,15 +185,52 @@ pub fn parse_mid(cookies: &str) -> String {
     String::new()
 }
 
+#[cfg(not(windows))]
 pub fn state_dir() -> std::path::PathBuf {
     app_dir("XDG_STATE_HOME", ".local/state", "/var/tmp")
 }
 
+#[cfg(not(windows))]
 pub fn config_dir() -> std::path::PathBuf {
     app_dir("XDG_CONFIG_HOME", ".config", "/tmp")
 }
 
+#[cfg(not(windows))]
+pub fn cache_dir() -> std::path::PathBuf {
+    app_dir("XDG_CACHE_HOME", ".cache", "/var/tmp")
+}
+
+#[cfg(windows)]
+pub fn state_dir() -> std::path::PathBuf {
+    windows_dir("LOCALAPPDATA", "AppData\\Local")
+}
+
+#[cfg(windows)]
+pub fn config_dir() -> std::path::PathBuf {
+    windows_dir("APPDATA", "AppData\\Roaming")
+}
+
+#[cfg(windows)]
+pub fn cache_dir() -> std::path::PathBuf {
+    state_dir().join("cache")
+}
+
+// Windows 使用 LOCALAPPDATA / APPDATA，缺失时回退到 USERPROFILE 下的默认位置
+#[cfg(windows)]
+fn windows_dir(variable: &str, fallback: &str) -> std::path::PathBuf {
+    std::env::var_os(variable)
+        .map(std::path::PathBuf::from)
+        .filter(|path| path.is_absolute())
+        .or_else(|| {
+            std::env::var_os("USERPROFILE")
+                .map(|home| std::path::PathBuf::from(home).join(fallback))
+        })
+        .unwrap_or_else(|| std::path::PathBuf::from(fallback))
+        .join("cardbili")
+}
+
 // 优先读取 XDG 环境变量，仅接受绝对路径，未设置时回退到 HOME 下的默认位置
+#[cfg(not(windows))]
 fn app_dir(variable: &str, default: &str, fallback_home: &str) -> std::path::PathBuf {
     std::env::var_os(variable)
         .map(std::path::PathBuf::from)
