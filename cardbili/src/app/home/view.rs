@@ -13,7 +13,9 @@ impl App {
         // 选中项保持在当前页面范围内
         if self.page == Page::Home {
             let len = if self.tab == HomeTab::Settings {
-                self.ui.get_settings_items().row_count() as i32
+                let appearance = self.ui.get_appearance_items().row_count() as i32;
+                let general = self.ui.get_general_items().row_count() as i32;
+                appearance + general
             } else if self.tab == HomeTab::Mine && self.mine_detail < 0 {
                 3
             } else {

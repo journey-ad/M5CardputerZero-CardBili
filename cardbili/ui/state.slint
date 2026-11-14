@@ -82,11 +82,13 @@ export global Danmaku {
 
 // 应用设置
 export global Preferences {
-    out property <[SettingsRow]> settings-items: [
+    out property <[SettingsRow]> appearance-items: [
         { item: SettingsItem.list-style, label: "视频列表风格" },
         { item: SettingsItem.danmaku, label: "弹幕开关" },
         { item: SettingsItem.danmaku-opacity, label: "弹幕不透明度" },
         { item: SettingsItem.menu-position, label: "首页布局" },
+    ];
+    out property <[SettingsRow]> general-items: [
         { item: SettingsItem.record-history, label: "记录播放历史" },
         { item: SettingsItem.debug-log, label: "调试日志" },
         { item: SettingsItem.cdn, label: "CDN 设置" },

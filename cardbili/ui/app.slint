@@ -110,7 +110,8 @@ export component AppWindow inherits Window {
     in-out property <MenuPosition> menu-position <=> Preferences.menu-position;
     in-out property <bool> record-history <=> Preferences.record-history;
     in-out property <bool> debug-log <=> Preferences.debug-log;
-    out property <[SettingsRow]> settings-items: Preferences.settings-items;
+    out property <[SettingsRow]> appearance-items: Preferences.appearance-items;
+    out property <[SettingsRow]> general-items: Preferences.general-items;
     in-out property <string> cdn-name <=> Preferences.cdn-name;
     in-out property <string> cache-size <=> Preferences.cache-size;
     in-out property <bool> cache-busy <=> Preferences.cache-busy;

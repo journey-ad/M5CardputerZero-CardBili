@@ -4,13 +4,21 @@ use slint::Model;
 
 impl App {
     pub(in crate::app) fn settings_key(&mut self, key: &str) {
-        let items = self.ui.get_settings_items();
-        let Some(row) = items.row_data(self.sel as usize) else {
+        let appearance = self.ui.get_appearance_items();
+        let general = self.ui.get_general_items();
+        let appearance_len = appearance.row_count() as i32;
+        let total = appearance_len + general.row_count() as i32;
+        let row = if self.sel < appearance_len {
+            appearance.row_data(self.sel as usize)
+        } else {
+            general.row_data((self.sel - appearance_len).max(0) as usize)
+        };
+        let Some(row) = row else {
             return;
         };
         match key {
             "UP" => self.sel = (self.sel - 1).max(0),
-            "DOWN" => self.sel = (self.sel + 1).min(items.row_count() as i32 - 1),
+            "DOWN" => self.sel = (self.sel + 1).min(total - 1),
             "LEFT" | "RIGHT" => {
                 let step = if key == "LEFT" { -1 } else { 1 };
                 match row.item {

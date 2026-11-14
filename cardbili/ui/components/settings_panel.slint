@@ -3,86 +3,135 @@ import { Nav, Preferences, Danmaku, Meta } from "../state.slint";
 import { Icon, Icons } from "icons.slint";
 import { ToggleSwitch } from "toggle_switch.slint";
 
-export component SettingsPanel inherits Rectangle {
-    clip: true;
-    property <int> first: max(0, Nav.sel - floor((root.height - 4px) / 24px) + 1);
-    for row[index] in Preferences.settings-items: item-row := Rectangle {
-        property <bool> is-toggle: row.item == SettingsItem.danmaku || row.item == SettingsItem.record-history || row.item == SettingsItem.debug-log;
-        property <bool> adjustable: row.item != SettingsItem.cdn && row.item != SettingsItem.cache && row.item != SettingsItem.about;
-        property <string> value: {
-            if row.item == SettingsItem.list-style {
-                return Nav.view == VideoLayout.list ? "列表" : (Nav.view == VideoLayout.three-columns ? "3列" : "2列");
-            }
-            if row.item == SettingsItem.danmaku-opacity { return Preferences.danmaku-opacity + "%"; }
-            if row.item == SettingsItem.menu-position {
-                return Preferences.menu-position == MenuPosition.top ? "顶部" : (Preferences.menu-position == MenuPosition.left ? "左侧" : "右侧");
-            }
-            if row.item == SettingsItem.cdn { return Preferences.cdn-name; }
-            if row.item == SettingsItem.cache { return Preferences.cache-size; }
-            return Meta.version;
+// 单个设置项，外观/常规两个列表共用
+component SettingsRowItem inherits Rectangle {
+    in property <SettingsItem> item;
+    in property <string> label;
+    in property <bool> selected: false;
+    property <bool> is-toggle: item == SettingsItem.danmaku || item == SettingsItem.record-history || item == SettingsItem.debug-log;
+    property <bool> adjustable: item != SettingsItem.cdn && item != SettingsItem.cache && item != SettingsItem.about;
+    property <string> value: {
+        if item == SettingsItem.list-style {
+            return Nav.view == VideoLayout.list ? "列表" : (Nav.view == VideoLayout.three-columns ? "3列" : "2列");
         }
-        x: 6px;
-        y: 4px + (index - root.first) * 24px;
-        width: parent.width - 12px;
-        height: 22px;
-        background: index == Nav.sel ? #1f2b45 : #0f1623;
-        border-radius: 3px;
+        if item == SettingsItem.danmaku-opacity { return Preferences.danmaku-opacity + "%"; }
+        if item == SettingsItem.menu-position {
+            return Preferences.menu-position == MenuPosition.top ? "顶部" : (Preferences.menu-position == MenuPosition.left ? "左侧" : "右侧");
+        }
+        if item == SettingsItem.cdn { return Preferences.cdn-name; }
+        if item == SettingsItem.cache { return Preferences.cache-size; }
+        return Meta.version;
+    }
+    background: selected ? #1f2b45 : #0f1623;
+    border-radius: 3px;
 
+    Text {
+        x: 10px;
+        width: parent.width - 144px;
+        height: parent.height;
+        text: label;
+        color: selected ? #e6ebf5 : #9aa6ba;
+        font-size: 12px;
+        vertical-alignment: center;
+    }
+    if is-toggle: ToggleSwitch {
+        x: parent.width - self.width - 12px;
+        y: (parent.height - self.height) / 2;
+        checked: {
+            if item == SettingsItem.danmaku { return Danmaku.enabled; }
+            if item == SettingsItem.record-history { return Preferences.record-history; }
+            return Preferences.debug-log;
+        }
+    }
+    if adjustable && !is-toggle: Rectangle {
+        x: parent.width - 130px;
+        width: 120px;
+        height: parent.height;
+        Icon {
+            x: 2px; y: 1px; width: 20px; height: 20px;
+            source: Icons.left;
+            colorize: selected ? #7fb0ff : #6f7c92;
+            opacity: item == SettingsItem.danmaku-opacity && Preferences.danmaku-opacity == 0 ? 0.3 : 1;
+        }
         Text {
-            x: 10px;
-            width: parent.width - 144px;
-            height: parent.height;
-            text: row.label;
-            color: index == Nav.sel ? #e6ebf5 : #9aa6ba;
+            x: 24px; width: 72px; height: parent.height;
+            text: value;
+            color: selected ? #7fb0ff : #9aa6ba;
             font-size: 12px;
+            horizontal-alignment: center;
             vertical-alignment: center;
         }
-        if item-row.is-toggle: ToggleSwitch {
-            x: parent.width - self.width - 12px;
-            y: (parent.height - self.height) / 2;
-            checked: {
-                if row.item == SettingsItem.danmaku { return Danmaku.enabled; }
-                if row.item == SettingsItem.record-history { return Preferences.record-history; }
-                return Preferences.debug-log;
-            }
-        }
-        if item-row.adjustable && !item-row.is-toggle: Rectangle {
-            x: parent.width - 130px;
-            width: 120px;
-            height: parent.height;
-            Icon {
-                x: 2px; y: 1px; width: 20px; height: 20px;
-                source: Icons.left;
-                colorize: index == Nav.sel ? #7fb0ff : #6f7c92;
-                opacity: row.item == SettingsItem.danmaku-opacity && Preferences.danmaku-opacity == 0 ? 0.3 : 1;
-            }
-            Text {
-                x: 24px; width: 72px; height: parent.height;
-                text: item-row.value;
-                color: index == Nav.sel ? #7fb0ff : #9aa6ba;
-                font-size: 12px;
-                horizontal-alignment: center;
-                vertical-alignment: center;
-            }
-            Icon {
-                x: 98px; y: 1px; width: 20px; height: 20px;
-                source: Icons.right;
-                colorize: index == Nav.sel ? #7fb0ff : #6f7c92;
-                opacity: row.item == SettingsItem.danmaku-opacity && Preferences.danmaku-opacity == 100 ? 0.3 : 1;
-            }
-        }
-        if !item-row.adjustable: Text {
-            x: parent.width - (row.item == SettingsItem.cache ? 154px : 130px); width: row.item == SettingsItem.cache ? 118px : 94px; height: parent.height;
-            text: item-row.value;
-            overflow: elide; color: #9aa6ba;
-            font-size: row.item == SettingsItem.cache ? 10px : 12px;
-            font-family: row.item == SettingsItem.cache ? "Fusion Pixel 10px Prop zh-Hans" : "Fusion Pixel 12px Prop zh-Hans";
-            horizontal-alignment: right; vertical-alignment: center;
-        }
-        if !item-row.adjustable: Icon {
-            x: parent.width - 32px; y: 1px; width: 20px; height: 20px;
+        Icon {
+            x: 98px; y: 1px; width: 20px; height: 20px;
             source: Icons.right;
-            colorize: index == Nav.sel ? #7fb0ff : #6f7c92;
+            colorize: selected ? #7fb0ff : #6f7c92;
+            opacity: item == SettingsItem.danmaku-opacity && Preferences.danmaku-opacity == 100 ? 0.3 : 1;
         }
+    }
+    if !adjustable: Text {
+        x: parent.width - (item == SettingsItem.cache ? 154px : 130px); width: item == SettingsItem.cache ? 118px : 94px; height: parent.height;
+        text: value;
+        overflow: elide; color: #9aa6ba;
+        font-size: 12px;
+        font-family: "Fusion Pixel 12px Prop zh-Hans";
+        horizontal-alignment: right; vertical-alignment: center;
+    }
+    if !adjustable: Icon {
+        x: parent.width - 32px; y: 1px; width: 20px; height: 20px;
+        source: Icons.right;
+        colorize: selected ? #7fb0ff : #6f7c92;
+    }
+}
+
+export component SettingsPanel inherits Rectangle {
+    clip: true;
+    // 外观设置分组的项数，用于定位常规设置标题和跨组选中
+    property <int> appearance-count: Preferences.appearance-items.length;
+    // 选中项的显示行号
+    property <int> sel-line: Nav.sel + 1 + (Nav.sel >= root.appearance-count ? 1 : 0);
+    property <int> first-line: max(0, root.sel-line - floor((root.height - 4px) / 24px) + 1);
+
+    // 外观设置标题
+    Text {
+        x: 16px;
+        y: 4px + (0 - root.first-line) * 24px;
+        width: parent.width - 32px;
+        height: 24px;
+        text: "外观设置";
+        color: #6f7c92;
+        font-size: 10px;
+        font-family: "Fusion Pixel 10px Prop zh-Hans";
+        vertical-alignment: center;
+    }
+    // 常规设置标题
+    Text {
+        x: 16px;
+        y: 4px + (root.appearance-count + 1 - root.first-line) * 24px;
+        width: parent.width - 32px;
+        height: 24px;
+        text: "常规设置";
+        color: #6f7c92;
+        font-size: 10px;
+        font-family: "Fusion Pixel 10px Prop zh-Hans";
+        vertical-alignment: center;
+    }
+
+    for row[i] in Preferences.appearance-items: SettingsRowItem {
+        item: row.item;
+        label: row.label;
+        selected: i == Nav.sel;
+        x: 6px;
+        y: 4px + (i + 1 - root.first-line) * 24px;
+        width: parent.width - 12px;
+        height: 22px;
+    }
+    for row[j] in Preferences.general-items: SettingsRowItem {
+        item: row.item;
+        label: row.label;
+        selected: root.appearance-count + j == Nav.sel;
+        x: 6px;
+        y: 4px + (root.appearance-count + 2 + j - root.first-line) * 24px;
+        width: parent.width - 12px;
+        height: 22px;
     }
 }
