@@ -8,3 +8,5 @@ cardbili/target/
 
 # 部署产物
 dist/
+
+__pycache__/

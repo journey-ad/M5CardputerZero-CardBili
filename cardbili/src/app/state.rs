@@ -233,7 +233,11 @@ impl App {
             comment_page: comments::Comments::default(),
             sections: sections::Sections::default(),
             requested_cid: None,
-            play_start: 0.0,
+            play_start: std::env::var("BILI_START")
+                .ok()
+                .and_then(|value| value.parse::<f64>().ok())
+                .filter(|value| value.is_finite() && *value >= 0.0)
+                .unwrap_or(0.0),
             comments_request: 0,
             requested_comments: None,
             login_return: false,

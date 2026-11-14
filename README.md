@@ -75,14 +75,25 @@ systemctl --user start APPLaunch.service
 
 测试用环境变量：
 
-- `BILI_TAB=0..3` 初始标签（推荐/热门/动态/我的）
+- `BILI_TAB=0..4` 初始标签（推荐/热门/动态/我的/设置）
 - `BILI_VIEW=0|1|2` 列表/三列/两列
 - `BILI_DETAIL=<bvid>` 直接进详情
+- `BILI_AUTOPLAY=<bvid>` 直接播放，`BILI_START=<秒数>` 指定第一分 P 内的起播时间
 - `BILI_ABOUT=1` 直接进关于页
 - `BILI_HELP=1` 打开按键说明（注意：只判断变量是否存在）
 - `BILI_DUMP=1` 打印条目数/评论数/翻页信息
 - `BILI_DSCROLL=<px>` / `BILI_DSEND=1` 详情滚动位置
 - `BILI_LOGIN_DEBUG=1` 打印扫码轮询 cookie 细节
+
+## 拍摄演示
+
+约五分钟的可编辑演示脚本见 [demo/README.md](demo/README.md)，编排使用 TOML，包含 SSH 设备控制、按键动作、画面停留时间和介绍提词
+
+```bash
+./demo/demo.sh plan
+./demo/demo.sh check
+./demo/demo.sh run
+```
 
 ## 按键
 
