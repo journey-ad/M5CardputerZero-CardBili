@@ -219,7 +219,13 @@ pub fn start_detail(bvid: String, cookies: Option<String>, request: u64, tx: Sen
 
 pub fn start_login(request: u64, tx: Sender<Msg>) {
     thread::spawn(move || {
-        let jar = "/tmp/cardbili_qr.jar";
+        let directory = util::state_dir();
+        if let Err(error) = std::fs::create_dir_all(&directory) {
+            let _ = tx.send(Msg::QrStatus(request, format!("登录目录创建失败\n{error}")));
+            return;
+        }
+        let path = directory.join(format!("qr-{request}.jar"));
+        let jar = path.to_str().unwrap();
         let _ = std::fs::remove_file(jar);
         let (url, key) = match api::auth::qr_generate() {
             Ok(v) => v,
@@ -249,6 +255,9 @@ pub fn start_login(request: u64, tx: Sender<Msg>) {
                 }
             }
             thread::sleep(Duration::from_secs(2));
+        }
+        for suffix in ["", ".hdr", ".x"] {
+            let _ = std::fs::remove_file(format!("{jar}{suffix}"));
         }
     });
 }

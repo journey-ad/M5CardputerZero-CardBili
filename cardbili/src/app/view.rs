@@ -92,6 +92,7 @@ impl App {
         self.ui.set_about_scroll(self.about_scroll as f32);
         self.ui.set_help(self.help);
         self.ui.set_mine_detail(self.mine_detail >= 0);
+        self.sync_cache();
         self.sync_home();
         self.sync_account();
         self.sync_playback();

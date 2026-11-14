@@ -16,6 +16,8 @@ mod util;
 slint::include_modules!();
 
 pub enum Msg {
+    CacheUsage(Result<u64, String>),
+    CacheCleared(Result<(), String>),
     CdnSpeed(u64, usize, String),
     Chapters(i64, Result<Vec<model::Chapter>, String>),
     Watching(u64, Result<String, String>),

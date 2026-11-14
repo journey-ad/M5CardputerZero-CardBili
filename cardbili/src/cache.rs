@@ -1,6 +1,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Mutex, Once};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde_json::Value;
@@ -16,10 +17,11 @@ pub const TTL_ACCOUNT: u64 = 86400;
 
 pub type Pixels = (u32, u32, Vec<u8>);
 
-// 缩略图缓存文件上限
-const IMG_MAX: usize = 256;
-// 接口缓存文件上限
-const API_MAX: usize = 512;
+// 接口和图片共用 1 GiB 缓存空间
+pub const MAX_BYTES: u64 = 1024 * 1024 * 1024;
+
+static INIT: Once = Once::new();
+static SIZE: Mutex<Option<u64>> = Mutex::new(None);
 
 static SEQ: AtomicUsize = AtomicUsize::new(0);
 
@@ -55,7 +57,8 @@ fn cached_only_on() -> bool {
 }
 
 fn base() -> PathBuf {
-    std::env::temp_dir().join("cardbili-cache")
+    PathBuf::from(std::env::var_os("HOME").unwrap_or_else(|| "/var/tmp".into()))
+        .join(".cache/cardbili")
 }
 
 fn api_dir() -> PathBuf {
@@ -67,14 +70,119 @@ fn img_dir() -> PathBuf {
 }
 
 pub fn init() {
-    for directory in [api_dir(), img_dir()] {
-        if let Err(error) = fs::create_dir_all(&directory) {
+    INIT.call_once(|| {
+        for directory in [api_dir(), img_dir()] {
+            if let Err(error) = fs::create_dir_all(&directory) {
+                diagnostics::write(format_args!(
+                    "[缓存] 创建目录失败 {}: {error}",
+                    directory.display()
+                ));
+            }
+        }
+        let old = std::env::temp_dir().join("cardbili-cache");
+        if old != base() && old.exists() {
+            let result = migrate(&old);
             diagnostics::write(format_args!(
-                "[缓存] 创建目录失败 {}: {error}",
-                directory.display()
+                "[缓存] 迁移 {} → {} 结果={result:?}",
+                old.display(),
+                base().display()
             ));
         }
+        let result = (|| -> std::io::Result<u64> {
+            let mut total = entries()?.iter().map(|(_, m)| m.len()).sum();
+            enforce_limit(&mut total)?;
+            Ok(total)
+        })();
+        match result {
+            Ok(bytes) => *SIZE.lock().unwrap() = Some(bytes),
+            Err(error) => diagnostics::write(format_args!("[缓存] 初始化容量失败: {error}")),
+        }
+        diagnostics::write(format_args!(
+            "[缓存] 目录={} 容量上限={MAX_BYTES}",
+            base().display()
+        ));
+    });
+}
+
+fn migrate(old: &Path) -> std::io::Result<()> {
+    for name in ["api", "img"] {
+        let directory = old.join(name);
+        if !directory.exists() {
+            continue;
+        }
+        for entry in fs::read_dir(&directory)? {
+            let entry = entry?;
+            let metadata = entry.metadata()?;
+            if !metadata.is_file() {
+                continue;
+            }
+            let target = base().join(name).join(entry.file_name());
+            let modified = metadata.modified()?;
+            let newer = fs::metadata(&target)
+                .and_then(|m| m.modified())
+                .is_ok_and(|time| time >= modified);
+            if !newer {
+                let temporary = target.with_extension("migrating");
+                let result = (|| -> std::io::Result<()> {
+                    fs::copy(entry.path(), &temporary)?;
+                    fs::File::options()
+                        .write(true)
+                        .open(&temporary)?
+                        .set_modified(modified)?;
+                    fs::rename(&temporary, &target)
+                })();
+                if result.is_err() {
+                    let _ = fs::remove_file(&temporary);
+                }
+                result?;
+            }
+            fs::remove_file(entry.path())?;
+        }
+        fs::remove_dir(directory)?;
     }
+    fs::remove_dir(old)
+}
+
+fn entries() -> std::io::Result<Vec<(PathBuf, fs::Metadata)>> {
+    let mut files = Vec::new();
+    for directory in [api_dir(), img_dir()] {
+        for entry in fs::read_dir(directory)? {
+            let entry = entry?;
+            let metadata = entry.metadata()?;
+            if metadata.is_file() {
+                files.push((entry.path(), metadata));
+            }
+        }
+    }
+    Ok(files)
+}
+
+pub fn usage() -> std::io::Result<u64> {
+    init();
+    let mut size = SIZE.lock().unwrap();
+    match *size {
+        Some(bytes) => Ok(bytes),
+        None => {
+            let mut bytes = entries()?.iter().map(|(_, m)| m.len()).sum();
+            enforce_limit(&mut bytes)?;
+            *size = Some(bytes);
+            Ok(bytes)
+        }
+    }
+}
+
+pub fn clear() -> std::io::Result<()> {
+    init();
+    let mut size = SIZE.lock().unwrap();
+    let result = entries().and_then(|files| {
+        for (path, _) in files {
+            fs::remove_file(path)?;
+        }
+        Ok(())
+    });
+    *size = if result.is_ok() { Some(0) } else { None };
+    diagnostics::write(format_args!("[缓存] 清理结果={result:?}"));
+    result
 }
 
 // 缓存键：对原始字符串取 MD5
@@ -103,21 +211,34 @@ fn mtime(path: &Path) -> u64 {
 
 // 原子写入：完整写入临时文件后再重命名
 fn write_atomic(path: &Path, data: &[u8]) {
-    let name = path
-        .file_name()
-        .map(|s| s.to_string_lossy().into_owned())
-        .unwrap_or_default();
-    let n = SEQ.fetch_add(1, Ordering::Relaxed);
-    let tmp = path.with_file_name(format!(".{}.{}.tmp", name, n));
-    match fs::write(&tmp, data).and_then(|_| fs::rename(&tmp, path)) {
+    let mut size = SIZE.lock().unwrap();
+    let result = (|| -> std::io::Result<()> {
+        let total = match *size {
+            Some(bytes) => bytes,
+            None => entries()?.iter().map(|(_, m)| m.len()).sum(),
+        };
+        let previous = fs::metadata(path).map(|m| m.len()).unwrap_or(0);
+        let name = path.file_name().unwrap().to_string_lossy();
+        let n = SEQ.fetch_add(1, Ordering::Relaxed);
+        let tmp = path.with_file_name(format!(".{name}.{}.{n}.tmp", std::process::id()));
+        if let Err(error) = fs::write(&tmp, data).and_then(|_| fs::rename(&tmp, path)) {
+            let _ = fs::remove_file(&tmp);
+            return Err(error);
+        }
+        let mut total = total.saturating_sub(previous) + data.len() as u64;
+        enforce_limit(&mut total)?;
+        *size = Some(total);
+        Ok(())
+    })();
+    match result {
         Ok(()) => diagnostics::write(format_args!(
             "[缓存] 已写入 {} 字节={}",
             path.display(),
             data.len()
         )),
         Err(error) => {
+            *size = None;
             diagnostics::write(format_args!("[缓存] 写入失败 {}: {error}", path.display()));
-            let _ = fs::remove_file(&tmp);
         }
     }
 }
@@ -129,31 +250,26 @@ fn touch(path: &Path) {
     }
 }
 
-// 文件数超过上限时，删除修改时间最早的文件
-fn enforce_limit(dir: &Path, max: usize) {
-    let mut items: Vec<(PathBuf, u64)> = Vec::new();
-    if let Ok(rd) = fs::read_dir(dir) {
-        for e in rd.flatten() {
-            let p = e.path();
-            let is_data = matches!(
-                p.extension().and_then(|x| x.to_str()),
-                Some("json") | Some("raw")
-            );
-            if is_data {
-                let t = mtime(&p);
-                items.push((p, t));
-            }
+// 容量超过上限时，按修改时间淘汰最旧的缓存文件
+fn enforce_limit(total: &mut u64) -> std::io::Result<()> {
+    if *total <= MAX_BYTES {
+        return Ok(());
+    }
+    let mut files = entries()?;
+    files.sort_by_key(|(_, metadata)| metadata.modified().unwrap_or(UNIX_EPOCH));
+    for (path, metadata) in files {
+        if *total <= MAX_BYTES {
+            break;
         }
+        fs::remove_file(&path)?;
+        *total = total.saturating_sub(metadata.len());
+        diagnostics::write(format_args!(
+            "[缓存] 淘汰 {} 字节={} 剩余={total}",
+            path.display(),
+            metadata.len()
+        ));
     }
-    if items.len() <= max {
-        return;
-    }
-    items.sort_by_key(|(_, t)| *t);
-    let remove = items.len() - max;
-    for (p, _) in items.into_iter().take(remove) {
-        let result = fs::remove_file(&p);
-        diagnostics::write(format_args!("[缓存] 淘汰 {} 结果={result:?}", p.display()));
-    }
+    Ok(())
 }
 
 // JSON 缓存以写入时间计算有效期
@@ -231,7 +347,6 @@ pub fn api_json_with(
     })?;
     if v["code"].as_i64() == Some(0) {
         write_atomic(&path, s.as_bytes());
-        enforce_limit(&api_dir(), API_MAX);
     }
     Ok(v)
 }
@@ -296,14 +411,21 @@ fn cached_image(pic: &str, width: u32, height: u32) -> Option<Pixels> {
     buf.extend_from_slice(&h.to_le_bytes());
     buf.extend_from_slice(&raw);
     write_atomic(&path, &buf);
-    enforce_limit(&img_dir(), IMG_MAX);
     Some((w, h, raw))
 }
 
 pub fn invalidate_api(url: &str, cookies: &str) {
+    init();
     let tag = format!("u:{}", crate::util::parse_mid(cookies));
     let path = api_dir().join(format!("{}.json", key_of(&format!("{url}\n{tag}"))));
+    let mut size = SIZE.lock().unwrap();
+    let bytes = fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
     let result = fs::remove_file(&path);
+    if result.is_ok() {
+        if let Some(total) = size.as_mut() {
+            *total = total.saturating_sub(bytes);
+        }
+    }
     diagnostics::write(format_args!(
         "[缓存] 失效 {} 结果={result:?}",
         path.display()

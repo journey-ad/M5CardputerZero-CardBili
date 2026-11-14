@@ -185,6 +185,11 @@ pub fn parse_mid(cookies: &str) -> String {
     String::new()
 }
 
+pub fn state_dir() -> std::path::PathBuf {
+    std::path::PathBuf::from(std::env::var_os("HOME").unwrap_or_else(|| "/var/tmp".into()))
+        .join(".local/state/cardbili")
+}
+
 pub fn cookie_path() -> String {
     let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".into());
     format!("{}/.config/cardbili/cookie.txt", home)

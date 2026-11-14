@@ -1,4 +1,5 @@
 mod account;
+mod cache;
 mod cdn;
 mod comments;
 mod components;

@@ -3,6 +3,8 @@ use super::*;
 impl App {
     pub(super) fn handle_message(&mut self, m: Msg) {
         match m {
+            Msg::CacheUsage(result) => self.cache_usage(result),
+            Msg::CacheCleared(result) => self.cache_cleared(result),
             Msg::CdnSpeed(request, index, result) => self.cdn_result(request, index, result),
             Msg::Chapters(cid, result) => {
                 if self.sections.cid == cid {

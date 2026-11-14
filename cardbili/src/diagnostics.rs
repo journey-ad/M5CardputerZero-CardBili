@@ -7,7 +7,14 @@ use std::process::{Child, Command, Stdio};
 use std::thread;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-const LOG_PATH: &str = "/tmp/cardbili-player.log";
+pub(crate) fn path() -> &'static std::path::Path {
+    static PATH: std::sync::OnceLock<std::path::PathBuf> = std::sync::OnceLock::new();
+    PATH.get_or_init(|| {
+        let directory = crate::util::state_dir();
+        let _ = std::fs::create_dir_all(&directory);
+        directory.join("player.log")
+    })
+}
 
 pub(crate) fn write(message: fmt::Arguments<'_>) {
     let now = SystemTime::now()
@@ -18,10 +25,10 @@ pub(crate) fn write(message: fmt::Arguments<'_>) {
     let result = OpenOptions::new()
         .create(true)
         .append(true)
-        .open(LOG_PATH)
+        .open(path())
         .and_then(|mut file| file.write_all(line.as_bytes()));
     if let Err(error) = result {
-        eprintln!("写入诊断日志失败 {LOG_PATH}: {error}");
+        eprintln!("写入诊断日志失败 {}: {error}", path().display());
     }
 }
 
@@ -41,7 +48,13 @@ pub(crate) fn spawn(
     };
     let logged_args: Vec<_> = args.iter().map(|arg| redact(arg)).collect();
     write(format_args!("[{kind}] ffmpeg 参数: {logged_args:?}"));
-    let mut command = Command::new("ffmpeg");
+    let executable = std::env::current_exe()
+        .ok()
+        .map(|path| path.with_file_name("cardbili-ffmpeg"))
+        .filter(|path| path.is_file())
+        .unwrap_or_else(|| "ffmpeg".into());
+    write(format_args!("[{kind}] 解码器={}", executable.display()));
+    let mut command = Command::new(executable);
     command
         .args(args)
         .stdin(Stdio::piped())

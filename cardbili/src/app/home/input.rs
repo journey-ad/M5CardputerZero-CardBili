@@ -27,6 +27,7 @@ impl App {
             self.ui.set_bar("".into());
             self.ui.set_bar_sticky(false);
             self.sel = 0;
+            self.cache_checked = None;
             self.mine_detail = -1;
             if !self.tab.is_video() {
                 self.loading = false;
@@ -67,7 +68,7 @@ impl App {
         } else if self.tab == HomeTab::Settings {
             match k {
                 "UP" | "f" | "w" => self.sel = (self.sel - 1).max(0),
-                "DOWN" | "x" | "s" => self.sel = (self.sel + 1).min(6),
+                "DOWN" | "x" | "s" => self.sel = (self.sel + 1).min(8),
                 "LEFT" | "z" | "RIGHT" | "c" => {
                     let step = if matches!(k, "LEFT" | "z") { -1 } else { 1 };
                     if self.sel == 0 {
@@ -91,7 +92,10 @@ impl App {
                 "ENTER" if self.sel == 5 => {
                     self.open_cdn();
                 }
-                "ENTER" if self.sel == 6 => {
+                "ENTER" if self.sel == 7 => {
+                    self.clear_cache();
+                }
+                "ENTER" if self.sel == 8 => {
                     self.requested_about = true;
                 }
                 "ESC" | "BACKSPACE" => {

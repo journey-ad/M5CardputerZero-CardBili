@@ -9,7 +9,7 @@ cardbili-dev/
 ├── README.md                    本说明
 ├── cardbili/                    完整源码（Rust + Slint）
 │   ├── Cargo.toml / Cargo.lock
-│   ├── build.rs                 Slint 编译，EmbedFiles 内嵌资源
+│   ├── build.rs                 Slint 编译，预渲染图标并内嵌完整位图字体
 │   ├── src/                     main/model/api/util/tasks/app/player/net
 │   ├── ui/app.slint             全部界面
 │   ├── assets/                  方向三角图标 tri_*.png
@@ -33,6 +33,7 @@ cardbili-dev/
 目标：`aarch64-unknown-linux-musl`（静态 ELF）。
 
 ```bash
+docker build --platform linux/arm64 --output type=local,dest=dist/ffmpeg cardbili/ffmpeg
 rustup target add aarch64-unknown-linux-musl
 cd cardbili
 cargo build --release --target aarch64-unknown-linux-musl
@@ -48,15 +49,19 @@ cargo build --release --target aarch64-unknown-linux-musl
 ```bash
 source .secrets/device.env
 
-scp dist/M5CardputerZero-CardBili "$DEVICE_USER@$DEVICE_IP:/tmp/"
-scp dist/cardbili.desktop          "$DEVICE_USER@$DEVICE_IP:/tmp/"
-scp dist/cardbili_100.png dist/cardbili_80.png "$DEVICE_USER@$DEVICE_IP:/tmp/"
+scp dist/M5CardputerZero-CardBili dist/ffmpeg/cardbili-ffmpeg "$DEVICE_USER@$DEVICE_IP:/var/tmp/"
+scp -r dist/ffmpeg/licenses "$DEVICE_USER@$DEVICE_IP:/var/tmp/cardbili-ffmpeg-licenses"
+scp dist/cardbili.desktop          "$DEVICE_USER@$DEVICE_IP:/var/tmp/"
+scp dist/cardbili_100.png dist/cardbili_80.png "$DEVICE_USER@$DEVICE_IP:/var/tmp/"
 
 ssh "$DEVICE_USER@$DEVICE_IP"
-echo "$DEVICE_SUDO_PASS" | sudo -S install -m0755 /tmp/M5CardputerZero-CardBili /usr/share/APPLaunch/bin/
-echo "$DEVICE_SUDO_PASS" | sudo -S install -m0644 /tmp/cardbili.desktop /usr/share/APPLaunch/applications/cardbili.desktop
-echo "$DEVICE_SUDO_PASS" | sudo -S install -m0644 /tmp/cardbili_100.png /usr/share/APPLaunch/share/images/cardbili_100.png
-echo "$DEVICE_SUDO_PASS" | sudo -S install -m0644 /tmp/cardbili_80.png  /usr/share/APPLaunch/share/images/cardbili_80.png
+echo "$DEVICE_SUDO_PASS" | sudo -S install -m0755 /var/tmp/M5CardputerZero-CardBili /var/tmp/cardbili-ffmpeg /usr/share/APPLaunch/bin/
+echo "$DEVICE_SUDO_PASS" | sudo -S install -m0644 /var/tmp/cardbili.desktop /usr/share/APPLaunch/applications/cardbili.desktop
+echo "$DEVICE_SUDO_PASS" | sudo -S install -m0644 /var/tmp/cardbili_100.png /usr/share/APPLaunch/share/images/cardbili_100.png
+echo "$DEVICE_SUDO_PASS" | sudo -S install -m0644 /var/tmp/cardbili_80.png  /usr/share/APPLaunch/share/images/cardbili_80.png
+
+echo "$DEVICE_SUDO_PASS" | sudo -S mkdir -p /usr/share/doc/cardbili-ffmpeg
+echo "$DEVICE_SUDO_PASS" | sudo -S cp -R /var/tmp/cardbili-ffmpeg-licenses/. /usr/share/doc/cardbili-ffmpeg/
 
 export XDG_RUNTIME_DIR=/run/user/1000 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus
 systemctl --user restart APPLaunch.service
@@ -109,4 +114,4 @@ systemctl --user start APPLaunch.service
 
 ## 开发要点（详见 skill）
 
-面板不是 Wayland，直接写 `/dev/fb0`（RGB565 小端，320x170，stride 640）；无内建方向键，键位映射见 `skill/references/key-layout.md`；Rust+Slint 用软件渲染器 + EmbedFiles + 常驻 buffer 整帧 pwrite。更多硬件/调试/视频播放经验见 `skill/cardputer-zero/references/`。
+面板不是 Wayland，直接写 `/dev/fb0`（RGB565 小端，320x170，stride 640）；无内建方向键，键位映射见 `skill/references/key-layout.md`；Rust+Slint 用软件渲染器 + 构建时预渲染图标 + 完整中文位图字体 + 常驻 buffer 整帧 pwrite。更多硬件/调试/视频播放经验见 `skill/cardputer-zero/references/`。

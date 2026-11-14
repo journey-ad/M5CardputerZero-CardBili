@@ -1,3 +1,4 @@
+import "../fonts/fusion12.ttf";
 import { CdnPanel } from "components/cdn_panel.slint";
 import { SectionsPanel } from "components/sections_panel.slint";
 export { HomeTab, Page, VideoLayout, MenuPosition } from "types.slint";
@@ -108,6 +109,8 @@ export component AppWindow inherits Window {
     in-out property <MenuPosition> menu-position <=> Preferences.menu-position;
     in-out property <bool> record-history <=> Preferences.record-history;
     in-out property <string> cdn-name <=> Preferences.cdn-name;
+    in-out property <string> cache-size <=> Preferences.cache-size;
+    in-out property <bool> cache-busy <=> Preferences.cache-busy;
     in-out property <bool> cdn-open: false;
     in-out property <bool> cdn-testing: false;
     in-out property <int> cdn-current: 1;

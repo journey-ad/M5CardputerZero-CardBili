@@ -23,7 +23,8 @@ fn main() {
         &["ui_fonts.rs", "ui_fonts.bin"],
         ui_fonts::generate,
     );
+    // 图标在构建时栅格化，完整中文位图字体由 fonts::register 注册
     let config = slint_build::CompilerConfiguration::new()
-        .embed_resources(slint_build::EmbedResourcesKind::EmbedFiles);
+        .embed_resources(slint_build::EmbedResourcesKind::EmbedForSoftwareRenderer);
     slint_build::compile_with_config("ui/app.slint", config).unwrap();
 }

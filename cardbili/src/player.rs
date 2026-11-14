@@ -144,8 +144,10 @@ impl Player {
         self.ready = false;
         self.finished = false;
         diagnostics::write(format_args!(
-            "开始解码 gen={} 跳转={ss:.3}s 倍速={} 日志=/tmp/cardbili-player.log",
-            self.gen, self.rate
+            "开始解码 gen={} 跳转={ss:.3}s 倍速={} 日志={}",
+            self.gen,
+            self.rate,
+            diagnostics::path().display()
         ));
         let hd = headers(&self.cookies);
         let vf = format!(
