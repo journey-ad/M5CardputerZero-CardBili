@@ -26,7 +26,7 @@ pub fn chapters(bvid: &str, cid: i64, cookies: Option<&str>) -> Result<Vec<Chapt
     let key = format!("{endpoint}?{}", net::query_string(&params));
     let value = cache::api_json_with(&key, cookies, cache::TTL_DETAIL, || {
         let signed = wbi::wbi_sign(&params, &wbi::fetch_mixin()?);
-        net::curl_get(
+        net::get(
             &format!("{endpoint}?{}", net::query_string(&signed)),
             cookies,
         )

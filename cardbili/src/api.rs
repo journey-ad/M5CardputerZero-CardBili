@@ -101,7 +101,7 @@ pub fn rcmd(cookies: Option<&str>, page: u32) -> Result<Vec<Item>, String> {
         let mixin = wbi::fetch_mixin()?;
         let signed = wbi::wbi_sign(&base, &mixin);
         let url = format!("{}?{}", endpoint, net::query_string(&signed));
-        net::curl_get(&url, cookies)
+        net::get(&url, cookies)
     })?;
     if v["code"].as_i64() != Some(0) {
         return Err(api_err("推荐", &v));
@@ -308,7 +308,7 @@ pub fn play_urls(bvid: &str, cid: i64, cookies: Option<&str>) -> Result<Value, S
 // 拉取视频弹幕 XML 并解析为条目
 pub fn danmaku_list(cid: i64, cookies: Option<&str>) -> Result<Vec<crate::danmaku::Dm>, String> {
     let url = format!("https://api.bilibili.com/x/v1/dm/list.so?oid={}", cid);
-    let xml = net::curl_get(&url, cookies)?;
+    let xml = net::get(&url, cookies)?;
     Ok(parse_danmaku(&xml))
 }
 
@@ -456,7 +456,7 @@ pub fn uploader_videos(
         params.push(("dm_cover_img_str".into(), random_base64(64)?));
         let mixin = wbi::fetch_mixin()?;
         let signed = wbi::wbi_sign(&params, &mixin);
-        net::curl_get_with_headers(
+        net::get_with_headers(
             &format!("{}?{}", endpoint, net::query_string(&signed)),
             cookies,
             &net::RequestHeaders {

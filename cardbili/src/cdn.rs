@@ -1,6 +1,7 @@
 use crate::{diagnostics, net};
 use serde_json::Value;
-use std::process::Command;
+use std::io::Read;
+use std::time::{Duration, Instant};
 
 pub struct Cdn {
     pub id: &'static str,
@@ -172,58 +173,54 @@ impl Cdn {
                 self.id,
                 host(&url)
             ));
-            let output = Command::new("curl")
-                .args([
-                    "-s",
-                    "-L",
-                    "--connect-timeout",
-                    "3",
-                    "--max-time",
-                    "5",
-                    "--range",
-                    "0-524287",
-                    "--max-filesize",
-                    "524288",
-                    "-A",
-                    net::UA,
-                    "-e",
-                    net::REFERER,
-                    "-o",
-                    "/dev/null",
-                    "-w",
-                    "%{http_code} %{time_starttransfer} %{speed_download} %{size_download}",
-                    &url,
-                ])
-                .output()
-                .map_err(|_| "测速启动失败".to_string())?;
-            let text = String::from_utf8_lossy(&output.stdout);
-            let values: Vec<_> = text.split_whitespace().collect();
-            let http = values.first().copied().unwrap_or("000");
-            if http != "206" && http != "200" && http != "000" {
-                return Err(format!("不可用 · HTTP {http}"));
-            }
-            if !output.status.success() {
-                return Err(match output.status.code() {
-                    Some(28) => "测速超时".into(),
-                    Some(6) => "域名解析失败".into(),
-                    Some(7) => "连接失败".into(),
-                    Some(63) => "不支持分段测速".into(),
-                    _ => "测速失败".into(),
-                });
-            }
-            let number = |index| {
-                values
-                    .get(index)
-                    .and_then(|v: &&str| v.parse::<f64>().ok())
-                    .unwrap_or(0.0)
-            };
-            if number(3) == 0.0 {
+            const LIMIT: u64 = 524288;
+            let started = Instant::now();
+            let measured = (|| -> Result<_, ureq::Error> {
+                let mut response = net::new_agent()
+                    .get(&url)
+                    .header("Referer", net::REFERER)
+                    .header("Range", "bytes=0-524287")
+                    .config()
+                    .timeout_connect(Some(Duration::from_secs(3)))
+                    .timeout_global(Some(Duration::from_secs(5)))
+                    .build()
+                    .call()?;
+                if !matches!(response.status().as_u16(), 200 | 206) {
+                    return Err(ureq::Error::StatusCode(response.status().as_u16()));
+                }
+                if response
+                    .body()
+                    .content_length()
+                    .is_some_and(|size| size > LIMIT)
+                {
+                    return Err(ureq::Error::BodyExceedsLimit(LIMIT));
+                }
+                let mut reader = response.body_mut().as_reader();
+                let mut buffer = [0; 8192];
+                let first = reader.read(&mut buffer)? as u64;
+                let first_byte = started.elapsed();
+                let remaining =
+                    std::io::copy(&mut reader.take(LIMIT + 1 - first), &mut std::io::sink())?;
+                let bytes = first + remaining;
+                if bytes > LIMIT {
+                    return Err(ureq::Error::BodyExceedsLimit(LIMIT));
+                }
+                Ok((bytes, first_byte))
+            })()
+            .map_err(|error| match error {
+                ureq::Error::StatusCode(status) => format!("不可用 · HTTP {status}"),
+                ureq::Error::Timeout(_) => "测速超时".into(),
+                ureq::Error::HostNotFound => "域名解析失败".into(),
+                ureq::Error::BodyExceedsLimit(_) => "不支持分段测速".into(),
+                _ => "测速失败".into(),
+            })?;
+            if measured.0 == 0 {
                 return Err("未收到视频数据".into());
             }
             Ok(format!(
                 "{:.2} MB/s · 首字节 {:.0}ms",
-                number(2) / 1_000_000.0,
-                number(1) * 1000.0
+                measured.0 as f64 / started.elapsed().as_secs_f64() / 1_000_000.0,
+                measured.1.as_secs_f64() * 1000.0
             ))
         });
         let text = result.unwrap_or_else(|error| error);

@@ -259,7 +259,7 @@ fn read_cached(path: &Path, max_age: u64) -> Option<Value> {
 
 // 带缓存的接口请求
 pub fn api_json(url: &str, cookies: Option<&str>, ttl: u64) -> Result<Value, String> {
-    api_json_with(url, cookies, ttl, || net::curl_get(url, cookies))
+    api_json_with(url, cookies, ttl, || net::get(url, cookies))
 }
 
 // 缓存键使用业务参数，请求签名在缓存未命中时生成
@@ -357,7 +357,7 @@ fn cached_image(pic: &str, width: u32, height: u32) -> Option<Pixels> {
         "[缓存] 图片未命中 {} 尺寸={width}x{height}",
         path.display()
     ));
-    let bytes = net::curl_bytes(&url).ok()?;
+    let bytes = net::get_bytes(&url).ok()?;
     let img = image::load_from_memory(&bytes)
         .map_err(|error| {
             diagnostics::write(format_args!(

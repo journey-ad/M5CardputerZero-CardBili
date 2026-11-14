@@ -1,6 +1,6 @@
 use crate::diagnostics;
-use std::process::Command;
-use std::time::{Instant, SystemTime, UNIX_EPOCH};
+use std::sync::OnceLock;
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 pub const UA: &str = "Mozilla/5.0 (X11; Linux aarch64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 pub const REFERER: &str = "https://www.bilibili.com/";
@@ -17,53 +17,95 @@ const DEFAULT_HEADERS: RequestHeaders<'static> = RequestHeaders {
     origin: "https://www.bilibili.com",
 };
 
+pub fn new_agent() -> ureq::Agent {
+    ureq::Agent::config_builder()
+        .user_agent(UA)
+        .timeout_global(Some(Duration::from_secs(25)))
+        .http_status_as_error(false)
+        .build()
+        .into()
+}
+
+fn agent() -> &'static ureq::Agent {
+    static AGENT: OnceLock<ureq::Agent> = OnceLock::new();
+    AGENT.get_or_init(new_agent)
+}
+
 pub fn now_secs() -> i64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_secs() as i64)
+        .map(|s| s.as_secs() as i64)
         .unwrap_or(0)
 }
 
-fn curl_args(url: &str, cookies: Option<&str>, headers: &RequestHeaders<'_>) -> Vec<String> {
-    let mut a: Vec<String> = vec![
-        "-s".into(),
-        "-L".into(),
-        "--compressed".into(),
-        "--max-time".into(),
-        "25".into(),
-        "-A".into(),
-        headers.user_agent.into(),
-        "-e".into(),
-        headers.referer.into(),
-        "-H".into(),
-        format!("Origin: {}", headers.origin),
-        "-H".into(),
-        "Accept: application/json, text/plain, */*".into(),
-    ];
-    if let Some(ck) = cookies {
-        if !ck.is_empty() {
-            a.push("-H".into());
-            a.push(format!("Cookie: {}", ck));
+fn request(
+    client: &ureq::Agent,
+    url: &str,
+    cookies: Option<&str>,
+    headers: &RequestHeaders<'_>,
+    form: Option<&str>,
+    timeout: u32,
+) -> Result<Vec<u8>, String> {
+    let endpoint = url.split(['?', '#']).next().unwrap_or(url);
+    let method = if form.is_some() { "POST" } else { "GET" };
+    let started = Instant::now();
+    diagnostics::write(format_args!("[请求] {method} {endpoint} 开始"));
+    let result = (|| -> Result<_, ureq::Error> {
+        let mut request = ureq::http::Request::builder()
+            .method(method)
+            .uri(url)
+            .header("User-Agent", headers.user_agent)
+            .header("Referer", headers.referer)
+            .header("Origin", headers.origin)
+            .header("Accept", "application/json, text/plain, */*");
+        if let Some(cookie) = cookies.filter(|value| !value.is_empty()) {
+            request = request.header("Cookie", cookie);
+        }
+        if form.is_some() {
+            request = request.header("Content-Type", "application/x-www-form-urlencoded");
+        }
+        let request = client
+            .configure_request(request.body(())?)
+            .timeout_global(Some(Duration::from_secs(timeout.into())))
+            .build();
+        let mut response = match form {
+            Some(body) => client.run(request.map(|_| body))?,
+            None => client.run(request)?,
+        };
+        let status = response.status().as_u16();
+        if !response.status().is_success() {
+            return Err(ureq::Error::StatusCode(status));
+        }
+        let bytes = response.body_mut().with_config().read_to_vec()?;
+        Ok((status, bytes))
+    })();
+    match result {
+        Ok((status, bytes)) => {
+            diagnostics::write(format_args!(
+                "[请求] {method} {endpoint} 完成 HTTP={status} 字节={} 耗时={}ms",
+                bytes.len(),
+                started.elapsed().as_millis()
+            ));
+            Ok(bytes)
+        }
+        Err(error) => {
+            let message = error.to_string().replace(url, endpoint);
+            diagnostics::write(format_args!(
+                "[请求] {method} {endpoint} 失败 耗时={}ms: {message}",
+                started.elapsed().as_millis()
+            ));
+            Err(format!("网络请求失败\n{message}"))
         }
     }
-    a.push(url.into());
-    a
 }
 
-fn tidy(s: &str) -> String {
-    s.trim()
-        .replace("curl: ", "")
-        .replace("curl:", "")
-        .trim()
-        .to_string()
-}
-
-pub fn curl_get_with_headers(
+pub fn get_with_headers(
     url: &str,
     cookies: Option<&str>,
     headers: &RequestHeaders<'_>,
 ) -> Result<String, String> {
-    curl_text(url, curl_args(url, cookies, headers))
+    request(agent(), url, cookies, headers, None, 25)
+        .map(|bytes| String::from_utf8_lossy(&bytes).into_owned())
 }
 
 pub fn post_form_json(
@@ -87,68 +129,34 @@ pub fn post_form_json_timeout(
         referer,
         origin: "https://www.bilibili.com",
     };
-    let mut args = curl_args(url, Some(cookies), &headers);
-    args.extend([
-        "--max-time".into(),
-        timeout.to_string(),
-        "--data".into(),
-        query_string(params),
-    ]);
-    let body = curl_text(url, args)?;
-    parse_json(url, &body).map_err(|error| format!("数据解析失败\n{error}"))
+    let body = request(
+        agent(),
+        url,
+        Some(cookies),
+        &headers,
+        Some(&query_string(params)),
+        timeout,
+    )?;
+    parse_json(url, &String::from_utf8_lossy(&body))
+        .map_err(|error| format!("数据解析失败\n{error}"))
 }
 
-fn curl_output(url: &str, args: Vec<String>) -> Result<Vec<u8>, String> {
-    let endpoint = url.split(['?', '#']).next().unwrap_or(url);
-    let method = if args.iter().any(|arg| arg == "--data") {
-        "POST"
-    } else {
-        "GET"
-    };
-    let started = Instant::now();
-    diagnostics::write(format_args!("[请求] {method} {endpoint} 开始"));
-    let out = Command::new("curl").args(args).output().map_err(|error| {
-        diagnostics::write(format_args!("[请求] {method} {endpoint} 启动失败: {error}"));
-        format!("网络请求启动失败\n{error}")
-    })?;
-    diagnostics::write(format_args!(
-        "[请求] {method} {endpoint} 完成 进程状态={} 字节={} 耗时={}ms",
-        out.status,
-        out.stdout.len(),
-        started.elapsed().as_millis()
-    ));
-    if !out.status.success() {
-        let code = out
-            .status
-            .code()
-            .map(|c| c.to_string())
-            .unwrap_or_else(|| "?".into());
-        let t = tidy(&String::from_utf8_lossy(&out.stderr));
-        let tail = if t.is_empty() {
-            String::new()
-        } else {
-            format!(" {}", t)
-        };
-        return Err(format!("网络连接失败\nexit {}{}", code, tail));
-    }
-    Ok(out.stdout)
+pub fn get(url: &str, cookies: Option<&str>) -> Result<String, String> {
+    get_with_headers(url, cookies, &DEFAULT_HEADERS)
 }
 
-fn curl_text(url: &str, args: Vec<String>) -> Result<String, String> {
-    curl_output(url, args).map(|bytes| String::from_utf8_lossy(&bytes).into_owned())
+pub fn get_bytes(url: &str) -> Result<Vec<u8>, String> {
+    request(agent(), url, None, &DEFAULT_HEADERS, None, 25)
 }
 
-pub fn curl_get(url: &str, cookies: Option<&str>) -> Result<String, String> {
-    curl_get_with_headers(url, cookies, &DEFAULT_HEADERS)
-}
-
-pub fn curl_bytes(url: &str) -> Result<Vec<u8>, String> {
-    curl_output(url, curl_args(url, None, &DEFAULT_HEADERS))
+pub fn get_with_agent(client: &ureq::Agent, url: &str, timeout: u32) -> Result<String, String> {
+    request(client, url, None, &DEFAULT_HEADERS, None, timeout)
+        .map(|bytes| String::from_utf8_lossy(&bytes).into_owned())
 }
 
 pub fn get_json(url: &str, cookies: Option<&str>) -> Result<serde_json::Value, String> {
-    let s = curl_get(url, cookies)?;
-    parse_json(url, &s).map_err(|e| format!("数据解析失败\n{e}"))
+    let text = get(url, cookies)?;
+    parse_json(url, &text).map_err(|error| format!("数据解析失败\n{error}"))
 }
 
 pub fn parse_json(url: &str, body: &str) -> Result<serde_json::Value, serde_json::Error> {
@@ -183,24 +191,4 @@ pub fn query_string(params: &[(String, String)]) -> String {
         .map(|(k, v)| format!("{}={}", pct(k), pct(v)))
         .collect::<Vec<_>>()
         .join("&")
-}
-
-pub fn get_with_cookie_jar(
-    url: &str,
-    jar: &str,
-    headers_path: &str,
-    timeout: u32,
-) -> Result<String, String> {
-    let mut args = curl_args(url, None, &DEFAULT_HEADERS);
-    args.extend([
-        "--max-time".into(),
-        timeout.to_string(),
-        "-c".into(),
-        jar.into(),
-        "-b".into(),
-        jar.into(),
-        "-D".into(),
-        headers_path.into(),
-    ]);
-    curl_text(url, args)
 }

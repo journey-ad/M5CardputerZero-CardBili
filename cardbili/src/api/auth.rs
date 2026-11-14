@@ -49,42 +49,11 @@ fn put_ck(map: &mut Vec<(String, String)>, k: &str, v: &str) {
     }
 }
 
-fn read_jar(jar: &str) -> Vec<(String, String)> {
-    let mut out = Vec::new();
-    if let Ok(txt) = std::fs::read_to_string(jar) {
-        for raw in txt.lines() {
-            let line = raw.strip_prefix("#HttpOnly_").unwrap_or(raw);
-            if line.trim().is_empty() || line.starts_with('#') {
-                continue;
-            }
-            let f: Vec<&str> = line.split('\t').collect();
-            if f.len() >= 7 {
-                put_ck(&mut out, f[5], f[6]);
-            }
-        }
-    }
-    out
-}
-
 fn cookies_from_url(url: &str) -> Vec<(String, String)> {
     let mut out = Vec::new();
     if let Some(q) = url.split('?').nth(1) {
         for kv in q.split('&') {
             if let Some((k, v)) = kv.split_once('=') {
-                put_ck(&mut out, k, v);
-            }
-        }
-    }
-    out
-}
-
-fn parse_set_cookie(hdr: &str) -> Vec<(String, String)> {
-    let mut out = Vec::new();
-    for line in hdr.lines() {
-        let b = line.as_bytes();
-        if b.len() >= 11 && b[..11].eq_ignore_ascii_case(b"set-cookie:") {
-            let first = line[11..].split(';').next().unwrap_or("");
-            if let Some((k, v)) = first.split_once('=') {
                 put_ck(&mut out, k, v);
             }
         }
@@ -99,13 +68,12 @@ fn join_ck(map: &[(String, String)]) -> String {
         .join("; ")
 }
 
-pub fn qr_poll(key: &str, jar: &str) -> Poll {
+pub fn qr_poll(key: &str, client: &ureq::Agent) -> Poll {
     let url = format!(
         "https://passport.bilibili.com/x/passport-login/web/qrcode/poll?{}",
         net::query_string(&[("qrcode_key".into(), key.into())])
     );
-    let hdr = format!("{}.hdr", jar);
-    let body = match net::get_with_cookie_jar(&url, jar, &hdr, 25) {
+    let body = match net::get_with_agent(client, &url, 25) {
         Ok(body) => body,
         Err(error) => return Poll::Err(error),
     };
@@ -118,36 +86,20 @@ pub fn qr_poll(key: &str, jar: &str) -> Poll {
     crate::diagnostics::write(format_args!("[登录] 二维码状态 code={code}"));
     match code {
         0 => {
-            let mut map: Vec<(String, String)> = Vec::new();
-            for (k, val) in cookies_from_url(d["url"].as_str().unwrap_or("")) {
-                put_ck(&mut map, &k, &val);
-            }
-            for (k, val) in read_jar(jar) {
-                put_ck(&mut map, &k, &val);
-            }
-            let hdrtxt = std::fs::read_to_string(&hdr).unwrap_or_default();
-            for (k, val) in parse_set_cookie(&hdrtxt) {
-                put_ck(&mut map, &k, &val);
-            }
-            // SESSDATA 缺失时请求 crossDomain 获取 Cookie，再读取 Cookie 文件
-            if !map.iter().any(|(k, _)| k == "SESSDATA") {
-                if let Some(u) = d["url"].as_str() {
-                    if !u.is_empty() {
-                        let h2 = format!("{}.x", jar);
-                        let _ = net::get_with_cookie_jar(u, jar, &h2, 20);
-                        let t2 = std::fs::read_to_string(&h2).unwrap_or_default();
-                        for (k, val) in parse_set_cookie(&t2) {
-                            put_ck(&mut map, &k, &val);
-                        }
-                    }
-                }
-                for (k, val) in read_jar(jar) {
-                    put_ck(&mut map, &k, &val);
+            let mut map = cookies_from_url(d["url"].as_str().unwrap_or(""));
+            let has_session = map.iter().any(|(name, _)| name == "SESSDATA")
+                || client
+                    .cookie_jar_lock()
+                    .iter()
+                    .any(|cookie| cookie.name() == "SESSDATA");
+            // crossDomain 响应与重定向中的 Cookie 由登录客户端收集
+            if !has_session {
+                if let Some(url) = d["url"].as_str().filter(|url| !url.is_empty()) {
+                    let _ = net::get_with_agent(client, url, 20);
                 }
             }
-            if std::env::var("BILI_LOGIN_DEBUG").is_ok() {
-                eprintln!("LOGIN url={}", d["url"].as_str().unwrap_or(""));
-                eprintln!("LOGIN hdr={}", hdrtxt.chars().take(600).collect::<String>());
+            for cookie in client.cookie_jar_lock().iter() {
+                put_ck(&mut map, cookie.name(), cookie.value());
             }
             Poll::Success(join_ck(&map))
         }
