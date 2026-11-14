@@ -25,12 +25,16 @@ impl App {
             Some(TripleFeedback::Pending(since)) => (2, 16, since.elapsed().as_millis() / 100),
             None => match self.controls.like_hold {
                 Some((since, false)) if since.elapsed() >= TRIPLE_HOLD_DELAY => {
-                    let millis = since.elapsed().as_millis();
+                    let millis = (since.elapsed() - TRIPLE_HOLD_DELAY).as_millis();
                     (1, (millis / 125).min(16) as i32, millis / 100)
                 }
                 _ => (0, 0, 0),
             },
         };
+        if phase == 1 && self.ui.get_triple_phase() != 1 {
+            self.ui.set_bar("长按一键三连".into());
+            self.ui.set_bar_sticky(true);
+        }
         self.ui.set_triple_phase(phase);
         self.ui.set_triple_charge(charge);
         self.ui.set_triple_tick((tick % 12) as i32);

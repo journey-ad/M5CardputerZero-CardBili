@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-const TRIPLE_HOLD_DELAY: Duration = Duration::from_millis(250);
+const TRIPLE_HOLD_DELAY: Duration = Duration::from_millis(300);
 
 mod actions;
 pub(super) use actions::Controls;

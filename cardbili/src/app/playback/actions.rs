@@ -47,8 +47,6 @@ impl App {
         }
         self.controls.triple = None;
         self.controls.like_hold = Some((Instant::now(), false));
-        self.ui.set_bar("长按一键三连".into());
-        self.ui.set_bar_sticky(true);
     }
 
     pub(in crate::app) fn like_release(&mut self, cancel: bool) {
@@ -86,7 +84,7 @@ impl App {
             return;
         }
         if let Some((since, submitted)) = self.controls.like_hold.as_mut() {
-            if !*submitted && since.elapsed() >= Duration::from_secs(2) {
+            if !*submitted && since.elapsed() >= TRIPLE_HOLD_DELAY + Duration::from_secs(2) {
                 *submitted = true;
                 self.controls.triple = Some(TripleFeedback::Pending(Instant::now()));
                 self.ui.set_bar("".into());
