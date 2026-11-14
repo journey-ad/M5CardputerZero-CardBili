@@ -125,13 +125,9 @@ pub fn comments(aid: i64, page: u32, cookies: Option<&str>) -> Result<CommentPag
     Ok(CommentPage { items, has_more })
 }
 
-fn csrf(cookies: &str) -> Result<&str, String> {
-    cookies
-        .split(';')
-        .find_map(|part| {
-            let (name, value) = part.trim().split_once('=')?;
-            (name == "bili_jct" && !value.is_empty()).then_some(value)
-        })
+fn csrf(cookies: &str) -> Result<String, String> {
+    net::session::cookie(cookies, "bili_jct")
+        .filter(|value| !value.is_empty())
         .ok_or_else(|| "登录信息已失效，请重新登录".into())
 }
 

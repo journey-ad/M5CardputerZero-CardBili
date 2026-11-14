@@ -220,7 +220,7 @@ pub fn start_detail(bvid: String, cookies: Option<String>, request: u64, tx: Sen
 pub fn start_login(request: u64, tx: Sender<Msg>) {
     thread::spawn(move || {
         let client = crate::net::new_agent();
-        let (url, key) = match api::auth::qr_generate() {
+        let (url, key) = match api::auth::qr_generate(&client) {
             Ok(v) => v,
             Err(e) => {
                 let _ = tx.send(Msg::QrStatus(request, e));
@@ -228,7 +228,12 @@ pub fn start_login(request: u64, tx: Sender<Msg>) {
             }
         };
         let _ = tx.send(Msg::QrReady(request, url));
+        let expires = std::time::Instant::now() + Duration::from_secs(180);
         loop {
+            if std::time::Instant::now() >= expires {
+                let _ = tx.send(Msg::QrStatus(request, "二维码已过期，请刷新".into()));
+                break;
+            }
             match api::auth::qr_poll(&key, &client) {
                 api::auth::Poll::Success(ck) => {
                     let _ = tx.send(Msg::QrDone(request, ck));
@@ -247,7 +252,7 @@ pub fn start_login(request: u64, tx: Sender<Msg>) {
                     break;
                 }
             }
-            thread::sleep(Duration::from_secs(2));
+            thread::sleep(Duration::from_secs(1));
         }
     });
 }

@@ -42,7 +42,7 @@ pub enum Msg {
     Danmaku(u64, danmaku::Engine),
     QrReady(u64, String),
     QrStatus(u64, String),
-    QrDone(u64, String),
+    QrDone(u64, net::session::Login),
     Cover(usize, String, u32, u32, Vec<u8>),
     Acct(model::Account, Option<cache::Pixels>),
     FollowingAvatar(u64, String, cache::Pixels),

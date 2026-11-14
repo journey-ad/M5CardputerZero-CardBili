@@ -1,5 +1,5 @@
-use slint::ComponentHandle as _;
 use super::*;
+use slint::ComponentHandle as _;
 
 pub(super) struct App {
     pub(super) volume_queue: mpsc::SyncSender<i32>,
@@ -11,10 +11,8 @@ pub(super) struct App {
     pub(super) play_start: f64,
     pub(super) comments_request: u64,
     pub(super) requested_comments: Option<i64>,
-    pub(super) login_return: bool,
     pub(super) ui: AppWindow,
     pub(super) tx: mpsc::Sender<Msg>,
-    pub(super) cpath: String,
     pub(super) cookies: Option<String>,
     pub(super) mid: String,
     pub(super) ph: slint::Image,
@@ -112,14 +110,7 @@ impl App {
     pub(super) fn new(ui: AppWindow, tx: mpsc::Sender<Msg>, settings: Settings) -> Self {
         let meta = ui.global::<crate::Meta>();
         let login = ui.global::<crate::Login>();
-        let cpath = util::cookie_path();
-        let cookies: Option<String> = std::fs::read_to_string(&cpath)
-            .inspect_err(|error| {
-                crate::diagnostics::write(format_args!("[登录] 读取登录态失败: {error}"));
-            })
-            .ok()
-            .map(|s| s.trim().to_string())
-            .filter(|s| !s.is_empty());
+        let cookies = crate::net::session::restore();
         crate::diagnostics::write(format_args!(
             "[登录] 已读取登录态 登录={}",
             cookies.is_some()
@@ -146,56 +137,16 @@ impl App {
             .ok()
             .and_then(|s| s.parse::<i32>().ok())
             .unwrap_or(0);
-        let lists: Vec<Vec<model::Item>> = vec![Vec::new(); 5];
-        let covers: Vec<Vec<Option<slint::Image>>> = vec![Vec::new(); 5];
-        let covers_started = [false; 5];
-        let loaded = [false; 5];
-        let pages = [1usize; 5];
-        let has_more = [true; 5];
-        let loading_more = [false; 5];
-        let mine_detail: i32 = -1;
-        let acct: Option<model::Account> = None;
-        let avatar_img: Option<slint::Image> = None;
-        let acct_loaded = false;
-        let account_dirty = true;
-        let home_dirty = true;
-        let home_view = None;
-        let menu_view = None;
-        let player: Option<player::Player> = None;
-        let frames_in_seg: u64 = 0;
-        let gen: u64 = 1;
-        let danmaku: Option<danmaku::Engine> = None;
         let danmaku_view = DanmakuView::new(&ui);
         let mut status = String::from("加载中…");
-        let mut status_detail = String::new();
         let loading = tab.is_video();
 
         // 详情页
-        let detail_bvid = String::new();
-        let detail_request = 0u64;
-        let detail_display: Option<DetailDisplay> = None;
-        let play_request = 0u64;
-        let current_play: Option<model::PlayInfo> = None;
         let mut requested_play: Option<String> = None;
-        let requested_uploader: Option<model::Owner> = None;
-        let requested_login = false;
         let mut login_request = 0u64;
-        let login_uploader: Option<model::Owner> = None;
-        let collection = CollectionState::default();
-        let collection_request = 0u64;
-        let collection_dirty = false;
-        let back_stack: Vec<BackTarget> = Vec::new();
-        let row_tops = Vec::new();
-        let list_scroll = 0.0f64;
-        let grid_scroll = 0.0f64;
-        let scroll_context = None;
-        let about_scroll = 0.0f64;
         let mut requested_detail: Option<(String, String)> = None;
-        let detail_scroll: f64 = 0.0;
-        let detail_maxv: f64 = 0.0;
 
         // 跑马灯
-        let marq_t: f64 = 0.0;
         let last_tick = Instant::now();
 
         let force0 = std::env::var("BILI_FORCE").is_ok();
@@ -206,7 +157,6 @@ impl App {
         if let Ok(b) = std::env::var("BILI_AUTOPLAY") {
             if !b.is_empty() {
                 status = "正在加载视频…".into();
-                status_detail.clear();
                 requested_play = Some(b);
             }
         }
@@ -231,15 +181,7 @@ impl App {
             .and_then(|s| s.parse::<f64>().ok())
             .map(|s| Instant::now() + Duration::from_secs_f64(s));
 
-        let quit = false;
-        let seek_pending: Option<f64> = None;
-        let seek_deadline: Option<Instant> = None;
-        let esc_press: Option<Instant> = None;
-        let bar_until: Option<Instant> = None;
         let last_input = Instant::now();
-        let latest = None;
-        let settings_changed = false;
-        let go_back = false;
         Self {
             volume_queue: player::volume::worker(tx.clone()),
             history: history::History::new(settings.record_history),
@@ -254,10 +196,8 @@ impl App {
                 .unwrap_or(0.0),
             comments_request: 0,
             requested_comments: None,
-            login_return: false,
             ui,
             tx,
-            cpath,
             cookies,
             mid,
             ph,
@@ -270,42 +210,42 @@ impl App {
             view,
             help,
             sel,
-            lists,
-            covers,
-            covers_started,
-            loaded,
-            pages,
+            lists: vec![Vec::new(); 5],
+            covers: vec![Vec::new(); 5],
+            covers_started: [false; 5],
+            loaded: [false; 5],
+            pages: [1; 5],
             first_page_sizes: [0; 5],
-            has_more,
-            loading_more,
-            mine_detail,
-            acct,
-            avatar_img,
-            acct_loaded,
-            account_dirty,
-            home_dirty,
-            home_view,
-            menu_view,
-            player,
-            frames_in_seg,
-            gen,
-            danmaku,
+            has_more: [true; 5],
+            loading_more: [false; 5],
+            mine_detail: -1,
+            acct: None,
+            avatar_img: None,
+            acct_loaded: false,
+            account_dirty: true,
+            home_dirty: true,
+            home_view: None,
+            menu_view: None,
+            player: None,
+            frames_in_seg: 0,
+            gen: 1,
+            danmaku: None,
             danmaku_view,
             status,
-            status_detail,
+            status_detail: String::new(),
             loading,
             scroll_tap: None,
-            detail_bvid,
-            detail_request,
-            detail_display,
-            play_request,
-            current_play,
+            detail_bvid: String::new(),
+            detail_request: 0,
+            detail_display: None,
+            play_request: 0,
+            current_play: None,
             requested_play,
-            requested_uploader,
+            requested_uploader: None,
             requested_related: None,
-            requested_login,
+            requested_login: false,
             login_request,
-            login_uploader,
+            login_uploader: None,
             history_cursor: model::HistoryCursor::default(),
             history_request: 0,
             dynamic_offset: String::new(),
@@ -320,35 +260,35 @@ impl App {
             requested_home_list: None,
             requested_about: false,
             login_favorites: false,
-            collection,
-            collection_request,
-            collection_dirty,
-            back_stack,
-            row_tops,
-            list_scroll,
-            grid_scroll,
-            scroll_context,
-            about_scroll,
+            collection: CollectionState::default(),
+            collection_request: 0,
+            collection_dirty: false,
+            back_stack: Vec::new(),
+            row_tops: Vec::new(),
+            list_scroll: 0.0,
+            grid_scroll: 0.0,
+            scroll_context: None,
+            about_scroll: 0.0,
             requested_detail,
-            detail_scroll,
-            detail_maxv,
-            marq_t,
+            detail_scroll: 0.0,
+            detail_maxv: 0.0,
+            marq_t: 0.0,
             last_tick,
             deadline,
-            quit,
-            seek_pending,
-            seek_deadline,
-            esc_press,
-            bar_until,
+            quit: false,
+            seek_pending: None,
+            seek_deadline: None,
+            esc_press: None,
+            bar_until: None,
             last_input,
             direction_hold: None,
             return_hold: None,
             back_taps: (0, None),
             back_hint: false,
             return_home: false,
-            latest,
-            settings_changed,
-            go_back,
+            latest: None,
+            settings_changed: false,
+            go_back: false,
         }
     }
 }

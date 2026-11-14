@@ -59,7 +59,7 @@ impl Settings {
     }
 
     fn path() -> PathBuf {
-        PathBuf::from(crate::util::cookie_path()).with_file_name("settings.json")
+        crate::util::config_dir().join("settings.json")
     }
 }
 

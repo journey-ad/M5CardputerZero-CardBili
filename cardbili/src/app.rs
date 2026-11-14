@@ -28,9 +28,11 @@ use crate::{
     danmaku, menu, model, player, tasks, util, AppWindow, Cmt, HomeTab, MenuPosition, Msg, Page,
     VideoLayout, VideoRow,
 };
+use collection::CollectionState;
 use components::*;
+use detail::DetailDisplay;
 use detail::{show_detail, show_detail_loading, sync_thumb};
-use navigation::{BackTarget, CollectionState, DetailDisplay};
+use navigation::BackTarget;
 use slint::{ComponentHandle, ModelRc, Rgb8Pixel, VecModel};
 use state::App;
 use std::collections::{HashMap, HashSet};

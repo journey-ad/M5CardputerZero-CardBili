@@ -6,8 +6,10 @@ ADD --checksum=sha256:de668509caf9e35e3cd162473441fdb29538c6d96ed080292b3cf9e6fc
 WORKDIR /build
 RUN tar -xf /tmp/ffmpeg.tar.xz --strip-components=1
 COPY args.c fftools/cardbili_args.c
+COPY CHANGES.md CARDBILI-CHANGES.md
 RUN sed -i 's/^int main(int argc, char \*\*argv)/int ffmpeg_main(int argc, char **argv);\nint ffmpeg_main(int argc, char **argv)/' fftools/ffmpeg.c \
-    && sed -i '/^OBJS-ffmpeg +=/i OBJS-ffmpeg += fftools/cardbili_args.o' fftools/Makefile
+    && sed -i '/^OBJS-ffmpeg +=/i OBJS-ffmpeg += fftools/cardbili_args.o' fftools/Makefile \
+    && tar -cJf /tmp/ffmpeg-source.tar.xz -C /build .
 RUN ./configure \
     --disable-autodetect --disable-everything \
     --disable-shared --enable-static --enable-small --disable-debug --disable-doc \
@@ -23,8 +25,12 @@ RUN ./configure \
     && mkdir -p /out/licenses/ffmpeg \
     && install -m755 ffmpeg /out/cardbili-ffmpeg \
     && strip /out/cardbili-ffmpeg \
-    && cp COPYING.LGPLv3 COPYING.GPLv3 LICENSE.md /out/licenses/ffmpeg/
+    && cp COPYING.LGPLv3 COPYING.GPLv3 LICENSE.md /out/licenses/ffmpeg/ \
+    && cp /tmp/ffmpeg-source.tar.xz /out/ffmpeg-source.tar.xz \
+    && ./ffmpeg -version > /out/build-info.txt \
+    && apk info -v musl openssl libgcc >> /out/build-info.txt
 ADD --checksum=sha256:7d5450cb2d142651b8afa315b5f238efc805dad827d91ba367d8516bc9d49e7a \
     https://raw.githubusercontent.com/openssl/openssl/openssl-3.5.9/LICENSE.txt /out/licenses/openssl/LICENSE.txt
 FROM scratch
 COPY --from=build /out/ /
+COPY licenses/ /licenses/runtime/

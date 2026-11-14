@@ -1,4 +1,5 @@
 mod input;
+mod messages;
 mod mine;
 mod settings;
 mod view;

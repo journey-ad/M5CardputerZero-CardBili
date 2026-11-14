@@ -1,0 +1,23 @@
+title = "CardBili secret scanning"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "FNV-1a offset basis used to hash danmaku glyphs"
+regexTarget = "match"
+regexes = ['''key = 0xcbf2_9ce4_8422_2325u64''']
+
+[[rules]]
+id = "hardcoded-login-credential"
+description = "Literal Bilibili application credential"
+regex = '''(?i)(?:APP_SECRET|APP_KEY)\s*(?::\s*&str\s*)?=\s*["']([a-f0-9]{16,})["']'''
+secretGroup = 1
+
+[[rules]]
+id = "device-password"
+description = "Literal device password"
+regex = '''(?m)^\s*(?:export\s+)?DEVICE_(?:SUDO_)?PASS\s*=\s*["']?([^\s"'$`{}]{4,})'''
+secretGroup = 1
+[[rules.allowlists]]
+regexes = ['''yourpass''']

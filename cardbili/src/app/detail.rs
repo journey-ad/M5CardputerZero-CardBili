@@ -1,5 +1,11 @@
-use slint::ComponentHandle as _;
 use super::*;
+use slint::ComponentHandle as _;
+
+#[derive(Clone)]
+pub(super) struct DetailDisplay {
+    pub(super) data: model::Detail,
+    pub(super) cover: Option<slint::Image>,
+}
 
 /// 根据可视高度与滚动范围更新详情页滚动条
 pub(in crate::app) fn sync_thumb(ui: &AppWindow, scroll: f64, maxv: f64) {
@@ -74,6 +80,36 @@ pub(in crate::app) fn show_detail_loading(ui: &AppWindow, title: &str) {
 }
 
 impl App {
+    pub(super) fn detail_loaded(
+        &mut self,
+        request: u64,
+        data: model::Detail,
+        (w, h, raw): crate::cache::Pixels,
+    ) {
+        if self.page != Page::Detail || request != self.detail_request {
+            return;
+        }
+        let display = DetailDisplay {
+            data,
+            cover: if raw.is_empty() {
+                None
+            } else {
+                Some(util::raw_to_image(w, h, &raw))
+            },
+        };
+        if self.comment_page.aid != display.data.aid {
+            self.start_comments(display.data.aid);
+        }
+        self.setup_sections(
+            self.detail_bvid.clone(),
+            display.data.cid,
+            display.data.parts.clone(),
+        );
+        self.marq_t = 0.0;
+        show_detail(&self.ui, &display);
+        self.detail_display = Some(display);
+    }
+
     pub(super) fn detail_key(&mut self, k: &str, repeat: bool) {
         if k == "p" {
             self.sections.open = true;

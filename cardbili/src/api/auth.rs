@@ -1,111 +1,129 @@
-use crate::net;
+use crate::net::{
+    self,
+    session::{self, Credentials, Login},
+};
+use md5::{Digest, Md5};
+use serde_json::Value;
 
-pub fn qr_generate() -> Result<(String, String), String> {
-    let v = net::get_json(
-        "https://passport.bilibili.com/x/passport-login/web/qrcode/generate",
-        None,
-    )?;
-    if v["code"].as_i64() != Some(0) {
+const AUTH_CODE: &str = "https://passport.bilibili.com/x/passport-tv-login/qrcode/auth_code";
+const POLL: &str = "https://passport.bilibili.com/x/passport-tv-login/qrcode/poll";
+fn signed(mut params: Vec<(String, String)>) -> Result<Vec<(String, String)>, String> {
+    let credential = |name| {
+        std::env::var(name)
+            .ok()
+            .filter(|value| !value.trim().is_empty())
+            .ok_or_else(|| "请配置 BILI_APP_KEY 和 BILI_APP_SECRET 后登录".to_string())
+    };
+    let app_key = credential("BILI_APP_KEY")?;
+    let app_secret = credential("BILI_APP_SECRET")?;
+    params.push(("appkey".into(), app_key));
+    params.push(("ts".into(), net::now_secs().to_string()));
+    params.sort_by(|a, b| a.0.cmp(&b.0));
+    let signature = Md5::digest(format!("{}{app_secret}", net::query_string(&params)));
+    params.push(("sign".into(), format!("{signature:x}")));
+    Ok(params)
+}
+
+pub fn qr_generate(client: &ureq::Agent) -> Result<(String, String), String> {
+    session::prepare_anonymous(client)?;
+    let params = signed(vec![
+        ("local_id".into(), "0".into()),
+        ("platform".into(), "android".into()),
+        ("mobi_app".into(), "android_hd".into()),
+    ])?;
+    let value = net::post_query_with_agent(client, AUTH_CODE, &params)?;
+    if value["code"].as_i64() != Some(0) {
         return Err(format!(
             "二维码生成失败\ncode={} {}",
-            v["code"], v["message"]
+            value["code"], value["message"]
         ));
     }
-    let d = &v["data"];
-    let url = d["url"].as_str().unwrap_or("").to_string();
-    let key = d["qrcode_key"].as_str().unwrap_or("").to_string();
+    let data = &value["data"];
+    let url = data["url"].as_str().unwrap_or_default();
+    let key = data["auth_code"].as_str().unwrap_or_default();
     if url.is_empty() || key.is_empty() {
         return Err("二维码生成失败\n返回为空".into());
     }
-    Ok((url, key))
+    Ok((url.into(), key.into()))
 }
 
 pub enum Poll {
-    Success(String),
+    Success(Login),
     Scanned,
     Pending,
     Expired,
     Err(String),
 }
 
-const WANT_CK: [&str; 5] = [
-    "SESSDATA",
-    "bili_jct",
-    "DedeUserID",
-    "DedeUserID__ckMd5",
-    "buvid3",
-];
-
-fn put_ck(map: &mut Vec<(String, String)>, k: &str, v: &str) {
-    let k = k.trim();
-    let v = v.trim();
-    if k.is_empty() || v.is_empty() || !WANT_CK.contains(&k) {
-        return;
-    }
-    if let Some(e) = map.iter_mut().find(|(n, _)| n.as_str() == k) {
-        e.1 = v.to_string();
-    } else {
-        map.push((k.to_string(), v.to_string()));
-    }
-}
-
-fn cookies_from_url(url: &str) -> Vec<(String, String)> {
-    let mut out = Vec::new();
-    if let Some(q) = url.split('?').nth(1) {
-        for kv in q.split('&') {
-            if let Some((k, v)) = kv.split_once('=') {
-                put_ck(&mut out, k, v);
-            }
-        }
-    }
-    out
-}
-
-fn join_ck(map: &[(String, String)]) -> String {
-    map.iter()
-        .map(|(k, v)| format!("{}={}", k, v))
-        .collect::<Vec<_>>()
-        .join("; ")
-}
-
 pub fn qr_poll(key: &str, client: &ureq::Agent) -> Poll {
-    let url = format!(
-        "https://passport.bilibili.com/x/passport-login/web/qrcode/poll?{}",
-        net::query_string(&[("qrcode_key".into(), key.into())])
-    );
-    let body = match net::get_with_agent(client, &url, 25) {
-        Ok(body) => body,
+    let params = match signed(vec![
+        ("auth_code".into(), key.into()),
+        ("local_id".into(), "0".into()),
+    ]) {
+        Ok(params) => params,
         Err(error) => return Poll::Err(error),
     };
-    let v = match net::parse_json(&url, &body) {
-        Ok(v) => v,
-        Err(e) => return Poll::Err(format!("登录状态解析失败\n{e}")),
+    let value = match net::post_query_with_agent(client, POLL, &params) {
+        Ok(value) => value,
+        Err(error) => return Poll::Err(error),
     };
-    let d = &v["data"];
-    let code = d["code"].as_i64().unwrap_or(-1);
-    crate::diagnostics::write(format_args!("[登录] 二维码状态 code={code}"));
+    let code = value["code"].as_i64().unwrap_or(-1);
+    crate::diagnostics::write(format_args!("[登录] TV/HD 二维码状态 code={code}"));
     match code {
-        0 => {
-            let mut map = cookies_from_url(d["url"].as_str().unwrap_or(""));
-            let has_session = map.iter().any(|(name, _)| name == "SESSDATA")
-                || client
-                    .cookie_jar_lock()
-                    .iter()
-                    .any(|cookie| cookie.name() == "SESSDATA");
-            // crossDomain 响应与重定向中的 Cookie 由登录客户端收集
-            if !has_session {
-                if let Some(url) = d["url"].as_str().filter(|url| !url.is_empty()) {
-                    let _ = net::get_with_agent(client, url, 20);
-                }
-            }
-            for cookie in client.cookie_jar_lock().iter() {
-                put_ck(&mut map, cookie.name(), cookie.value());
-            }
-            Poll::Success(join_ck(&map))
-        }
-        86101 => Poll::Pending,
+        0 => match login(&value["data"]) {
+            Ok(login) => Poll::Success(login),
+            Err(error) => Poll::Err(error),
+        },
+        86039 => Poll::Pending,
         86090 => Poll::Scanned,
         86038 => Poll::Expired,
-        other => Poll::Err(format!("登录状态异常\ncode={} {}", other, d["message"])),
+        _ => Poll::Err(format!("登录状态异常\ncode={code} {}", value["message"])),
     }
+}
+
+fn login(data: &Value) -> Result<Login, String> {
+    let cookies = data["cookie_info"]["cookies"]
+        .as_array()
+        .ok_or("登录信息不完整，请重新扫码")?;
+    let token = |name: &str| -> Result<String, String> {
+        data[name]
+            .as_str()
+            .filter(|value| !value.is_empty())
+            .map(str::to_string)
+            .ok_or_else(|| "登录令牌不完整，请重新扫码".into())
+    };
+    let mut credentials = Credentials {
+        access_token: Some(token("access_token")?),
+        refresh_token: Some(token("refresh_token")?),
+        ..Default::default()
+    };
+    for cookie in cookies {
+        let name = cookie["name"]
+            .as_str()
+            .ok_or("登录 Cookie 格式错误，请重新扫码")?;
+        let value = cookie["value"]
+            .as_str()
+            .ok_or("登录 Cookie 格式错误，请重新扫码")?;
+        credentials.cookies.insert(name.into(), value.into());
+    }
+    for required in ["SESSDATA", "bili_jct", "DedeUserID"] {
+        if credentials
+            .cookies
+            .get(required)
+            .is_none_or(|value| value.is_empty())
+        {
+            return Err("登录信息不完整，请重新扫码".into());
+        }
+    }
+    // 登录账号与扫码前的匿名设备各自维护 Cookie
+    let client = net::new_agent();
+    for (name, value) in &credentials.cookies {
+        session::insert(&client, name, value).map_err(|_| "登录 Cookie 格式错误，请重新扫码")?;
+    }
+    session::ensure_buvid(&client).map_err(|_| "设备信息生成失败，请重试")?;
+    session::initialize(&client);
+    Ok(Login {
+        credentials,
+        client,
+    })
 }

@@ -1,117 +1,71 @@
-# CardBili for CardputerZero — 开发包
+# CardBili
 
-B 站客户端（Rust + Slint，320x170 直写 framebuffer），运行在 M5Stack CardputerZero（aarch64 Debian）。
+面向 M5Stack Cardputer Zero 的非官方 Bilibili 客户端，使用 Rust 与 Slint，在 320 × 170 屏幕上提供视频浏览、播放与弹幕
 
-## 目录结构
+适用于运行 aarch64 Linux 和 APPLaunch 的 Cardputer Zero；ESP32 系列 Cardputer 需要不同的运行环境
 
+## 功能
+
+- 推荐、热门、动态，以及历史记录、收藏和关注列表
+- 视频详情、评论、分 P 与合集浏览
+- H.264 / AAC 播放、进度跳转、倍速与弹幕
+- 列表、两列和三列布局，支持键盘操作与外观设置
+- TV/HD 扫码登录，需要自行配置应用凭据
+- macOS / Linux 桌面预览，便于开发界面
+
+## 界面
+
+现有开发版本的设置与关于页面，更多截图说明见 [截图说明](docs/screenshots/README.md)
+
+| 设置 | 关于 |
+| --- | --- |
+| ![CardBili 设置页面](docs/screenshots/settings.png) | ![CardBili 关于页面](docs/screenshots/about.png) |
+
+## 安装
+
+设备需要 APPLaunch、PulseAudio 或 PipeWire Pulse 服务，以及 `pacat` / `pactl` 和 CA 证书
+
+下载 Release 中配套的设备包、源码包与 `SHA256SUMS`，校验后在设备上解压、安装：
+
+```sh
+sha256sum -c SHA256SUMS
+tar -xzf cardbili-0.1.0-aarch64-linux-musl.tar.gz
+bash cardbili-0.1.0-aarch64-linux-musl/install.sh
 ```
-cardbili-dev/
-├── README.md                    本说明
-├── cardbili/                    完整源码（Rust + Slint）
-│   ├── Cargo.toml / Cargo.lock
-│   ├── build.rs                 Slint 编译，预渲染图标并内嵌完整位图字体
-│   ├── src/                     main/model/api/util/tasks/app/player/net
-│   ├── ui/app.slint             全部界面
-│   ├── assets/                  方向三角图标 tri_*.png
-│   ├── fonts/                   Fusion Pixel 8px 子集及 10px / 12px 完整字体
-│   └── syslib/libdl.a
-├── skill/cardputer-zero/        可复用技能（SKILL.md + references + scripts）
-├── docs/
-│   ├── cardbili.desktop         APPLaunch 启动项
-│   ├── cb_deploy.sh             部署脚本参考
-│   ├── build-config.example.toml 交叉编译 .cargo/config 示例
-│   ├── prototype/cyberbili.py   早期 Python 原型（历史参考）
-│   └── screenshots/             真机效果截图
-└── dist/                        已编译产物，可直接装到设备
-    ├── M5CardputerZero-CardBili aarch64 musl 静态 ELF
-    ├── cardbili.desktop
-    └── cardbili_{100,80}.png    APPLaunch 图标
-```
 
-## 构建
+安装脚本会请求设备的 sudo 授权，并重启当前用户的 APPLaunch 服务。版本号随 Release 更新，完整步骤和 SSH 部署见 [安装说明](docs/installation.md)
 
-目标：`aarch64-unknown-linux-musl`（静态 ELF）。
+## 开发
 
-```bash
-docker build --platform linux/arm64 --output type=local,dest=dist/ffmpeg cardbili/ffmpeg
+```sh
 rustup target add aarch64-unknown-linux-musl
-cd cardbili
-cargo build --release --target aarch64-unknown-linux-musl
-# 产物 target/aarch64-unknown-linux-musl/release/cardbili
+bash scripts/build-device.sh
+python3 scripts/package-release.py
 ```
 
-`.cargo/config` 里的 linker 路径是 macOS 专用的（rust-lld），换环境需按平台修改，见 `docs/build-config.example.toml`。Linux 上一般只需 musl 工具链；macOS 可用 `filosottile/musl-cross` 或 rust-lld（`-C link-self-contained=yes -L native=syslib`）。
+需要 Rust、LLVM、Docker 和 Python Pillow。平台依赖、桌面预览、目录结构与调试入口见 [开发说明](docs/development.md)
 
-## 安装到设备
+| 按键 | 操作 |
+| --- | --- |
+| Z / X / C / F | 左 / 下 / 右 / 上 |
+| Tab / Shift+Tab | 切换页签 |
+| V | 切换列表布局 |
+| Enter / Space | 播放 / 查看详情 |
+| Esc | 返回，视频列表中长按 2 秒退出 |
+| 屏幕下方 4–8 号物理键 | 执行对应位置的底栏操作，以当前提示为准 |
 
-设备地址、ssh 用户与口令属于本地环境敏感信息，存放在项目根的 `.secrets/device.env`（已在 `.gitignore` 忽略，不入库），字段模板见 `docs/device.env.example`。设备 IP 由手机热点临时分配，重连可能变化，以手机热点「已连接设备」列表为准。
+## 文档与工具
 
-```bash
-source .secrets/device.env
+- [安装与登录配置](docs/installation.md)
+- [开发与调试](docs/development.md)
+- [CI 与发布](docs/releasing.md)
+- [第三方许可证](THIRD_PARTY_NOTICES.md)
+- [Cardputer Zero skill](skill/cardputer-zero/SKILL.md)：设备访问、显示、按键、部署与调试
 
-scp dist/M5CardputerZero-CardBili dist/ffmpeg/cardbili-ffmpeg "$DEVICE_USER@$DEVICE_IP:/var/tmp/"
-scp -r dist/ffmpeg/licenses "$DEVICE_USER@$DEVICE_IP:/var/tmp/cardbili-ffmpeg-licenses"
-scp dist/cardbili.desktop          "$DEVICE_USER@$DEVICE_IP:/var/tmp/"
-scp dist/cardbili_100.png dist/cardbili_80.png "$DEVICE_USER@$DEVICE_IP:/var/tmp/"
+skill 可整体复制到支持 `SKILL.md` 的工具目录，保留 `references/` 与 `scripts/`。连接信息从当前项目的 `.secrets/device.env` 或 `DEVICE_ENV_FILE` 指定的文件读取
 
-ssh "$DEVICE_USER@$DEVICE_IP"
-echo "$DEVICE_SUDO_PASS" | sudo -S install -m0755 /var/tmp/M5CardputerZero-CardBili /var/tmp/cardbili-ffmpeg /usr/share/APPLaunch/bin/
-echo "$DEVICE_SUDO_PASS" | sudo -S install -m0644 /var/tmp/cardbili.desktop /usr/share/APPLaunch/applications/cardbili.desktop
-echo "$DEVICE_SUDO_PASS" | sudo -S install -m0644 /var/tmp/cardbili_100.png /usr/share/APPLaunch/share/images/cardbili_100.png
-echo "$DEVICE_SUDO_PASS" | sudo -S install -m0644 /var/tmp/cardbili_80.png  /usr/share/APPLaunch/share/images/cardbili_80.png
+## 许可证与服务
 
-echo "$DEVICE_SUDO_PASS" | sudo -S mkdir -p /usr/share/doc/cardbili-ffmpeg
-echo "$DEVICE_SUDO_PASS" | sudo -S cp -R /var/tmp/cardbili-ffmpeg-licenses/. /usr/share/doc/cardbili-ffmpeg/
+本项目原创代码、文档和 skill 使用 [MIT](LICENSE)。Slint、FFmpeg、字体与图标保留各自许可证；默认设备发布包中的 CardBili 可执行文件按 GPL-3.0-only 分发，FFmpeg 按 LGPLv3 分发，并提供对应源码，详见 [第三方许可证](THIRD_PARTY_NOTICES.md)
 
-export XDG_RUNTIME_DIR=/run/user/1000 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus
-systemctl --user restart APPLaunch.service
-```
-
-## 运行/调试
-
-launcher 只打开 `/dev/fb0` 与 `/dev/input/event3`。调试时先停 launcher，直接跑：
-
-```bash
-systemctl --user stop APPLaunch.service
-APPLAUNCH_LINUX_FBDEV_DEVICE=/dev/fb0 ./cardbili
-python3 /tmp/fbcap.py /tmp/shot.png   # 读 /dev/fb0 截图（见 skill/scripts/fbcap.py）
-systemctl --user start APPLaunch.service
-```
-
-测试用环境变量：
-
-- `BILI_TAB=0..4` 初始标签（推荐/热门/动态/我的/设置）
-- `BILI_VIEW=0|1|2` 列表/三列/两列
-- `BILI_DETAIL=<bvid>` 直接进详情
-- `BILI_AUTOPLAY=<bvid>` 直接播放，`BILI_START=<秒数>` 指定第一分 P 内的起播时间
-- `BILI_ABOUT=1` 直接进关于页
-- `BILI_HELP=1` 打开按键说明（注意：只判断变量是否存在）
-- `BILI_DUMP=1` 打印条目数/评论数/翻页信息
-- `BILI_DSCROLL=<px>` / `BILI_DSEND=1` 详情滚动位置
-- `BILI_LOGIN_DEBUG=1` 打印扫码轮询 cookie 细节
-
-## 拍摄演示
-
-约五分钟的可编辑演示脚本见 [demo/README.md](demo/README.md)，编排使用 TOML，包含 SSH 设备控制、按键动作、画面停留时间和介绍提词
-
-```bash
-./demo/demo.sh plan
-./demo/demo.sh check
-./demo/demo.sh run
-```
-
-## 按键
-
-- 方向键（Z/X/C/F 物理键为 左/下/右/上）：选择卡片、详情滚动
-- `Tab`：切换页签（循环）
-- `V`：列表/三列/两列切换
-- 回车：播放；空格：视频详情；ESC：返回
-- 底部 4/5/6/7/8 键对应底栏：刷新/登录/说明/返回（登录后隐藏「登录」）
-
-## 登录态
-
-扫码登录后整串 Cookie（含 SESSDATA）写入 `~/.config/cardbili/cookie.txt`，启动自动读取；SESSDATA 过期需重新扫码。
-
-## 开发要点（详见 skill）
-
-面板不是 Wayland，直接写 `/dev/fb0`（RGB565 小端，320x170，stride 640）；无内建方向键，键位映射见 `skill/references/key-layout.md`；Rust+Slint 用软件渲染器 + 构建时预渲染图标 + 完整中文位图字体 + 常驻 buffer 整帧 pwrite。更多硬件/调试/视频播放经验见 `skill/cardputer-zero/references/`。
+本项目与 Bilibili、M5Stack 无隶属关系。网络功能依赖 Bilibili 接口与账号权限，接口变动可能影响使用；视频、封面及弹幕等内容的权利归各自权利人

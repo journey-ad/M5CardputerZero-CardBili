@@ -186,13 +186,25 @@ pub fn parse_mid(cookies: &str) -> String {
 }
 
 pub fn state_dir() -> std::path::PathBuf {
-    std::path::PathBuf::from(std::env::var_os("HOME").unwrap_or_else(|| "/var/tmp".into()))
-        .join(".local/state/cardbili")
+    app_dir("XDG_STATE_HOME", ".local/state", "/var/tmp")
 }
 
-pub fn cookie_path() -> String {
-    let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".into());
-    format!("{}/.config/cardbili/cookie.txt", home)
+pub fn config_dir() -> std::path::PathBuf {
+    app_dir("XDG_CONFIG_HOME", ".config", "/tmp")
+}
+
+// 优先读取 XDG 环境变量，仅接受绝对路径，未设置时回退到 HOME 下的默认位置
+fn app_dir(variable: &str, default: &str, fallback_home: &str) -> std::path::PathBuf {
+    std::env::var_os(variable)
+        .map(std::path::PathBuf::from)
+        .filter(|path| path.is_absolute())
+        .unwrap_or_else(|| {
+            std::path::PathBuf::from(
+                std::env::var_os("HOME").unwrap_or_else(|| fallback_home.into()),
+            )
+            .join(default)
+        })
+        .join("cardbili")
 }
 
 /// 估算单行文字宽度，ASCII 字符按字号的 0.55 倍计算，其余字符按字号计算

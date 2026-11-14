@@ -1,7 +1,109 @@
-use slint::ComponentHandle as _;
 use super::*;
+use slint::ComponentHandle as _;
+
+#[derive(Default)]
+pub(super) struct CollectionState {
+    pub(super) source: model::VideoSource,
+    pub(super) profile: Option<model::AuthorProfile>,
+    pub(super) avatar: Option<slint::Image>,
+    pub(super) items: Vec<model::Item>,
+    pub(super) covers: Vec<Option<slint::Image>>,
+    pub(super) page: u32,
+    pub(super) pending_page: u32,
+    pub(super) first_page_size: usize,
+    pub(super) has_more: bool,
+    pub(super) loading: bool,
+    pub(super) error: String,
+    pub(super) selection: i32,
+    pub(super) list_scroll: f64,
+    pub(super) grid_scroll: f64,
+}
 
 impl App {
+    pub(super) fn author_profile_loaded(
+        &mut self,
+        request: u64,
+        result: Result<(model::AuthorProfile, Option<crate::cache::Pixels>), String>,
+    ) {
+        if self.page != Page::Collection || request != self.collection_request {
+            return;
+        }
+        match result {
+            Ok((profile, raw)) => {
+                self.collection.avatar =
+                    raw.map(|(w, h, pixels)| util::raw_to_image(w, h, &pixels));
+                self.collection.profile = Some(profile);
+            }
+            Err(error) => eprintln!("{error}"),
+        }
+    }
+
+    pub(super) fn collection_loaded(
+        &mut self,
+        request: u64,
+        loaded_page: u32,
+        result: Result<model::VideoPage, String>,
+    ) {
+        if self.page != Page::Collection || request != self.collection_request {
+            return;
+        }
+        if loaded_page == self.collection.pending_page {
+            self.collection.loading = false;
+        }
+        match result {
+            Ok(videos) => {
+                if let (model::VideoSource::Favorites(folder), Some(total)) =
+                    (&mut self.collection.source, videos.total)
+                {
+                    folder.count = total;
+                }
+                if loaded_page == 1 {
+                    self.sel = refresh_first_page(
+                        &mut self.collection.items,
+                        &mut self.collection.covers,
+                        &mut self.collection.first_page_size,
+                        videos.items,
+                        self.sel,
+                    );
+                } else {
+                    let mut known: HashSet<String> = self
+                        .collection
+                        .items
+                        .iter()
+                        .map(|item| item.bvid.clone())
+                        .collect();
+                    self.collection.items.extend(
+                        videos
+                            .items
+                            .into_iter()
+                            .filter(|item| known.insert(item.bvid.clone())),
+                    );
+                    self.collection
+                        .covers
+                        .resize_with(self.collection.items.len(), || None);
+                }
+                let missing = self
+                    .collection
+                    .items
+                    .iter()
+                    .zip(&self.collection.covers)
+                    .filter(|(_, cover)| cover.is_none())
+                    .map(|(item, _)| item.clone())
+                    .collect();
+                tasks::spawn_covers(5, missing, self.tx.clone());
+                if loaded_page >= self.collection.page {
+                    self.collection.page = loaded_page;
+                    self.collection.has_more = videos.has_more;
+                }
+                self.collection.error.clear();
+            }
+            Err(error) => {
+                self.collection.error = error;
+            }
+        }
+        self.collection_dirty = true;
+    }
+
     pub(super) fn load_author_profile(&self) {
         if let model::VideoSource::Author(owner) = &self.collection.source {
             tasks::load_author_profile(

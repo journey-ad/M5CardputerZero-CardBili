@@ -1,7 +1,6 @@
 [Desktop Entry]
 Type=Application
 Name=CardBili
-Name[zh_CN]=哔哩哔哩
 Comment=Bilibili client for CardputerZero
 Exec=/usr/share/APPLaunch/bin/M5CardputerZero-CardBili
 Icon=share/images/cardbili_100.png

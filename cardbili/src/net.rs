@@ -1,9 +1,14 @@
+pub mod session;
+
 use crate::diagnostics;
+use base64::Engine;
 use std::io::Read;
-use std::sync::{Mutex, OnceLock};
+use std::sync::OnceLock;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 pub const UA: &str = "Mozilla/5.0 (X11; Linux aarch64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+pub const API_UA: &str = "Dart/3.6 (dart:io)";
+pub const WEB_UA: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.2 Safari/605.1.15";
 pub const REFERER: &str = "https://www.bilibili.com/";
 
 pub struct RequestHeaders<'a> {
@@ -13,7 +18,7 @@ pub struct RequestHeaders<'a> {
 }
 
 const DEFAULT_HEADERS: RequestHeaders<'static> = RequestHeaders {
-    user_agent: UA,
+    user_agent: API_UA,
     referer: REFERER,
     origin: "https://www.bilibili.com",
 };
@@ -32,40 +37,6 @@ fn agent() -> &'static ureq::Agent {
     AGENT.get_or_init(new_agent)
 }
 
-fn session_agent(uri: &ureq::http::Uri, cookies: &str) -> Result<ureq::Agent, ureq::Error> {
-    struct Session {
-        host: String,
-        cookies: String,
-        client: ureq::Agent,
-    }
-    static SESSION: Mutex<Option<Session>> = Mutex::new(None);
-    let host = uri
-        .host()
-        .ok_or_else(|| ureq::Error::BadUri("missing host".into()))?;
-    let mut session = SESSION.lock().unwrap();
-    if let Some(saved) = session.as_ref() {
-        if saved.host == host && saved.cookies == cookies {
-            return Ok(saved.client.clone());
-        }
-    }
-    let client = new_agent();
-    {
-        let mut jar = client.cookie_jar_lock();
-        for pair in cookies.split(';').map(str::trim).filter(|s| !s.is_empty()) {
-            let cookie = ureq::Cookie::parse(format!("{pair}; Path=/"), uri)
-                .map_err(|_| ureq::Error::CookieValue("invalid saved cookie"))?;
-            jar.insert(cookie, uri)?;
-        }
-    }
-    // 登录凭据与响应 Cookie 由同一个会话管理，匿名请求使用独立客户端
-    *session = Some(Session {
-        host: host.into(),
-        cookies: cookies.into(),
-        client: client.clone(),
-    });
-    Ok(client)
-}
-
 pub fn now_secs() -> i64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -78,14 +49,24 @@ fn request(
     url: &str,
     cookies: Option<&str>,
     headers: &RequestHeaders<'_>,
-    form: Option<&str>,
+    body: Option<(&str, &str)>,
     timeout: u32,
 ) -> Result<Vec<u8>, String> {
     let endpoint = url.split(['?', '#']).next().unwrap_or(url);
-    let method = if form.is_some() { "POST" } else { "GET" };
+    let method = if body.is_some() { "POST" } else { "GET" };
     let started = Instant::now();
     diagnostics::write(format_args!("[请求] {method} {endpoint} 开始"));
     let result = (|| -> Result<_, ureq::Error> {
+        let uri = url
+            .parse::<ureq::http::Uri>()
+            .map_err(|_| ureq::Error::BadUri("invalid request URL".into()))?;
+        let bilibili = uri
+            .host()
+            .is_some_and(|host| host == "bilibili.com" || host.ends_with(".bilibili.com"));
+        let client = match cookies.filter(|value| !value.is_empty()) {
+            Some(cookie) if bilibili => session::client(cookie)?,
+            _ => client.clone(),
+        };
         let mut request = ureq::http::Request::builder()
             .method(method)
             .uri(url)
@@ -93,20 +74,38 @@ fn request(
             .header("Referer", headers.referer)
             .header("Origin", headers.origin)
             .header("Accept", "application/json, text/plain, */*");
-        if form.is_some() {
-            request = request.header("Content-Type", "application/x-www-form-urlencoded");
+        if bilibili {
+            request = request
+                .header("env", "prod")
+                .header("app-key", "android64")
+                .header("x-bili-aurora-zone", "sh001");
+            if let Some(mid) = client
+                .cookie_jar_lock()
+                .get("bilibili.com", "/", "DedeUserID")
+            {
+                let mid = mid.value();
+                let key = b"ad1va46a7lza";
+                let eid: Vec<u8> = mid
+                    .bytes()
+                    .enumerate()
+                    .map(|(i, byte)| byte ^ key[i % key.len()])
+                    .collect();
+                request = request.header("x-bili-mid", mid).header(
+                    "x-bili-aurora-eid",
+                    base64::engine::general_purpose::STANDARD_NO_PAD.encode(eid),
+                );
+            }
+        }
+        if let Some((_, content_type)) = body {
+            request = request.header("Content-Type", content_type);
         }
         let request = request.body(())?;
-        let client = match cookies.filter(|value| !value.is_empty()) {
-            Some(cookie) => session_agent(request.uri(), cookie)?,
-            None => client.clone(),
-        };
         let request = client
             .configure_request(request)
             .timeout_global(Some(Duration::from_secs(timeout.into())))
             .build();
-        let mut response = match form {
-            Some(body) => client.run(request.map(|_| body))?,
+        let mut response = match body {
+            Some((body, _)) => client.run(request.map(|_| body))?,
             None => client.run(request)?,
         };
         let status = response.status().as_u16();
@@ -134,6 +133,9 @@ fn request(
         }
         Ok((status, bytes))
     })();
+    if let Some(cookies) = cookies {
+        session::persist(cookies);
+    }
     match result {
         Ok((status, bytes)) => {
             diagnostics::write(format_args!(
@@ -180,7 +182,7 @@ pub fn post_form_json_timeout(
     timeout: u32,
 ) -> Result<serde_json::Value, String> {
     let headers = RequestHeaders {
-        user_agent: UA,
+        user_agent: WEB_UA,
         referer,
         origin: "https://www.bilibili.com",
     };
@@ -189,7 +191,7 @@ pub fn post_form_json_timeout(
         url,
         Some(cookies),
         &headers,
-        Some(&query_string(params)),
+        Some((&query_string(params), "application/x-www-form-urlencoded")),
         timeout,
     )?;
     parse_json(url, &String::from_utf8_lossy(&body))
@@ -207,6 +209,42 @@ pub fn get_bytes(url: &str) -> Result<Vec<u8>, String> {
 pub fn get_with_agent(client: &ureq::Agent, url: &str, timeout: u32) -> Result<String, String> {
     request(client, url, None, &DEFAULT_HEADERS, None, timeout)
         .map(|bytes| String::from_utf8_lossy(&bytes).into_owned())
+}
+
+pub fn post_query_with_agent(
+    client: &ureq::Agent,
+    url: &str,
+    params: &[(String, String)],
+) -> Result<serde_json::Value, String> {
+    let url = format!("{url}?{}", query_string(params));
+    let body = request(
+        client,
+        &url,
+        None,
+        &DEFAULT_HEADERS,
+        Some(("", "application/x-www-form-urlencoded")),
+        25,
+    )?;
+    parse_json(&url, &String::from_utf8_lossy(&body))
+        .map_err(|error| format!("登录状态解析失败\n{error}"))
+}
+
+pub fn post_json_with_agent(
+    client: &ureq::Agent,
+    url: &str,
+    headers: &RequestHeaders<'_>,
+    value: &serde_json::Value,
+) -> Result<serde_json::Value, String> {
+    let body = request(
+        client,
+        url,
+        None,
+        headers,
+        Some((&value.to_string(), "application/json")),
+        25,
+    )?;
+    parse_json(url, &String::from_utf8_lossy(&body))
+        .map_err(|error| format!("数据解析失败\n{error}"))
 }
 
 pub fn get_json(url: &str, cookies: Option<&str>) -> Result<serde_json::Value, String> {

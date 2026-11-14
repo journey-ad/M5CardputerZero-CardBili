@@ -1,5 +1,5 @@
-use slint::ComponentHandle as _;
 use super::*;
+use slint::ComponentHandle as _;
 
 #[derive(Clone, Default)]
 pub(super) struct Sections {
@@ -29,6 +29,21 @@ impl Sections {
 }
 
 impl App {
+    pub(super) fn chapters_loaded(
+        &mut self,
+        cid: i64,
+        result: Result<Vec<model::Chapter>, String>,
+    ) {
+        if self.sections.cid == cid {
+            self.sections.loading = false;
+            match result {
+                Ok(chapters) => self.sections.chapters = chapters,
+                Err(error) => self.sections.error = error,
+            }
+            self.sections.dirty = true;
+        }
+    }
+
     pub(super) fn setup_sections(&mut self, bvid: String, cid: i64, parts: Vec<model::VideoPart>) {
         if self.sections.cid == cid {
             return;

@@ -1,35 +1,29 @@
-#!/bin/sh
-# 一键部署 CardBili 到 CardputerZero 并重启 APPLaunch（用户级 systemd 服务）
-# 用法: bash skill/cardputer-zero/scripts/deploy.sh [本地二进制路径]（任意目录执行均可）
-# 默认部署 <项目根>/cardbili/target/aarch64-unknown-linux-musl/release/cardbili
-set -e
+#!/usr/bin/env bash
+# 上传发布包并在设备上运行安装脚本
+set -euo pipefail
 DIR=$(cd "$(dirname "$0")" && pwd)
-ROOT=$(cd "$DIR/../../.." && pwd)
-ENV_FILE="$ROOT/.secrets/device.env"
-[ -f "$ENV_FILE" ] && . "$ENV_FILE"
-DEVICE_IP=${DEVICE_IP:?请在 .secrets/device.env 配置 DEVICE_IP}
-DEVICE_USER=${DEVICE_USER:?请在 .secrets/device.env 配置 DEVICE_USER}
-DEVICE_SUDO_PASS=${DEVICE_SUDO_PASS:?请在 .secrets/device.env 配置 DEVICE_SUDO_PASS}
-
-BIN=${1:-$ROOT/cardbili/target/aarch64-unknown-linux-musl/release/cardbili}
-TARGET=/usr/share/APPLaunch/bin/M5CardputerZero-CardBili
-REMOTE_TMP=/var/tmp/cardbili
-SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
-export SSH_ASKPASS="$DIR/askpass.sh" SSH_ASKPASS_REQUIRE=force
-
-[ -f "$BIN" ] || { echo "找不到二进制: $BIN"; exit 1; }
-
-echo "==> 上传 $BIN"
-scp -q $SSH_OPTS "$BIN" "$DEVICE_USER@$DEVICE_IP:$REMOTE_TMP"
-
-echo "==> 安装到 $TARGET 并校验 md5"
-LOCAL_MD5=$(md5 -q "$BIN")
-REMOTE_MD5=$(printf '%s\n' "$DEVICE_SUDO_PASS" | ssh $SSH_OPTS "$DEVICE_USER@$DEVICE_IP" \
-  "sudo -S install -m0755 $REMOTE_TMP $TARGET >/dev/null 2>&1 && md5sum $TARGET | cut -d' ' -f1")
-echo "local=$LOCAL_MD5 remote=$REMOTE_MD5"
-[ "$LOCAL_MD5" = "$REMOTE_MD5" ] || { echo "!! md5 不一致，部署失败"; exit 1; }
-
-echo "==> 重启 APPLaunch（用户级服务，非系统级）"
-ssh $SSH_OPTS "$DEVICE_USER@$DEVICE_IP" \
-  'export XDG_RUNTIME_DIR=/run/user/$(id -u); export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u)/bus; systemctl --user restart APPLaunch.service; sleep 1; systemctl --user is-active APPLaunch.service'
-echo "==> 完成：launcher 已回到 Home，CardBili 需在设备上重新进入"
+PACKAGE=${1:?用法：deploy.sh 发布包.tar.gz}
+ENV_FILE=${DEVICE_ENV_FILE:-.secrets/device.env}
+if [[ -f "$ENV_FILE" ]]; then
+    set -a
+    # shellcheck disable=SC1090
+    source "$ENV_FILE"
+    set +a
+fi
+DEVICE_HOST=${DEVICE_HOST:-${DEVICE_USER:+$DEVICE_USER@}${DEVICE_IP:-}}
+: "${DEVICE_HOST:?请配置 DEVICE_HOST 或 DEVICE_USER 与 DEVICE_IP}"
+export DEVICE_HOST
+if [[ -n "${DEVICE_PASS:-}" ]]; then
+    export DEVICE_PASS
+    export SSH_ASKPASS="$DIR/askpass.sh" SSH_ASKPASS_REQUIRE=force
+fi
+test -f "$PACKAGE"
+REMOTE_DIR=$(ssh "$DEVICE_HOST" 'mktemp -d /var/tmp/cardbili.XXXXXXXX')
+[[ "$REMOTE_DIR" =~ ^/var/tmp/cardbili\.[a-zA-Z0-9]+$ ]]
+trap 'ssh "$DEVICE_HOST" "rm -rf -- '"'"'$REMOTE_DIR'"'"'"' EXIT
+scp "$PACKAGE" "$DEVICE_HOST:$REMOTE_DIR/package.tar.gz"
+LOCAL_SHA=$(shasum -a 256 "$PACKAGE" | cut -d ' ' -f 1)
+# shellcheck disable=SC2029
+REMOTE_SHA=$(ssh "$DEVICE_HOST" "sha256sum '$REMOTE_DIR/package.tar.gz'" | cut -d ' ' -f 1)
+[[ "$LOCAL_SHA" == "$REMOTE_SHA" ]] || { printf '发布包校验失败\n' >&2; exit 1; }
+ssh -t "$DEVICE_HOST" "cd '$REMOTE_DIR' && tar -xzf package.tar.gz && bash cardbili-*/install.sh"

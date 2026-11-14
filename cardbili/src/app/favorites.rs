@@ -1,5 +1,5 @@
-use slint::ComponentHandle as _;
 use super::*;
+use slint::ComponentHandle as _;
 
 #[derive(Default)]
 pub(super) struct Favorites {
@@ -15,6 +15,42 @@ pub(super) struct Favorites {
 }
 
 impl App {
+    pub(super) fn favorites_loaded(
+        &mut self,
+        request: u64,
+        result: Result<Vec<model::FavoriteFolder>, String>,
+    ) {
+        if request != self.favorites.request {
+            return;
+        }
+        self.favorites.loading = false;
+        match result {
+            Ok(folders) => {
+                let selected = self
+                    .favorites
+                    .folders
+                    .get(self.favorites.selection)
+                    .map(|folder| folder.id);
+                if let Some(index) = folders
+                    .iter()
+                    .position(|folder| Some(folder.id) == selected)
+                {
+                    self.favorites.selection = index;
+                }
+                let missing = folders
+                    .iter()
+                    .filter(|folder| !self.favorites.covers.contains_key(&folder.id))
+                    .cloned()
+                    .collect();
+                tasks::load_favorite_covers(missing, request, self.tx.clone());
+                self.favorites.folders = folders;
+                self.favorites.loaded = true;
+                self.favorites.dirty = true;
+            }
+            Err(error) => self.favorites.error = error,
+        }
+    }
+
     pub(super) fn load_favorites(&mut self, force: bool) {
         if self.favorites.loading {
             return;
@@ -71,7 +107,9 @@ impl App {
                 .iter()
                 .map(|folder| folder.count)
                 .sum();
-            self.ui.global::<crate::ListModel>().set_favorite_count(format!("{total} 条").into());
+            self.ui
+                .global::<crate::ListModel>()
+                .set_favorite_count(format!("{total} 条").into());
             self.favorites.selection = self
                 .favorites
                 .selection

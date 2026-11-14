@@ -2,6 +2,8 @@
 name = "cardbili"
 version = "0.1.0"
 edition = "2021"
+license = "MIT"
+description = "Bilibili client for the Linux-based Cardputer Zero"
 default-run = "cardbili"
 
 [build-dependencies]
@@ -24,6 +26,8 @@ base64 = "0.22"
 libc = "0.2"
 flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
 ureq = { version = "3", default-features = false, features = ["rustls", "gzip", "cookies"] }
+chacha20poly1305 = "0.10"
+getrandom = "0.2"
 
 [profile.release]
 opt-level = "z"

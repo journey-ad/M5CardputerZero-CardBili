@@ -1,6 +1,6 @@
-use slint::ComponentHandle as _;
 use super::super::*;
 use super::{TripleFeedback, TRIPLE_HOLD_DELAY};
+use slint::ComponentHandle as _;
 
 #[derive(Default)]
 pub(in crate::app) struct Controls {
@@ -11,6 +11,37 @@ pub(in crate::app) struct Controls {
 }
 
 impl App {
+    pub(in crate::app) fn liked_loaded(&mut self, request: u64, result: Result<bool, String>) {
+        if self.page == Page::Player && request == self.play_request {
+            self.controls.busy = false;
+            match result {
+                Ok(liked) => self.controls.liked = Some(liked),
+                Err(error) => self.toast(&error.replace('\n', " · ")),
+            }
+        }
+    }
+
+    pub(in crate::app) fn reaction_finished(
+        &mut self,
+        request: u64,
+        result: Result<model::ReactionResult, String>,
+    ) {
+        if self.page == Page::Player && request == self.play_request {
+            self.controls.busy = false;
+            match result {
+                Ok(result) => {
+                    self.finish_triple(result.triple_complete);
+                    self.controls.liked = Some(result.liked);
+                    self.toast(&result.message);
+                }
+                Err(error) => {
+                    self.finish_triple(false);
+                    self.toast(&error.replace('\n', " · "));
+                }
+            }
+        }
+    }
+
     pub(in crate::app) fn toast(&self, text: &str) {
         let status = self.ui.global::<crate::Status>();
         status.set_bar(text.into());
@@ -37,7 +68,6 @@ impl App {
         }
         if self.cookies.is_none() {
             self.requested_login = true;
-            self.login_return = true;
             return;
         }
         if self.controls.busy {

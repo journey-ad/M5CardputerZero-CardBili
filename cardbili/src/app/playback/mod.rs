@@ -1,3 +1,4 @@
+mod messages;
 use std::time::Duration;
 
 const TRIPLE_HOLD_DELAY: Duration = Duration::from_millis(300);
