@@ -82,29 +82,12 @@ python3 scripts/check-release.py --deb dist/cardbili_0.1.0_arm64.deb
 
 `dist/` 中生成 `.deb`、对应源码包和 `SHA256SUMS`。打包优先使用本机 `dpkg-deb`，缺少时通过 Docker 执行
 
-[Cardputer Zero skill](skill/cardputer-zero/SKILL.md) 提供构建、部署、截图与设备调试说明；[官方开发 skill](.agents/skills/cardputer-zero-application/SKILL.md) 和 [官方发布 skill](.agents/skills/cardputer-app-publish/SKILL.md) 已安装在项目中
+[Cardputer Zero skill](skill/cardputer-zero/SKILL.md) 提供构建、部署、截图与设备调试说明，也可参考项目中的 [官方开发 skill](.agents/skills/cardputer-zero-application/SKILL.md)
 
 欢迎提交 Issues 和 Pull Request。问题反馈请附应用版本、复现步骤和相关日志，播放问题可附视频 BV 号
 
-## 发布
-
-商店元数据在 `app-builder.json` 中维护，版本需与 `cardbili/Cargo.toml`、`cardbili/Cargo.lock` 一致
-
-CI 自动检查代码、凭据、商店元数据和安装包。推送 `v<版本>` 标签后生成 GitHub Release 草稿，附件包含 `.deb`、对应源码包与校验文件
-
-提交官方应用商店前，在安装了 [czdev](https://github.com/CardputerZero/CardputerZero-AppBuilder) 和 `dpkg-deb` 的环境执行：
-
-```sh
-python3 .agents/skills/cardputer-app-publish/scripts/prepublish_check.py \
-  --deb dist/cardbili_0.1.0_arm64.deb --app-dir .
-czdev login
-czdev publish --deb dist/cardbili_0.1.0_arm64.deb
-```
-
-首次上架需在发布 PR 中附真机运行视频，并提供公开的对应源码下载地址。也可通过 [官方发布页面](https://dev.cardputer.cc/#/upload) 提交
-
 ## 许可证
 
-项目原创代码、文档与 skill 使用 [MIT](LICENSE) 许可证。默认设备可执行文件包含 Slint，按 GPL-3.0-only 分发；FFmpeg 按 LGPLv3 分发，Release 提供对应源码，详见 [第三方许可证](THIRD_PARTY_NOTICES.md)
+项目原创代码、文档与 skill 使用 [MIT](LICENSE) 许可证。默认设备可执行文件包含 Slint，按 GPL-3.0-only 分发；FFmpeg 按 LGPLv3 分发，对应源码可在 Releases 下载，详见 [第三方许可证](THIRD_PARTY_NOTICES.md)
 
 本项目与 Bilibili、M5Stack 无隶属关系。网络功能受 Bilibili 接口与账号权限影响，视频、封面及弹幕等内容的权利归各自权利人
