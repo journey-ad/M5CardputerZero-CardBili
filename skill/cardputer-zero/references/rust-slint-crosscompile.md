@@ -90,12 +90,10 @@ printf dummy > syslib/_dummy.txt
 ## 构建 & 部署
 ```sh
 export PATH=$HOME/.cargo/bin:$PATH
-export CARGO_HOME=/home/developer/.dsh/profiles/desktop/cpz/.cargo-home   # 放 workspace 内，避免每次要权限
 export http_proxy=https_proxy=http://127.0.0.1:7890
-cd /home/developer/.dsh/profiles/desktop/cpz/cardbili
+cd /home/developer/src/cardbili-dev/cardbili
 cargo build --release --target aarch64-unknown-linux-musl
 # 产物 target/aarch64-unknown-linux-musl/release/cardbili （静态 musl ELF）
-source .secrets/device.env
-scp target/aarch64-unknown-linux-musl/release/cardbili "$DEVICE_USER@$DEVICE_IP:/tmp/cardbili"
 ```
+部署：一键 `skill/cardputer-zero/scripts/deploy.sh`（scp 到 `/var/tmp/cardbili` → 远程 `sudo install` 到 `/usr/share/APPLaunch/bin/M5CardputerZero-CardBili` → 用户级 `systemctl --user restart APPLaunch.service` → md5 校验）。
 含 zpix 嵌入后产物约 6.6MB；纯 Slint 无大字体约 1MB。

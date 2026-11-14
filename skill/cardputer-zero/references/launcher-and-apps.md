@@ -29,19 +29,20 @@ systemctl --user stop|start|restart APPLaunch.service
 - 打开外部 app：launcher exec 子进程并暂停自身，返回时日志 `[cp0] Returned to launcher`。
 
 ## 装机套路（自研 app）
+一键部署（scp + 远程 install + 用户级重启 + md5 校验）直接跑 `scripts/deploy.sh`（默认部署 CardBili，可传二进制路径）。手工分步时注意：`install` 必须在**设备上**执行，本机 `sudo` 写不到设备；用 ssh 远程执行：
 ```sh
-# 设备地址/口令见项目根 .secrets/device.env
 source .secrets/device.env
-# 1) 传产物
-scp app "$DEVICE_USER@$DEVICE_IP:/tmp/app"
-# 2) 安装
-echo "$DEVICE_SUDO_PASS" | sudo -S install -m0755 /tmp/app /usr/share/APPLaunch/bin/M5CardputerZero-MyApp
-echo "$DEVICE_SUDO_PASS" | sudo -S install -m0644 icon_100.png /usr/share/APPLaunch/share/images/myapp_100.png
-echo "$DEVICE_SUDO_PASS" | sudo -S install -m0644 myapp.desktop /usr/share/APPLaunch/applications/myapp.desktop
-# 3) 重启 launcher 生效
-systemctl --user restart APPLaunch.service
+# 1) 传产物到设备
+scp app "$DEVICE_USER@$DEVICE_IP:/var/tmp/app"
+# 2) 远程安装（sudo 密码走 stdin，DEVICE_SUDO_PASS 见 device.env）
+printf '%s\n' "$DEVICE_SUDO_PASS" | ssh "$DEVICE_USER@$DEVICE_IP" \
+  'sudo -S install -m0755 /var/tmp/app /usr/share/APPLaunch/bin/M5CardputerZero-MyApp'
+# 3) 用户级重启 launcher（APPLaunch 是 user service，非系统级）
+ssh "$DEVICE_USER@$DEVICE_IP" \
+  'export XDG_RUNTIME_DIR=/run/user/$(id -u); export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u)/bus; systemctl --user restart APPLaunch.service'
 ```
-校验安装：`md5sum /usr/share/APPLaunch/bin/M5CardputerZero-MyApp` 与本地一致。
+校验安装：`ssh ... 'md5sum /usr/share/APPLaunch/bin/M5CardputerZero-MyApp'` 与本地一致。
+注意：重启 launcher 会回到 Home（App Store），CardBili 需在设备上重新进入才能看到；SSH 无法模拟按键。
 
 ## 确认已注册（可选）
 读 launcher 进程内存扫描字符串（sudo）：在 `/proc/<pid>/mem` 的 heap 段搜应用名，出现次数 >0 表示 desktop 已加载。已有脚本思路（`scan.py`）。仅作辅助，最终以真机翻页为准。
