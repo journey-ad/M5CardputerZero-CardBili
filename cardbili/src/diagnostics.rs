@@ -93,6 +93,52 @@ pub(crate) fn write(message: fmt::Arguments<'_>) {
     }
 }
 
+static INSTALL_ATTEMPTED: std::sync::Once = std::sync::Once::new();
+
+// 桌面版找不到 ffmpeg 时，尝试用系统包管理器安装一次
+fn ensure_ffmpeg_installed() {
+    INSTALL_ATTEMPTED.call_once(|| {
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            const CREATE_NEW_CONSOLE: u32 = 0x0000_0010;
+            let script = "winget install --id Gyan.FFmpeg -e --accept-source-agreements --accept-package-agreements; Write-Host 'FFmpeg 安装完成，按回车关闭窗口'; Read-Host | Out-Null";
+            match Command::new("powershell")
+                .args(["-NoProfile", "-Command", script])
+                .creation_flags(CREATE_NEW_CONSOLE)
+                .spawn()
+            {
+                Ok(_) => write(format_args!(
+                    "[ffmpeg] 未找到 ffmpeg，已打开 PowerShell 调用 winget 安装"
+                )),
+                Err(error) => write(format_args!("[ffmpeg] 打开安装窗口失败: {error}")),
+            }
+        }
+        #[cfg(target_os = "macos")]
+        {
+            let script = "tell application \"Terminal\" to do script \"brew install ffmpeg\"";
+            match Command::new("osascript")
+                .args([
+                    "-e",
+                    script,
+                    "-e",
+                    "tell application \"Terminal\" to activate",
+                ])
+                .spawn()
+            {
+                Ok(_) => write(format_args!(
+                    "[ffmpeg] 未找到 ffmpeg，已打开终端调用 brew 安装"
+                )),
+                Err(error) => write(format_args!("[ffmpeg] 打开安装窗口失败: {error}")),
+            }
+        }
+        #[cfg(not(any(windows, target_os = "macos")))]
+        {
+            write(format_args!("[ffmpeg] 未找到 ffmpeg，请先安装"));
+        }
+    });
+}
+
 pub(crate) fn spawn(
     kind: &'static str,
     args: &[String],
@@ -216,6 +262,9 @@ pub(crate) fn spawn(
         }
         Err(error) => {
             write(format_args!("[{kind}] ffmpeg 启动失败: {error}"));
+            if cfg!(feature = "desktop") && error.kind() == io::ErrorKind::NotFound {
+                ensure_ffmpeg_installed();
+            }
             None
         }
     }
