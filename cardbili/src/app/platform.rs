@@ -221,7 +221,7 @@ impl Display {
             hold_release,
         }
     }
-    pub(super) fn poll_keys(&mut self) {
+    pub(super) fn poll_keys(&mut self, _ui: &AppWindow) {
         #[cfg(feature = "desktop")]
         if let Some((x, y)) = self.win.get_mouse_pos(minifb::MouseMode::Clamp) {
             use slint::platform::{PointerEventButton, WindowEvent};
@@ -235,7 +235,9 @@ impl Display {
             }
             let down = self.win.get_mouse_down(minifb::MouseButton::Left);
             if down != self.pointer_down {
-                if down {
+                let emulate_bottom_bar = _ui.global::<crate::Nav>().get_page() != Page::Player
+                    || _ui.global::<crate::Sections>().get_open();
+                if down && emulate_bottom_bar {
                     if let Some(key) = crate::desktop_shim::bottom_bar_key(x, y, HEIGHT as f32) {
                         self.mouse_slot = Some(key);
                         let _ = self.ktx.send(key.to_string());
@@ -257,6 +259,13 @@ impl Display {
                 };
                 self.window.window().dispatch_event(event);
                 self.pointer_down = down;
+            }
+            if let Some((delta_x, delta_y)) = self.win.get_scroll_wheel() {
+                self.window.window().dispatch_event(WindowEvent::PointerScrolled {
+                    position,
+                    delta_x: delta_x * 22.0,
+                    delta_y: delta_y * 22.0,
+                });
             }
         }
 

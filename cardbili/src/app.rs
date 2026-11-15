@@ -97,7 +97,7 @@ pub fn run(settings: Settings) {
         while let Ok(message) = rx.try_recv() {
             app.handle_message(message);
         }
-        display.poll_keys();
+        display.poll_keys(&app.ui);
         while let Ok(key) = krx.try_recv() {
             app.handle_key(key);
         }
