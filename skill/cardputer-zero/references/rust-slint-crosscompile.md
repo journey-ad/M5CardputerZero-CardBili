@@ -10,7 +10,7 @@ CardBili 目标为 `aarch64-unknown-linux-musl`，使用 Slint 1.8 软件渲染�
 rustup target add aarch64-unknown-linux-musl
 bash scripts/build-device.sh
 python3 scripts/package-release.py
-python3 scripts/check-release.py --deb dist/cardbili_0.1.0_arm64.deb
+python3 scripts/check-release.py --deb dist/cardbili_0.2.0_arm64.deb
 ```
 
 依赖 Rust、LLVM、Docker、Python 3.11 或更新版本及 Pillow；Rust 许可证由 `rust-docs` 组件提供。macOS 使用 Homebrew LLVM，Linux 使用系统 clang / llvm-ar；脚本根据 `rustc --print sysroot` 与宿主三元组定位 rust-lld。交叉编译 C 依赖时使用支持目标平台的 LLVM
