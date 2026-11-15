@@ -227,7 +227,8 @@ impl App {
                     tasks::spawn_covers(crate::app::home::COLLECTION_SOURCE, missing_covers, self.tx.clone());
                 }
                 if !matches!(self.collection.source, model::VideoSource::Related(_)) {
-                    self.collection.loading = self.collection.items.is_empty();
+                    self.collection.loading = self.collection.items.is_empty()
+                        || matches!(self.collection.source, model::VideoSource::FollowedLive);
                     self.collection.pending_page = 1;
                     tasks::load_collection(
                         self.collection.source.clone(),

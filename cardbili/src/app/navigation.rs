@@ -29,6 +29,11 @@ impl App {
             self.login_favorites = true;
             self.requested_login = true;
         }
+        if self.requested_followed_live && self.cookies.is_none() {
+            self.requested_followed_live = false;
+            self.login_followed_live = true;
+            self.requested_login = true;
+        }
         if self.go_back
             && self.page == Page::Detail
             && self.detail_scroll >= self.ui.global::<crate::Detail>().get_viewport_h() as f64
@@ -38,6 +43,7 @@ impl App {
             self.ui.global::<crate::Detail>().set_scroll(0.0);
         }
         let navigating = self.requested_favorites
+            || self.requested_followed_live
             || self.requested_folder.is_some()
             || self.requested_home_list.is_some()
             || self.requested_about
@@ -242,6 +248,10 @@ impl App {
                 self.requested_related
                     .take()
                     .map(model::VideoSource::Related)
+            })
+            .or_else(|| {
+                std::mem::take(&mut self.requested_followed_live)
+                    .then_some(model::VideoSource::FollowedLive)
             });
         if let Some(source) = collection_source {
             self.page = Page::Collection;

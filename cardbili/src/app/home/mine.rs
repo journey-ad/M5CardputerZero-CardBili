@@ -8,7 +8,7 @@ impl App {
                     self.sel = (self.sel - 1).max(0);
                 }
                 "DOWN" | "x" | "s" | "RIGHT" | "c" => {
-                    if self.sel < 2 {
+                    if self.sel < 3 {
                         self.sel += 1;
                     }
                 }
@@ -19,8 +19,10 @@ impl App {
                     }
                     if self.sel == 1 {
                         self.requested_home_list = Some(3);
-                    } else {
+                    } else if self.sel == 2 {
                         self.requested_favorites = true;
+                    } else {
+                        self.requested_followed_live = true;
                     }
                 }
                 "r" => {

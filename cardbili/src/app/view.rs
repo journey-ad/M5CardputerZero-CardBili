@@ -174,6 +174,18 @@ impl App {
             self.settings.menu_position,
             retry,
         );
+        if self.page == Page::Collection
+            && matches!(self.collection.source, model::VideoSource::FollowedLive)
+            && !self.help
+        {
+            let first = usize::from(self.settings.menu_position == MenuPosition::Left);
+            actions[first] = Some(menu::Action::Play);
+            actions[first + 1] = Some(if retry {
+                menu::Action::Retry
+            } else {
+                menu::Action::Refresh
+            });
+        }
         if self.page == Page::Detail && self.back_stack.last().is_some_and(|target| {
             matches!(target, BackTarget::Collection(collection) if matches!(collection.source, model::VideoSource::Author(_)))
         }) {

@@ -158,6 +158,14 @@ pub fn load_collection(
     tx: Sender<Msg>,
 ) {
     thread::spawn(move || {
+        if matches!(source, crate::model::VideoSource::FollowedLive) {
+            let result = cookies
+                .as_deref()
+                .ok_or_else(|| "未登录，请先登录".to_string())
+                .and_then(|cookies| api::live::followed_rooms(page, cookies));
+            let _ = tx.send(Msg::Collection(request, page, result));
+            return;
+        }
         if let crate::model::VideoSource::Related(bvid) = &source {
             crate::cache::set_force(true);
             let result = api::related_videos(bvid, cookies.as_deref());
@@ -177,6 +185,7 @@ pub fn load_collection(
                 crate::model::VideoSource::Related(bvid) => {
                     api::related_videos(bvid, cookies.as_deref())
                 }
+                crate::model::VideoSource::FollowedLive => unreachable!(),
             },
             |result| {
                 let _ = tx.send(Msg::Collection(request, page, result));

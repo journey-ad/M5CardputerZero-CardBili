@@ -58,6 +58,11 @@ impl App {
                     folder.count = total;
                 }
                 if loaded_page == 1 {
+                    if matches!(self.collection.source, model::VideoSource::FollowedLive) {
+                        // 直播刷新后丢弃旧分页，避免保留下播房间。
+                        self.collection.first_page_size = self.collection.items.len();
+                        self.collection.page = 0;
+                    }
                     self.sel = refresh_first_page(
                         &mut self.collection.items,
                         &mut self.collection.covers,
@@ -121,6 +126,7 @@ impl App {
             g_collection.set_is_author(false);
             let title = match &self.collection.source {
                 model::VideoSource::Related(_) => "相关推荐".to_string(),
+                model::VideoSource::FollowedLive => "关注的直播".to_string(),
                 model::VideoSource::Favorites(folder) => {
                     format!("{} · {} 条", folder.title, folder.count)
                 }
@@ -128,10 +134,10 @@ impl App {
             };
             g_collection.set_title(title.into());
             g_collection.set_empty(
-                if matches!(self.collection.source, model::VideoSource::Favorites(_)) {
-                    "暂无收藏视频"
-                } else {
-                    "暂无相关视频"
+                match self.collection.source {
+                    model::VideoSource::Favorites(_) => "暂无收藏视频",
+                    model::VideoSource::FollowedLive => "关注的人暂未开播",
+                    _ => "暂无相关视频",
                 }
                 .into(),
             );
@@ -169,6 +175,15 @@ impl App {
             return;
         }
         match k {
+            "ENTER" | "SPACE"
+                if matches!(self.collection.source, model::VideoSource::FollowedLive) =>
+            {
+                self.requested_live = self
+                    .collection
+                    .items
+                    .get(self.sel as usize)
+                    .and_then(|item| item.bvid.parse().ok());
+            }
             "ENTER" => {
                 self.requested_play = self
                     .collection
@@ -184,10 +199,20 @@ impl App {
                     .map(|item| (item.bvid.clone(), item.title.clone()))
             }
             "r" => {
+                let followed_live =
+                    matches!(self.collection.source, model::VideoSource::FollowedLive);
+                let retry_page =
+                    !self.collection.error.is_empty() && self.collection.pending_page > 1;
                 self.collection_request += 1;
                 self.collection.loading = true;
                 self.collection.error.clear();
-                self.collection.pending_page = if self.collection.items.is_empty() {
+                self.collection.pending_page = if followed_live {
+                    if retry_page {
+                        self.collection.pending_page
+                    } else {
+                        1
+                    }
+                } else if self.collection.items.is_empty() {
                     1
                 } else {
                     self.collection.page + 1

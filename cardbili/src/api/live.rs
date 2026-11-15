@@ -1,5 +1,8 @@
 use super::{api_err, cache, model, net, Item, Value};
 
+mod following;
+pub use following::rooms as followed_rooms;
+
 // 分区目录同时保留一级分区与子分区
 pub fn areas() -> Result<Vec<model::LiveArea>, String> {
     let value = cache::api_json(

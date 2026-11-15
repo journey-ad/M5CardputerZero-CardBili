@@ -24,6 +24,7 @@ pub enum VideoSource {
     Author(Owner),
     Related(String),
     Favorites(FavoriteFolder),
+    FollowedLive,
 }
 
 impl Default for VideoSource {

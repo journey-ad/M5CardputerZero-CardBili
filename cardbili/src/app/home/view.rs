@@ -21,7 +21,7 @@ impl App {
                 let general = preferences.get_general_items().row_count() as i32;
                 appearance + general
             } else if self.tab == HomeTab::Mine && self.mine_detail < 0 {
-                3
+                4
             } else {
                 self.lists[list_source(self.tab, self.mine_detail).unwrap()].len() as i32
             };

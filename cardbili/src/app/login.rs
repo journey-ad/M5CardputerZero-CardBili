@@ -14,6 +14,7 @@ impl App {
         self.login_uploader = None;
         self.login_following = false;
         self.login_favorites = false;
+        self.login_followed_live = false;
     }
 
     pub(super) fn qr_ready(&mut self, request: u64, url: String) {
@@ -60,6 +61,11 @@ impl App {
             request: self.favorites.request + 1,
             ..Default::default()
         };
+        if self.login_followed_live {
+            self.login_followed_live = false;
+            self.requested_followed_live = true;
+            return;
+        }
         if self.login_favorites {
             self.login_favorites = false;
             self.requested_favorites = true;
