@@ -65,6 +65,7 @@ impl App {
         if self.return_home {
             self.return_to_home();
         }
+        crate::cache::pause_images(self.page == Page::Player);
         if self.back_hint {
             self.ui
                 .global::<crate::Status>()

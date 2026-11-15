@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Mutex, Once};
+use std::sync::{Condvar, Mutex, Once};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde_json::Value;
@@ -19,6 +19,17 @@ pub type Pixels = (u32, u32, Vec<u8>);
 
 // 接口和图片共用 1 GiB 缓存空间
 pub const MAX_BYTES: u64 = 1024 * 1024 * 1024;
+
+static IMAGE_DOWNLOAD_PAUSED: (Mutex<bool>, Condvar) = (Mutex::new(false), Condvar::new());
+
+pub fn pause_images(paused: bool) {
+    let mut state = IMAGE_DOWNLOAD_PAUSED.0.lock().unwrap();
+    if *state != paused {
+        *state = paused;
+        IMAGE_DOWNLOAD_PAUSED.1.notify_all();
+        diagnostics::write(format_args!("[缓存] 图片下载暂停={paused}"));
+    }
+}
 
 static INIT: Once = Once::new();
 static SIZE: Mutex<Option<u64>> = Mutex::new(None);
@@ -356,7 +367,15 @@ fn cached_image(pic: &str, width: u32, height: u32) -> Option<Pixels> {
         "[缓存] 图片未命中 {} 尺寸={width}x{height}",
         path.display()
     ));
-    let bytes = net::get_bytes(&url).ok()?;
+    // 图片 CDN 按目标尺寸的两倍缩放，缓存仍使用原图地址作为标识
+    let download_url = if crate::cdn::host(&url).ends_with(".hdslb.com") {
+        format!("{url}@{}w_{}h_0e.jpg", width * 2, height * 2)
+    } else {
+        url.clone()
+    };
+    let paused = IMAGE_DOWNLOAD_PAUSED.0.lock().unwrap();
+    drop(IMAGE_DOWNLOAD_PAUSED.1.wait_while(paused, |paused| *paused).unwrap());
+    let bytes = net::get_bytes(&download_url).ok()?;
     let img = image::load_from_memory(&bytes)
         .map_err(|error| {
             diagnostics::write(format_args!(
