@@ -104,7 +104,7 @@ python3 scripts/check-release.py --deb dist/cardbili_*_arm64.deb
 
 打包优先使用本机 `dpkg-deb`，缺少时通过 Docker 执行
 
-[Cardputer Zero skill](skill/cardputer-zero/SKILL.md) 提供构建、部署、截图与设备调试说明
+[Cardputer Zero skill](.agents/skills/cardputer-zero/SKILL.md) 提供构建、部署、截图与设备调试说明
 
 也可参考项目中的 [官方开发 skill](.agents/skills/cardputer-zero-application/SKILL.md)
 

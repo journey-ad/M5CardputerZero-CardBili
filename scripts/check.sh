@@ -3,8 +3,8 @@ set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 cd "$ROOT"
 
-shellcheck scripts/*.sh skill/cardputer-zero/scripts/*.sh
-python3 -m py_compile scripts/*.py skill/cardputer-zero/scripts/fbcap.py
+shellcheck scripts/*.sh .agents/skills/cardputer-zero/scripts/*.sh
+python3 -m py_compile scripts/*.py .agents/skills/cardputer-zero/scripts/fbcap.py
 docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12 -color
 python3 scripts/check-release.py
 docker run --rm -v "$PWD:/repo:ro" -w /repo \
