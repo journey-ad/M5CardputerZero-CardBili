@@ -1,15 +1,15 @@
 import "../fonts/fusion12.ttf";
 export { HomeTab, Page, VideoLayout, MenuPosition, SettingsItem } from "types.slint";
 export { VideoRow, HistoryHeader, SuperChatRow } from "common.slint";
-export { EmojiFont, EmojiPlacement } from "components/text.slint";
+export { EmojiFont, EmojiPlacement } from "components/base/text.slint";
 export { Nav, Layout, ListModel, LiveAreas, Status, Account, Player, Danmaku, SuperChat, Detail, Login, Meta, Preferences, Collection, Menu, Comments, Favorite, Following, Confirm, Cdn, Sections } from "state.slint";
 import { Confirm, Nav, Sections, Layout } from "state.slint";
 import { Page } from "types.slint";
-import { StatusBar } from "components/status_bar.slint";
-import { BottomBar } from "components/bottom_bar.slint";
+import { StatusBar } from "components/feedback/status.slint";
+import { BottomBar } from "components/navigation/bottom.slint";
 import { Router } from "router.slint";
-import { PanelHost } from "components/panel_host.slint";
-import { ConfirmDialog } from "components/confirm_dialog.slint";
+import { PanelHost } from "components/panels/host.slint";
+import { ConfirmDialog } from "components/feedback/confirm.slint";
 
 export component AppWindow inherits Window {
     width <=> Layout.window-width;

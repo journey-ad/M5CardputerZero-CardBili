@@ -1,9 +1,9 @@
-import { Text } from "../components/text.slint";
+import { Text } from "../components/base/text.slint";
 // 播放页：画面 + 顶部标题栏 + 底部进度条
-import { TripleAnimation } from "../components/triple_animation.slint";
-import { PlaybackBar } from "../components/playback_bar.slint";
-import { SuperChatDialog } from "../components/super_chat_dialog.slint";
-import { Icon, Icons } from "../components/icons.slint";
+import { TripleAnimation } from "../components/player/triple.slint";
+import { PlaybackBar } from "../components/player/controls.slint";
+import { SuperChatDialog } from "../components/live/superchat.slint";
+import { Icon, Icons } from "../components/base/icons.slint";
 import { Player, Status, Danmaku, Preferences, SuperChat } from "../state.slint";
 
 export component PlayPage inherits Rectangle {

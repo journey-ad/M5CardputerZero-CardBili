@@ -1,9 +1,9 @@
-import { Text } from "text.slint";
+import { Text } from "../base/text.slint";
 // 选中项到达可视区边缘时滚动列表
-import { Nav, ListModel } from "../state.slint";
-import { Icons } from "icons.slint";
-import { HomeTab, Page } from "../types.slint";
-import { StatItem } from "stat_item.slint";
+import { Nav, ListModel } from "../../state.slint";
+import { Icons } from "../base/icons.slint";
+import { HomeTab, Page } from "../../types.slint";
+import { StatItem } from "../base/stat.slint";
 
 export component ListView inherits Rectangle {
     in property <bool> show-author: true;

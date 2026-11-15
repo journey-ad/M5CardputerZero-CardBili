@@ -1,13 +1,13 @@
 import { HomeTab, MenuPosition } from "../types.slint";
 // 首页：页签 + 列表/网格/我的 三态 + 空状态 + 底部栏 + 按键说明
 import { Nav, Preferences, Layout, LiveAreas } from "../state.slint";
-import { SettingsPanel } from "../components/settings_panel.slint";
-import { TabBar } from "../components/tab_bar.slint";
-import { VideoList } from "../components/video_list.slint";
-import { MinePanel } from "../components/mine_panel.slint";
-import { HelpOverlay } from "../components/help_overlay.slint";
-import { EmptyState } from "../components/empty_state.slint";
-import { LiveAreaDialog } from "../components/live_area_dialog.slint";
+import { SettingsPanel } from "../components/panels/settings.slint";
+import { TabBar } from "../components/navigation/tabs.slint";
+import { VideoList } from "../components/video/view.slint";
+import { MinePanel } from "../components/panels/mine.slint";
+import { HelpOverlay } from "../components/feedback/help.slint";
+import { EmptyState } from "../components/feedback/empty.slint";
+import { LiveAreaDialog } from "../components/live/areas.slint";
 
 export component HomePage inherits Rectangle {
     width: 100%;
