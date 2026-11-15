@@ -1,0 +1,59 @@
+import { Preferences } from "../state.slint";
+
+export struct EmojiPlacement { glyph: int, x: length, y: length }
+
+// 原生 Text 负责尺寸与排版，Mona 表情填入预留的字符位置
+export global EmojiFont {
+    pure callback prepare(string) -> string;
+    pure callback layout(string, length, length, length, TextHorizontalAlignment, TextVerticalAlignment, TextWrap, TextOverflow) -> [EmojiPlacement];
+    pure callback glyph(int, bool) -> image;
+    pure callback monochrome(int) -> bool;
+}
+
+export component Text {
+    in property <string> text;
+    in property <length> font-size <=> label.font-size;
+    in property <string> font-family <=> label.font-family;
+    in property <int> font-weight <=> label.font-weight;
+    in property <bool> font-italic <=> label.font-italic;
+    in property <brush> color <=> label.color;
+    in property <TextHorizontalAlignment> horizontal-alignment <=> label.horizontal-alignment;
+    in property <TextVerticalAlignment> vertical-alignment <=> label.vertical-alignment;
+    in property <TextWrap> wrap <=> label.wrap;
+    in property <TextOverflow> overflow <=> label.overflow;
+    in property <length> letter-spacing <=> label.letter-spacing;
+    in property <brush> stroke <=> label.stroke;
+    in property <length> stroke-width <=> label.stroke-width;
+    in property <TextStrokeStyle> stroke-style <=> label.stroke-style;
+
+    // 自动尺寸与布局约束沿用原生 Text 的测量结果
+    min-width: label.min-width;
+    min-height: label.min-height;
+    preferred-width: label.preferred-width;
+    preferred-height: label.preferred-height;
+    horizontal-stretch: label.horizontal-stretch;
+    vertical-stretch: label.vertical-stretch;
+
+    label := Text {
+        x: 0px; y: 0px;
+        width: root.width;
+        height: root.height;
+        font-size: 12px;
+        text: EmojiFont.prepare(root.text);
+    }
+    Rectangle {
+        x: 0px; y: 0px;
+        width: root.width;
+        height: root.height;
+        clip: true;
+        for emoji in EmojiFont.layout(root.text, root.font-size, root.width, root.height, root.horizontal-alignment, root.vertical-alignment, root.wrap, root.overflow): Image {
+            x: emoji.x;
+            y: emoji.y;
+            width: 12px;
+            height: 12px;
+            source: EmojiFont.glyph(emoji.glyph, Preferences.color-emoji);
+            colorize: Preferences.color-emoji || !EmojiFont.monochrome(emoji.glyph) ? #0000 : root.color;
+            image-rendering: pixelated;
+        }
+    }
+}

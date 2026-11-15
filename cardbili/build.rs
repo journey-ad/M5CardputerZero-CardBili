@@ -1,11 +1,23 @@
 #[path = "build/danmaku_font.rs"]
 mod danmaku_font;
+#[path = "build/emoji_font.rs"]
+mod emoji_font;
 #[path = "build/font_cache.rs"]
 mod font_cache;
 #[path = "build/ui_fonts.rs"]
 mod ui_fonts;
 
 fn main() {
+    font_cache::generate(
+        "emoji",
+        &[
+            "fonts/Mona12Emoji.ttf",
+            "fonts/Mona12ColorEmoji.ttf",
+            "build/emoji_font.rs",
+        ],
+        &["emoji_font.rs", "emoji_color.bin", "emoji_mono.bin"],
+        emoji_font::generate,
+    );
     font_cache::generate(
         "danmaku",
         &["fonts/fusion12.ttf", "build/danmaku_font.rs"],

@@ -12,6 +12,7 @@ pub struct Settings {
     pub menu_position: MenuPosition,
     pub record_history: bool,
     pub debug_log: bool,
+    pub color_emoji: bool,
     pub cdn: String,
 }
 
@@ -24,6 +25,7 @@ impl Default for Settings {
             menu_position: MenuPosition::Top,
             record_history: true,
             debug_log: false,
+            color_emoji: true,
             cdn: "backup".into(),
         }
     }

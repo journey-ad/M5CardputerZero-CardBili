@@ -114,6 +114,8 @@ pub(super) struct App {
 
 impl App {
     pub(super) fn new(ui: AppWindow, tx: mpsc::Sender<Msg>, settings: Settings) -> Self {
+        crate::emoji::install(&ui);
+        ui.global::<crate::Preferences>().set_color_emoji(settings.color_emoji);
         let meta = ui.global::<crate::Meta>();
         let login = ui.global::<crate::Login>();
         let cookies = crate::net::session::restore();
@@ -124,7 +126,7 @@ impl App {
         let mid = cookies.as_deref().map(util::parse_mid).unwrap_or_default();
 
         meta.set_version(format!("V{}", env!("CARGO_PKG_VERSION")).into());
-        meta.set_about_text("作者  journey-ad\n\n项目地址\ngithub.com/journey-ad/M5CardputerZero-CardBili\n\n字体\nFusion Pixel Font\ngithub.com/TakWolf/fusion-pixel-font\n\n接口参考\nPiliPlus\ngithub.com/bggRGjQaUbCoE/PiliPlus\n\n图标\nPixelarticons\ngithub.com/halfmage/pixelarticons".into());
+        meta.set_about_text("作者  journey-ad\n\n项目地址\ngithub.com/journey-ad/M5CardputerZero-CardBili\n\n字体\nFusion Pixel Font\ngithub.com/TakWolf/fusion-pixel-font\n\nEmoji 字体\nMona Font\n单色 Mona12Emoji\n彩色 Mona12ColorEmoji\ngithub.com/MonadABXY/mona-font\nSIL OFL 1.1\n\n接口参考\nPiliPlus\ngithub.com/bggRGjQaUbCoE/PiliPlus\n\n图标\nPixelarticons\ngithub.com/halfmage/pixelarticons".into());
 
         let ph = util::make_placeholder();
         let mut page = Page::Home;
@@ -143,7 +145,7 @@ impl App {
             .ok()
             .and_then(|s| s.parse::<i32>().ok())
             .unwrap_or(0);
-        let danmaku_view = DanmakuView::new(&ui);
+        let danmaku_view = DanmakuView::new(&ui, settings.color_emoji);
         let mut status = String::from("加载中…");
         let loading = tab.is_video();
 

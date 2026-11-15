@@ -32,7 +32,6 @@ pub struct Row<'a> {
     pub text: &'a str,
     pub x: f32,
     pub y: f32,
-    pub w: f32,
     pub color: u32,
 }
 
@@ -182,7 +181,6 @@ impl Group {
             text: &group.text,
             x: x as f32,
             y: y as f32,
-            w: group.len as f32,
             color: group.color,
         })
     }

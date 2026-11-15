@@ -18,6 +18,9 @@ pub fn generate() {
             // 关于页项目名使用 16px ASCII 字形
             characters.retain(char::is_ascii);
         }
+        // 对象替换字符预留 12px 表情与左右各 1px 字距，表情由 Text 绘制
+        characters.retain(|&character| character != '\u{fffc}');
+        characters.push('\u{fffc}');
         characters.sort_unstable();
         assert!(characters.len() < u16::MAX as usize);
         writeln!(code, "static MAP_{size}: &[CharacterMapEntry] = &[").unwrap();
@@ -31,6 +34,10 @@ pub fn generate() {
         code.push_str("];\n");
         writeln!(code, "static GLYPHS_{size}: &[BitmapGlyph] = &[").unwrap();
         for character in characters {
+            if character == '\u{fffc}' {
+                code.push_str("BitmapGlyph { x: 0, y: 0, width: 0, height: 0, x_advance: 14, data: glyph_pixels(0, 0) },\n");
+                continue;
+            }
             let (metrics, bitmap) = font.rasterize(character, size as f32);
             encode(&mut code, &mut pixels, metrics, &bitmap);
         }

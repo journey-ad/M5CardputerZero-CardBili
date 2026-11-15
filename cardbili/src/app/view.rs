@@ -93,6 +93,7 @@ impl App {
         preferences.set_menu_position(self.settings.menu_position);
         preferences.set_record_history(self.settings.record_history);
         preferences.set_debug_log(self.settings.debug_log);
+        preferences.set_color_emoji(self.settings.color_emoji);
         self.ui.global::<crate::Cdn>().set_current(crate::cdn::index(&self.settings.cdn) as i32);
         preferences.set_cdn_name(
             crate::cdn::OPTIONS[crate::cdn::index(&self.settings.cdn)]

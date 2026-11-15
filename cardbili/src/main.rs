@@ -9,6 +9,7 @@ mod cdn;
 mod danmaku;
 mod diagnostics;
 mod fonts;
+mod emoji;
 mod menu;
 mod live_danmaku;
 mod super_chat;

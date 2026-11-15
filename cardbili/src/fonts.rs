@@ -16,3 +16,76 @@ pub fn register(window: &dyn slint::platform::WindowAdapter) {
         window.renderer().register_bitmap_font(font);
     }
 }
+
+// 表情位置使用与 Slint 位图字体相同的整数度量
+pub(crate) struct LayoutFont {
+    font: &'static BitmapFont,
+    glyphs: &'static BitmapGlyphs,
+}
+
+impl LayoutFont {
+    pub(crate) fn new(size: f32) -> Self {
+        let font = *FONTS
+            .iter()
+            .min_by_key(|font| (f32::from(font.glyphs[0].pixel_size) - size).abs() as i32)
+            .unwrap();
+        Self {
+            font,
+            glyphs: &font.glyphs[0],
+        }
+    }
+}
+
+impl i_slint_core::textlayout::FontMetrics<i16> for LayoutFont {
+    fn ascent(&self) -> i16 {
+        (f32::from(self.glyphs.pixel_size) * self.font.ascent / self.font.units_per_em) as i16
+    }
+    fn descent(&self) -> i16 {
+        (f32::from(self.glyphs.pixel_size) * self.font.descent / self.font.units_per_em) as i16
+    }
+    fn height(&self) -> i16 {
+        (f32::from(self.glyphs.pixel_size) * (self.font.ascent - self.font.descent)
+            / self.font.units_per_em) as i16
+    }
+}
+
+impl i_slint_core::textlayout::TextShaper for LayoutFont {
+    type LengthPrimitive = i16;
+    type Length = i16;
+
+    fn shape_text<Storage: Extend<i_slint_core::textlayout::Glyph<i16>>>(
+        &self,
+        text: &str,
+        glyphs: &mut Storage,
+    ) {
+        glyphs.extend(text.char_indices().map(|(offset, character)| {
+            let mut glyph =
+                self.glyph_for_char(character)
+                    .unwrap_or_else(|| i_slint_core::textlayout::Glyph {
+                        advance: self.glyphs.pixel_size,
+                        ..Default::default()
+                    });
+            glyph.text_byte_offset = offset;
+            glyph
+        }));
+    }
+
+    fn glyph_for_char(&self, character: char) -> Option<i_slint_core::textlayout::Glyph<i16>> {
+        let index = self
+            .font
+            .character_map
+            .binary_search_by_key(&character, |entry| entry.code_point)
+            .ok()?;
+        let index = self.font.character_map[index].glyph_index as usize;
+        Some(i_slint_core::textlayout::Glyph {
+            glyph_id: std::num::NonZeroU16::new(index as u16 + 1),
+            advance: self.glyphs.glyph_data[index].x_advance,
+            ..Default::default()
+        })
+    }
+
+    fn max_lines(&self, max_height: i16) -> usize {
+        use i_slint_core::textlayout::FontMetrics;
+        (max_height / self.height()) as usize
+    }
+}

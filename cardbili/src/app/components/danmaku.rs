@@ -20,7 +20,7 @@ struct DmCache {
 }
 
 impl DmCache {
-    fn image(&mut self, text: &str, color: u32) -> Image {
+    fn image(&mut self, text: &str, color: u32, color_emoji: bool) -> Image {
         if let Some(index) = self
             .entries
             .iter()
@@ -32,7 +32,7 @@ impl DmCache {
             return image;
         }
 
-        let image = danmaku::bitmap::bake(text, color);
+        let image = danmaku::bitmap::bake(text, color, color_emoji);
         let size = image.size();
         let bytes = size.width as usize * size.height as usize * 4
             + text.len()
@@ -60,22 +60,30 @@ pub(in crate::app) struct DanmakuView {
     model: Rc<VecModel<DmRow>>,
     active: Vec<usize>,
     cache: DmCache,
+    color_emoji: bool,
 }
 
 impl DanmakuView {
-    pub(in crate::app) fn new(ui: &AppWindow) -> Self {
+    pub(in crate::app) fn new(ui: &AppWindow, color_emoji: bool) -> Self {
         let model = Rc::new(VecModel::default());
         ui.global::<crate::Danmaku>().set_rows(model.clone().into());
         Self {
             model,
             active: Vec::new(),
             cache: DmCache::default(),
+            color_emoji,
         }
     }
 
     pub(in crate::app) fn clear(&mut self) {
         self.hide();
         self.cache = DmCache::default();
+    }
+
+    pub(in crate::app) fn set_color_emoji(&mut self, enabled: bool) {
+        self.color_emoji = enabled;
+        // 切换样式后重新合成活动弹幕与缓存图片
+        self.clear();
     }
 
     pub(in crate::app) fn hide(&mut self) {
@@ -108,8 +116,7 @@ impl DanmakuView {
                 continue;
             }
 
-            let image = self.cache.image(row.text, row.color);
-            let height = image.size().height as f32;
+            let image = self.cache.image(row.text, row.color, self.color_emoji);
             self.active.insert(index, row.id);
             self.model.insert(
                 index,
@@ -117,8 +124,6 @@ impl DanmakuView {
                     text: row.text.into(),
                     x: row.x,
                     y: row.y,
-                    w: row.w,
-                    h: height,
                     color: slint::Color::from_rgb_u8(
                         (row.color >> 16) as u8,
                         (row.color >> 8) as u8,

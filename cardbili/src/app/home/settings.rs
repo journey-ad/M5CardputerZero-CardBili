@@ -18,9 +18,10 @@ impl App {
         let Some(row) = row else {
             return;
         };
+        // 上下方向键在首尾设置项之间循环
         match key {
-            "UP" => self.sel = (self.sel - 1).max(0),
-            "DOWN" => self.sel = (self.sel + 1).min(total - 1),
+            "UP" => self.sel = (self.sel - 1).rem_euclid(total),
+            "DOWN" => self.sel = (self.sel + 1).rem_euclid(total),
             "LEFT" | "RIGHT" => {
                 let step = if key == "LEFT" { -1 } else { 1 };
                 match row.item {
@@ -40,6 +41,7 @@ impl App {
                     }
                     SettingsItem::RecordHistory => self.toggle_record_history(),
                     SettingsItem::DebugLog => self.toggle_debug_log(),
+                    SettingsItem::EmojiStyle => self.toggle_color_emoji(),
                     _ => {}
                 }
             }
@@ -47,6 +49,7 @@ impl App {
                 SettingsItem::Danmaku => self.toggle_danmaku(),
                 SettingsItem::RecordHistory => self.toggle_record_history(),
                 SettingsItem::DebugLog => self.toggle_debug_log(),
+                SettingsItem::EmojiStyle => self.toggle_color_emoji(),
                 SettingsItem::Cdn => self.open_cdn(),
                 SettingsItem::Cache => {
                     if !preferences.get_cache_busy() {
@@ -67,6 +70,12 @@ impl App {
             }
             _ => {}
         }
+    }
+
+    fn toggle_color_emoji(&mut self) {
+        self.settings.color_emoji = !self.settings.color_emoji;
+        self.danmaku_view.set_color_emoji(self.settings.color_emoji);
+        self.settings_changed = true;
     }
 
     fn toggle_record_history(&mut self) {

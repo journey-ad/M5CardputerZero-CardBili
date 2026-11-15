@@ -1,3 +1,4 @@
+import { Text } from "../components/text.slint";
 // 播放页：画面 + 顶部标题栏 + 底部进度条
 import { TripleAnimation } from "../components/triple_animation.slint";
 import { PlaybackBar } from "../components/playback_bar.slint";
@@ -14,10 +15,12 @@ export component PlayPage inherits Rectangle {
         x: 0px; y: 0px; width: parent.width; height: parent.height;
         source: Player.frame; image-fit: contain;
     }
-    // Fusion 12 字形和黑色描边已合成为整条弹幕图片
+    // 正文、Mona 表情和黑色描边已合成为整条弹幕图片
     for row in Danmaku.rows: Image {
-        x: row.x; y: row.y; width: row.w; height: row.h;
+        x: round(row.x / 1px) * 1px; y: round(row.y / 1px) * 1px;
+        width: row.img.width * 1px; height: row.img.height * 1px;
         source: row.img;
+        image-rendering: pixelated;
         visible: Danmaku.enabled;
         opacity: Preferences.danmaku-opacity / 100;
     }

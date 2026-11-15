@@ -126,6 +126,7 @@ export global Preferences {
         { item: SettingsItem.danmaku, label: "弹幕开关" },
         { item: SettingsItem.danmaku-opacity, label: "弹幕不透明度" },
         { item: SettingsItem.menu-position, label: "首页布局" },
+        { item: SettingsItem.emoji-style, label: "表情样式" },
     ];
     out property <[SettingsRow]> general-items: [
         { item: SettingsItem.record-history, label: "记录播放历史" },
@@ -136,6 +137,7 @@ export global Preferences {
     ];
     in-out property <bool> record-history: true;
     in-out property <bool> debug-log: false;
+    in-out property <bool> color-emoji: true;
     in-out property <string> cdn-name: "";
     in-out property <string> cache-size: "统计中…";
     in-out property <bool> cache-busy: false;

@@ -2,6 +2,7 @@ import { VideoLayout, MenuPosition, SettingsItem } from "../types.slint";
 import { Nav, Preferences, Danmaku, Meta } from "../state.slint";
 import { Icon, Icons } from "icons.slint";
 import { ToggleSwitch } from "toggle_switch.slint";
+import { Text } from "text.slint";
 
 // 单个设置项，外观/常规两个列表共用
 component SettingsRowItem inherits Rectangle {
@@ -15,6 +16,7 @@ component SettingsRowItem inherits Rectangle {
             return Nav.view == VideoLayout.list ? "列表" : (Nav.view == VideoLayout.three-columns ? "3列" : "2列");
         }
         if item == SettingsItem.danmaku-opacity { return Preferences.danmaku-opacity + "%"; }
+        if item == SettingsItem.emoji-style { return "😀😆😎"; }
         if item == SettingsItem.menu-position {
             return Preferences.menu-position == MenuPosition.top ? "顶部" : (Preferences.menu-position == MenuPosition.left ? "左侧" : "右侧");
         }

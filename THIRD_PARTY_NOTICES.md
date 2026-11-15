@@ -8,6 +8,7 @@ CardBili 原创代码、文档、脚本与 skill 使用根目录的 MIT 许可�
 | FFmpeg 7.1.5 | 当前构建启用 `--enable-version3`，使用 LGPLv3，[上游](https://ffmpeg.org/legal.html) | 独立可执行文件，附修改源码与许可证 |
 | OpenSSL | Apache-2.0，[上游](https://www.openssl.org/source/license.html) | 静态链接到 FFmpeg，附许可证 |
 | Fusion Pixel Font | SIL OFL-1.1，[上游](https://github.com/TakWolf/fusion-pixel-font) | 保留 `cardbili/fonts/OFL-fusion-pixel-font.txt`，包括 8px 子集与 10px / 12px 字体 |
+| Mona Emoji | SIL OFL-1.1，[2026.10.09 发布包](https://github.com/MonadABXY/mona-font/releases/tag/2026.10.09) | 使用官方原版 Mona12Emoji 与 Mona12ColorEmoji，构建时生成 12px 字形，保留 `cardbili/fonts/OFL-mona-font.txt` |
 | Pixelarticons | MIT，[上游](https://github.com/halfmage/pixelarticons) | 保留 `cardbili/assets/pixelarticons/LICENSE` |
 | Rust 依赖 | 各 crate 的许可证 | 源码包包含 `Cargo.lock`、vendored 源码与许可证，设备包包含许可证副本 |
 | Rust 标准库、musl 与 GCC 运行库 | 各组件许可证，GCC 使用 Runtime Library Exception | 设备包保留 Rust 工具链版权、musl COPYRIGHT 与 GCC 运行库例外条款 |

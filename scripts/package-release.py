@@ -64,6 +64,7 @@ def main():
     copy(ROOT / "THIRD_PARTY_NOTICES.md", documentation / "THIRD_PARTY_NOTICES.md")
     copy(ROOT / "LICENSE", documentation / "licenses/CardBili-MIT.txt")
     copy(ROOT / "cardbili/fonts/OFL-fusion-pixel-font.txt", documentation / "licenses/fonts/OFL.txt")
+    copy(ROOT / "cardbili/fonts/OFL-mona-font.txt", documentation / "licenses/fonts/OFL-mona-font.txt")
     copy(ROOT / "cardbili/assets/pixelarticons/LICENSE", documentation / "licenses/pixelarticons/LICENSE")
     shutil.copytree(ffmpeg / "licenses", documentation / "licenses", dirs_exist_ok=True)
     (app / "share/images").mkdir(parents=True)

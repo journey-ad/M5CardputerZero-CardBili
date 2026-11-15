@@ -244,9 +244,18 @@ fn app_dir(variable: &str, default: &str, fallback_home: &str) -> std::path::Pat
         .join("cardbili")
 }
 
-/// 估算单行文字宽度，ASCII 字符按字号的 0.55 倍计算，其余字符按字号计算
+/// 估算单行文字宽度，ASCII 按字号的 0.55 倍计算，表情含字距占 14px，其余字符按字号计算
 pub fn est_w(s: &str, fs: f64) -> f64 {
-    s.chars()
-        .map(|c| if (c as u32) < 128 { fs * 0.55 } else { fs })
+    crate::emoji::tokens(s)
+        .map(|token| match token {
+            crate::emoji::Token::Emoji(_) => f64::from(crate::emoji::ADVANCE),
+            crate::emoji::Token::Character(character) => {
+                if character.is_ascii() {
+                    fs * 0.55
+                } else {
+                    fs
+                }
+            }
+        })
         .sum()
 }
