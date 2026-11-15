@@ -1,0 +1,96 @@
+import { SuperChat, Player, Layout } from "../state.slint";
+import { ScrollBar } from "scroll_bar.slint";
+import { Icon, Icons } from "icons.slint";
+import { BottomBar } from "bottom_bar.slint";
+
+export component SuperChatDialog inherits Rectangle {
+    width: 100%; height: 100%; background: #000000a8;
+    property <length> content-h: body.preferred-height;
+    property <length> viewport-h: viewport.height;
+    changed content-h => {
+        SuperChat.content-h = self.content-h;
+        SuperChat.scroll = min(SuperChat.scroll, max(0px, self.content-h - self.viewport-h));
+    }
+    changed viewport-h => { SuperChat.viewport-h = self.viewport-h; }
+    init => {
+        SuperChat.content-h = self.content-h;
+        SuperChat.viewport-h = self.viewport-h;
+    }
+    TouchArea { clicked => { Player.key("ESC"); } }
+    Rectangle {
+        x: 12px; y: 10px; width: parent.width - 24px;
+        height: parent.height - Layout.bottom-bar-height - 20px;
+        background: #121a2a; border-radius: 5px; border-width: 1px; border-color: #405472;
+        TouchArea {}
+        Icon { x: 9px; y: 8px; width: 14px; source: Icons.super-chat; }
+        Text {
+            x: 26px; y: 6px; height: 16px;
+            text: "醒目留言"; color: #e6ebf5; font-size: 12px;
+            vertical-alignment: center;
+        }
+        viewport := Rectangle {
+            x: 8px; y: 28px; width: parent.width - 20px; height: parent.height - 36px;
+            clip: true;
+            body := VerticalLayout {
+                y: -SuperChat.scroll; width: parent.width;
+                spacing: 6px;
+                for message in SuperChat.rows: Rectangle {
+                    background: message.accent;
+                    border-width: 1px; border-color: message.accent; border-radius: 3px;
+                    VerticalLayout {
+                        padding: 1px; spacing: 0px;
+                        Rectangle {
+                            background: message.background;
+                            HorizontalLayout {
+                                padding: 5px; spacing: 6px;
+                                Text {
+                                    text: message.user; color: #303848;
+                                    font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
+                                    overflow: elide; horizontal-stretch: 1; vertical-alignment: center;
+                                }
+                                Text {
+                                    width: 30px;
+                                    text: "\{max(0, message.remaining - SuperChat.elapsed)}s";
+                                    color: #697487; horizontal-alignment: right;
+                                    font-size: 12px; vertical-alignment: center;
+                                }
+                                Text {
+                                    text: message.price; color: message.accent;
+                                    font-size: 12px; horizontal-stretch: 0; vertical-alignment: center;
+                                }
+                            }
+                        }
+                        Rectangle {
+                            VerticalLayout {
+                                padding: 5px;
+                                Text {
+                                    text: message.text; color: message.foreground;
+                                    font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
+                                    wrap: word-wrap;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            TouchArea {
+                scroll-event(event) => {
+                    SuperChat.scroll = min(max(0px, SuperChat.scroll - event.delta-y), max(0px, root.content-h - root.viewport-h));
+                    accept
+                }
+            }
+        }
+        ScrollBar {
+            x: parent.width - 8px; y: viewport.y; height: viewport.height;
+            content-height: root.content-h; scroll: SuperChat.scroll;
+        }
+    }
+    BottomBar {
+        y: parent.height - self.height; width: parent.width;
+        height: Layout.bottom-bar-height;
+        TouchArea {
+            x: 248px; width: 54px; height: parent.height;
+            clicked => { Player.key("ESC"); }
+        }
+    }
+}

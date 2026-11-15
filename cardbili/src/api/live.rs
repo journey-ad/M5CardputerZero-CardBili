@@ -122,6 +122,25 @@ pub struct DanmakuServer {
     pub port: u16,
 }
 
+pub fn super_chat_messages(
+    room: u64,
+    cookies: Option<&str>,
+) -> Result<Vec<crate::super_chat::Message>, String> {
+    let url = format!(
+        "https://api.live.bilibili.com/av/v1/SuperChat/getMessageList?room_id={room}"
+    );
+    let value = net::get_json(&url, cookies)?;
+    if value["code"].as_i64() != Some(0) {
+        return Err(api_err("醒目留言", &value));
+    }
+    Ok(value["data"]["list"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(crate::super_chat::Message::parse)
+        .collect())
+}
+
 pub struct DanmakuInfo {
     pub token: String,
     pub servers: Vec<DanmakuServer>,

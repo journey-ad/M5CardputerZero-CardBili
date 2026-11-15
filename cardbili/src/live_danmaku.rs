@@ -1,4 +1,4 @@
-use crate::{api, danmaku::Dm, diagnostics, net};
+use crate::{api, danmaku::Dm, diagnostics, net, super_chat};
 use serde_json::{json, Value};
 use std::io::{self, Read};
 use std::net::{TcpStream, ToSocketAddrs};
@@ -19,6 +19,7 @@ pub enum Event {
 
 pub struct Connection {
     pub events: Receiver<Event>,
+    pub super_chats: Receiver<super_chat::Update>,
     stop: Sender<()>,
 }
 
@@ -26,6 +27,13 @@ impl Connection {
     pub fn start(room: u64, cookies: Option<String>) -> Self {
         let (tx, events) = mpsc::sync_channel(64);
         let (stop, cancelled) = mpsc::channel();
+        let (sc_tx, super_chats) = mpsc::channel();
+        let initial_tx = sc_tx.clone();
+        let initial_cookies = cookies.clone();
+        thread::spawn(move || {
+            let result = api::live::super_chat_messages(room, initial_cookies.as_deref());
+            let _ = initial_tx.send(super_chat::Update::Initial(result));
+        });
         thread::spawn(move || {
             let mut delay = 2;
             let mut reported = false;
@@ -33,7 +41,7 @@ impl Connection {
                 if cancelled.try_recv().is_ok() {
                     break;
                 }
-                match receive(room, cookies.as_deref(), &tx, &cancelled) {
+                match receive(room, cookies.as_deref(), &tx, &sc_tx, &cancelled) {
                     Ok(()) => break,
                     Err(error) => {
                         diagnostics::write(format_args!("[直播弹幕] 房间={room} {error}"));
@@ -53,6 +61,7 @@ impl Connection {
         });
         Self {
             events,
+            super_chats,
             stop,
         }
     }
@@ -79,6 +88,7 @@ fn receive(
     room: u64,
     cookies: Option<&str>,
     tx: &SyncSender<Event>,
+    sc_tx: &Sender<super_chat::Update>,
     cancelled: &Receiver<()>,
 ) -> Result<(), String> {
     let info = api::live::danmaku_info(room, cookies)?;
@@ -194,7 +204,9 @@ fn receive(
                         let Ok(value) = serde_json::from_slice::<Value>(body) else {
                             return Ok(());
                         };
-                        if let Some(dm) = parse_danmaku(&value) {
+                        if let Some(update) = super_chat::parse_update(&value) {
+                            let _ = sc_tx.send(update);
+                        } else if let Some(dm) = parse_danmaku(&value) {
                             if !received {
                                 diagnostics::write(format_args!(
                                     "[直播弹幕] 房间={room} 首条弹幕已接收"

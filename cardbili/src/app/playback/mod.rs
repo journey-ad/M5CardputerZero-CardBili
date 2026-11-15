@@ -7,6 +7,7 @@ mod actions;
 pub(super) use actions::Controls;
 mod input;
 mod tick;
+mod super_chat;
 mod triple;
 mod view;
 pub(super) use triple::TripleFeedback;

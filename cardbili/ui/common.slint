@@ -4,6 +4,17 @@ export struct Cmt {
     text: string,
 }
 
+// 醒目留言行：金额、剩余秒数、正文与等级配色
+export struct SuperChatRow {
+    user: string,
+    price: string,
+    remaining: int,
+    text: string,
+    accent: color,
+    background: color,
+    foreground: color,
+}
+
 // 弹幕行：位置由 Rust 每帧算好
 export struct DmRow {
     text: string,

@@ -20,6 +20,7 @@ pub enum Action {
     Like,
     Speed,
     Danmaku,
+    SuperChat,
     Comments,
 }
 
@@ -44,6 +45,7 @@ impl Action {
             Self::Like => "点赞",
             Self::Speed => "倍速",
             Self::Danmaku => "弹幕",
+            Self::SuperChat => "醒目留言",
             Self::Comments => "评论",
         }
     }
@@ -65,6 +67,7 @@ impl Action {
             Self::Like => "l",
             Self::Speed => "b",
             Self::Danmaku => "d",
+            Self::SuperChat => "SUPER_CHAT",
             Self::Comments => "r",
         }
     }

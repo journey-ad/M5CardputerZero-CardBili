@@ -125,10 +125,14 @@ impl App {
             ];
         }
         if self.page == Page::Player && self.live.is_some() {
+            let super_chat = self.ui.global::<crate::SuperChat>();
+            if super_chat.get_open() {
+                return [None, None, None, None, Some(menu::Action::Back)];
+            }
             return [
                 Some(menu::Action::TogglePlay),
                 Some(menu::Action::Refresh),
-                None,
+                super_chat.get_available().then_some(menu::Action::SuperChat),
                 Some(menu::Action::Danmaku),
                 None,
             ];

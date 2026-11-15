@@ -14,6 +14,7 @@ impl App {
             self.confirmation_key(&key);
             return;
         }
+        let super_chat_open = self.ui.global::<crate::SuperChat>().get_open();
         if let Some(button) = key
             .strip_suffix("_UP")
             .and_then(|s| s.parse::<usize>().ok())
@@ -42,6 +43,10 @@ impl App {
             return;
         }
         if let Ok(number @ 4..=8) = key.parse::<usize>() {
+            if super_chat_open {
+                self.super_chat_key(&key);
+                return;
+            }
             if self.page == Page::Player && !self.sections.open && !self.ui.global::<crate::Player>().get_controls_visible() {
                 self.last_input = Instant::now();
                 return;
@@ -70,7 +75,10 @@ impl App {
                     let step = if released == "UP" { -22.0 } else { 22.0 };
                     self.scroll_tap = Some((step, hold.since));
                 }
-                if self.page == Page::Player && matches!(released, "LEFT" | "RIGHT") {
+                if self.page == Page::Player
+                    && !super_chat_open
+                    && matches!(released, "LEFT" | "RIGHT")
+                {
                     if !hold.repeat_fired {
                         self.dispatch_key(released, false);
                     }
@@ -102,7 +110,7 @@ impl App {
                 repeat_fired: false,
             });
             // 播放页左右键长按用于快进快退，按下先不跳转，松开后再提交
-            if !(self.page == Page::Player && matches!(key, "LEFT" | "RIGHT")) {
+            if super_chat_open || !(self.page == Page::Player && matches!(key, "LEFT" | "RIGHT")) {
                 self.dispatch_key(key, false);
             }
         } else {
@@ -141,6 +149,10 @@ impl App {
     }
 
     fn dispatch_key(&mut self, key: &str, repeat: bool) {
+        if self.ui.global::<crate::SuperChat>().get_open() {
+            self.super_chat_key(key);
+            return;
+        }
         if self.ui.global::<crate::Cdn>().get_open() {
             self.cdn_key(key);
             return;

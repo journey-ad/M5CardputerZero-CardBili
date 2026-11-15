@@ -1,8 +1,9 @@
 // 播放页：画面 + 顶部标题栏 + 底部进度条
 import { TripleAnimation } from "../components/triple_animation.slint";
 import { PlaybackBar } from "../components/playback_bar.slint";
+import { SuperChatDialog } from "../components/super_chat_dialog.slint";
 import { Icon, Icons } from "../components/icons.slint";
-import { Player, Status, Danmaku, Preferences } from "../state.slint";
+import { Player, Status, Danmaku, Preferences, SuperChat } from "../state.slint";
 
 export component PlayPage inherits Rectangle {
     width: 100%;
@@ -86,4 +87,5 @@ export component PlayPage inherits Rectangle {
     if Player.triple-phase > 0: TripleAnimation {
         x: (root.width - self.width) / 2; y: (root.height - self.height) / 2 - 10px;
     }
+    if Player.live && SuperChat.open: SuperChatDialog {}
 }

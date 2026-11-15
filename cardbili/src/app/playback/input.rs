@@ -2,8 +2,12 @@ use super::super::*;
 use slint::ComponentHandle as _;
 
 impl App {
-    // 直播支持暂停、重连、弹幕开关、音量与返回
+    // 直播支持暂停、重连、弹幕开关、醒目留言、音量与返回
     fn live_key(&mut self, k: &str) {
+        if k == "SUPER_CHAT" {
+            self.open_super_chat();
+            return;
+        }
         if k == "r" {
             self.requested_live = self.live.as_ref().map(|info| info.room_id);
             return;

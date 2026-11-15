@@ -3,6 +3,7 @@ use slint::ComponentHandle as _;
 
 impl App {
     pub(in crate::app) fn tick(&mut self) {
+        self.tick_super_chat();
         if let Some(player) = self.player.as_ref().filter(|player| player.stalled()) {
             self.playback_failed(player.gen, "播放超时，按播放键重试".into());
         }

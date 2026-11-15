@@ -1,5 +1,5 @@
 import { Icon, Icons } from "icons.slint";
-import { Player, Danmaku } from "../state.slint";
+import { Player, Danmaku, SuperChat } from "../state.slint";
 
 export component PlaybackBar inherits Rectangle {
     height: 28px; background: #000000b0;
@@ -32,6 +32,8 @@ export component PlaybackBar inherits Rectangle {
         horizontal-alignment: center; vertical-alignment: center;
     }
     if !Player.live: TouchArea { x: 135px; y: 8px; width: 54px; height: 20px; clicked => { Player.key("b"); } }
+    if Player.live && SuperChat.available: Icon { x: (parent.width - self.width) / 2; y: 11px; width: 14px; source: Icons.super-chat; }
+    if Player.live && SuperChat.available: TouchArea { x: 135px; y: 8px; width: 54px; height: 20px; clicked => { Player.key("SUPER_CHAT"); } }
     Rectangle {
         x: 211px; y: 11px; width: 12px; height: 12px;
         border-width: 1px; border-color: Danmaku.enabled ? #7fb0ff : #697487;

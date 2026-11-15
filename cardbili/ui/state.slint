@@ -1,6 +1,6 @@
 import { HomeTab, Page, VideoLayout, MenuPosition, SettingsItem, SettingsRow } from "types.slint";
 // 页面与组件共用的全局状态
-import { Cmt, DmRow, VideoRow, FavoriteRow, FollowingRow, HistoryHeader } from "common.slint";
+import { Cmt, DmRow, VideoRow, FavoriteRow, FollowingRow, HistoryHeader, SuperChatRow } from "common.slint";
 
 // 导航与交互态
 export global Nav {
@@ -95,6 +95,17 @@ export global Player {
 export global Danmaku {
     in-out property <bool> enabled: true;
     in-out property <[DmRow]> rows: [];
+}
+
+// 直播醒目留言：入口、弹窗列表、倒计时与滚动位置
+export global SuperChat {
+    in-out property <bool> available: false;
+    in-out property <bool> open: false;
+    in-out property <[SuperChatRow]> rows: [];
+    in-out property <int> elapsed: 0;
+    in-out property <length> scroll: 0px;
+    in-out property <length> content-h: 0px;
+    in-out property <length> viewport-h: 0px;
 }
 
 // 应用设置

@@ -207,7 +207,7 @@ struct Lanes {
 }
 
 impl Lanes {
-    fn assign(&mut self, group: &mut Group) {
+    fn assign(&mut self, group: &mut Group, first_lane: usize) {
         self.active.retain(|(start, life)| start + life > group.t0);
         if self.active.len() >= MAX_LIVE {
             return;
@@ -217,7 +217,7 @@ impl Lanes {
         } else {
             &mut self.up[..]
         };
-        for (lane, occupant) in pool.iter_mut().enumerate() {
+        for (lane, occupant) in pool.iter_mut().enumerate().skip(first_lane) {
             let free = match *occupant {
                 None => true,
                 Some((kind, start, len)) => {
@@ -248,7 +248,7 @@ impl Lanes {
 fn assign_lanes(groups: &mut [Group]) {
     let mut lanes = Lanes::default();
     for group in groups {
-        lanes.assign(group);
+        lanes.assign(group, 0);
     }
 }
 
@@ -261,18 +261,25 @@ pub struct LiveEngine {
 
 impl LiveEngine {
     pub fn push(&mut self, dm: Dm, time: f64) {
+        if self
+            .groups
+            .iter()
+            .any(|(_, group)| group.text == dm.text && time - group.t0 <= MERGE_WINDOW)
+        {
+            return;
+        }
+        let _ = self.try_push(dm, time, 0);
+    }
+
+    // 返回尚未入场的弹幕，调用方可保留后再次尝试
+    pub fn try_push(&mut self, dm: Dm, time: f64, first_lane: usize) -> Result<(), Dm> {
         self.groups
             .retain(|(_, group)| time < group.t0 + group.lifetime());
         let Some(kind) = kind_of(dm.mode) else {
-            return;
+            return Ok(());
         };
-        if self.groups.len() >= MAX_LIVE
-            || self
-                .groups
-                .iter()
-                .any(|(_, group)| group.text == dm.text && time - group.t0 <= MERGE_WINDOW)
-        {
-            return;
+        if self.groups.len() >= MAX_LIVE {
+            return Err(dm);
         }
         let mut group = Group {
             kind,
@@ -284,10 +291,16 @@ impl LiveEngine {
             count: 1,
             lane: None,
         };
-        self.lanes.assign(&mut group);
+        self.lanes.assign(&mut group, first_lane);
         if group.lane.is_some() {
             self.groups.push_back((self.next_id, group));
             self.next_id = self.next_id.wrapping_add(1);
+            Ok(())
+        } else {
+            Err(Dm {
+                text: group.text,
+                ..dm
+            })
         }
     }
 

@@ -11,6 +11,7 @@ mod diagnostics;
 mod fonts;
 mod menu;
 mod live_danmaku;
+mod super_chat;
 mod model;
 mod net;
 mod player;

@@ -94,6 +94,10 @@ impl App {
         self.current_play = None;
         self.live_danmaku = None;
         self.live_engine = danmaku::LiveEngine::default();
+        self.super_chat = crate::super_chat::State::default();
+        self.ui.global::<crate::SuperChat>().set_open(false);
+        self.ui.global::<crate::SuperChat>().set_available(false);
+        self.ui.global::<crate::SuperChat>().set_rows(ModelRc::default());
         self.live = None;
         self.ui.global::<crate::Player>().set_live(false);
         if self.requested_play.is_none() {
