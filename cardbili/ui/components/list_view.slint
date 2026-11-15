@@ -1,6 +1,7 @@
 // 选中项到达可视区边缘时滚动列表
 import { Nav, ListModel } from "../state.slint";
 import { Icons } from "icons.slint";
+import { HomeTab, Page } from "../types.slint";
 import { StatItem } from "stat_item.slint";
 
 export component ListView inherits Rectangle {
@@ -31,7 +32,7 @@ export component ListView inherits Rectangle {
         HorizontalLayout {
             x: 8px; y: 17px; width: parent.width - 16px; height: 12px; spacing: 4px; alignment: start;
             if row.duration != "" && row.progress == "": StatItem { icon: Icons.clock; value: row.duration; }
-            if row.views != "": StatItem { icon: Icons.play; value: row.views; }
+            if row.views != "": StatItem { icon: Nav.page == Page.home && Nav.tab == HomeTab.live ? Icons.hot : Icons.play; value: row.views; }
             if row.likes != "": StatItem { icon: Icons.thumbs-up; value: row.likes; }
             if row.progress != "": StatItem { icon: Icons.play; show-icon: row.progress != "已看完"; value: row.progress; }
             if row.watched != "": StatItem { icon: Icons.clock; value: row.watched; }

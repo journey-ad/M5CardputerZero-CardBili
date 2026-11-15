@@ -268,6 +268,7 @@ impl App {
 
     fn return_to_home(&mut self) {
         self.close_cdn();
+        self.ui.global::<crate::LiveAreas>().set_open(false);
         self.return_home = false;
         self.back_stack.clear();
         self.clear_login_destination();

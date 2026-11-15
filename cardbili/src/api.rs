@@ -1,7 +1,7 @@
 pub mod auth;
 pub mod favorites;
 pub mod live;
-pub use live::{room as live_room, rooms as live_rooms};
+pub use live::room as live_room;
 pub mod playback;
 pub mod sections;
 mod wbi;

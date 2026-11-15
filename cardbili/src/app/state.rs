@@ -57,6 +57,7 @@ pub(super) struct App {
     pub(super) current_play: Option<model::PlayInfo>,
     pub(super) requested_play: Option<String>,
     pub(super) requested_live: Option<u64>,
+    pub(super) live_list: home::LiveState,
     pub(super) live: Option<model::LiveInfo>,
     pub(super) live_danmaku: Option<crate::live_danmaku::Connection>,
     pub(super) live_engine: danmaku::LiveEngine,
@@ -155,7 +156,9 @@ impl App {
         let last_tick = Instant::now();
 
         let force0 = std::env::var("BILI_FORCE").is_ok();
-        if tab.is_video() {
+        if tab == HomeTab::Live {
+            tasks::load_live_list(0, model::LiveArea::default(), 1, tx.clone(), force0);
+        } else if tab.is_video() {
             tasks::load_list(tab.index(), cookies.clone(), tx.clone(), force0);
         }
 
@@ -254,6 +257,7 @@ impl App {
             current_play: None,
             requested_play,
             requested_live,
+            live_list: home::LiveState::default(),
             live: None,
             live_danmaku: None,
             live_engine: danmaku::LiveEngine::default(),

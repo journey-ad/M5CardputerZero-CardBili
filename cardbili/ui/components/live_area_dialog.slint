@@ -1,0 +1,53 @@
+import { LiveAreas, Layout } from "../state.slint";
+
+// 分区弹窗使用三列网格，选中项保持在四行可视区域内
+export component LiveAreaDialog inherits Rectangle {
+    width: 100%; height: Layout.window-height - Layout.bottom-bar-height;
+    background: #000000a8;
+    property <int> first: max(0, LiveAreas.selected - Math.mod(LiveAreas.selected, 3) - 9);
+    TouchArea { clicked => { LiveAreas.key("ESC"); } }
+    Rectangle {
+        x: 12px; y: 8px; width: parent.width - 24px; height: parent.height - 16px;
+        background: #121a2a; border-radius: 5px; border-width: 1px; border-color: #405472;
+        TouchArea {}
+        Text {
+            x: 8px; y: 5px; width: parent.width - 62px; height: 20px;
+            text: LiveAreas.title; color: #e6ebf5; font-size: 12px;
+            vertical-alignment: center; overflow: elide;
+        }
+        Text {
+            x: parent.width - 52px; y: 5px; width: 44px; height: 20px;
+            text: LiveAreas.rows.length > 0 ? (LiveAreas.selected + 1) + "/" + LiveAreas.rows.length : "";
+            color: #9aa6ba; font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
+            horizontal-alignment: right; vertical-alignment: center;
+        }
+        viewport := Rectangle {
+            x: 8px; y: 30px; width: parent.width - 16px; height: parent.height - 38px;
+            clip: true;
+            if !LiveAreas.loading && LiveAreas.error == "": Rectangle {
+                width: parent.width; height: parent.height;
+                for label[index] in LiveAreas.rows: Rectangle {
+                    x: Math.mod(index, 3) * (parent.width / 3);
+                    y: (index - Math.mod(index, 3) - root.first) / 3 * 24px;
+                    width: parent.width / 3 - 3px; height: 22px;
+                    background: index == LiveAreas.selected ? #1f2b45 : #0f1623;
+                    border-radius: 2px; border-width: 1px;
+                    border-color: index == LiveAreas.selected ? #7fb0ff : transparent;
+                    Text {
+                        x: 4px; width: parent.width - 8px; height: parent.height;
+                        text: label; color: #e6ebf5;
+                        font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
+                        horizontal-alignment: center; vertical-alignment: center; overflow: elide;
+                    }
+                    TouchArea { clicked => { LiveAreas.key("AREA_SELECT:" + index); } }
+                }
+            }
+            if LiveAreas.loading || LiveAreas.error != "": Text {
+                width: parent.width; height: parent.height;
+                text: LiveAreas.loading ? "加载中…" : LiveAreas.error;
+                color: #9aa6ba; font-size: 12px;
+                horizontal-alignment: center; vertical-alignment: center;
+            }
+        }
+    }
+}

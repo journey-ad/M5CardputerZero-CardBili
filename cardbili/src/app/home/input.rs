@@ -3,6 +3,10 @@ use super::super::*;
 
 impl App {
     pub(in crate::app) fn home_key(&mut self, k: &str) {
+        if k == "LIVE_AREA" && self.tab == HomeTab::Live && !self.help {
+            self.open_live_areas();
+            return;
+        }
         if let Some(source) = list_source(self.tab, self.mine_detail) {
             if !self.help && self.video_list_key(k, self.lists[source].len()) {
                 return;
@@ -123,7 +127,17 @@ impl App {
 
 impl App {
     pub(in crate::app) fn load_home_list(&mut self, source: usize, force: bool) {
-        if source == 2 {
+        if source == HomeTab::Live.index() {
+            self.live_list.request += 1;
+            self.loading_more[source] = false;
+            tasks::load_live_list(
+                self.live_list.request,
+                self.live_list.filter.clone(),
+                1,
+                self.tx.clone(),
+                force,
+            );
+        } else if source == 2 {
             self.dynamic_request += 1;
             self.loading_more[2] = false;
             tasks::load_dynamic(

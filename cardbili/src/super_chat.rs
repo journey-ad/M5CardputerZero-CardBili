@@ -141,13 +141,16 @@ impl State {
         fresh
     }
 
-    pub fn expire(&mut self, now: u64) -> bool {
+    pub fn expire(&mut self, now: u64, retain_expired: bool) -> bool {
         let count = self.messages.len();
         let activated = self
             .messages
             .iter()
             .any(|item| self.checked_at < item.start && item.start <= now && now < item.end);
-        self.messages.retain(|item| item.end > now);
+        // 弹窗打开期间保留到期留言，关闭时统一清理
+        if !retain_expired {
+            self.messages.retain(|item| item.end > now);
+        }
         self.announcements.retain(|(id, _)| {
             self.messages
                 .iter()

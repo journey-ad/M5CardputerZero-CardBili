@@ -16,7 +16,8 @@ impl App {
             }
         }
         let now = super_chat::now();
-        changed |= self.super_chat.expire(now);
+        let open = self.ui.global::<crate::SuperChat>().get_open();
+        changed |= self.super_chat.expire(now, open);
         let available = self
             .super_chat
             .messages
@@ -92,7 +93,7 @@ impl App {
             .super_chat
             .messages
             .iter()
-            .filter(|item| item.visible(now))
+            .filter(|item| item.start <= now)
             .map(|item| crate::SuperChatRow {
                 user: item.user.as_str().into(),
                 price: format!("¥{}", item.price).into(),
@@ -126,7 +127,12 @@ impl App {
     }
 
     fn close_super_chat(&mut self) {
-        self.ui.global::<crate::SuperChat>().set_open(false);
+        let now = super_chat::now();
+        self.super_chat.expire(now, false);
+        let panel = self.ui.global::<crate::SuperChat>();
+        panel.set_open(false);
+        panel.set_rows(ModelRc::default());
+        panel.set_available(self.super_chat.messages.iter().any(|item| item.visible(now)));
         self.direction_hold = None;
         self.return_hold = None;
         self.last_input = Instant::now();

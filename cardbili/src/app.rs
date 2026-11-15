@@ -47,6 +47,10 @@ pub fn run(settings: Settings) {
     let mut display = platform::Display::new(ktx.clone());
     let ui = AppWindow::new().expect("ui");
     ui.show().expect("show");
+    let area_keys = ktx.clone();
+    ui.global::<crate::LiveAreas>().on_key(move |key| {
+        let _ = area_keys.send(key.to_string());
+    });
     ui.global::<crate::Player>().on_key(move |key| {
         let _ = ktx.send(key.to_string());
     });

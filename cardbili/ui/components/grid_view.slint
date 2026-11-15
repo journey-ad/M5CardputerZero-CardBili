@@ -1,6 +1,7 @@
 // 视频卡片：封面、时长角标、标题、统计与作者
-import { ListModel } from "../state.slint";
+import { Nav, ListModel } from "../state.slint";
 import { Icons } from "icons.slint";
+import { HomeTab, Page } from "../types.slint";
 import { StatItem } from "stat_item.slint";
 
 export component GridView inherits Rectangle {
@@ -38,7 +39,7 @@ export component GridView inherits Rectangle {
             x: 2px; y: thumbnail.y + thumbnail.height + 14px;
             width: parent.width - 4px; height: 12px;
             spacing: 4px; alignment: start;
-            if video.views != "": StatItem { text-size: ListModel.cols == 3 ? 8px : 10px; text-font: ListModel.cols == 3 ? "Fusion Pixel 8px Prop zh-Hans" : "Fusion Pixel 10px Prop zh-Hans"; icon-gap: 0px; icon: Icons.play; value: video.views; }
+            if video.views != "": StatItem { text-size: ListModel.cols == 3 ? 8px : 10px; text-font: ListModel.cols == 3 ? "Fusion Pixel 8px Prop zh-Hans" : "Fusion Pixel 10px Prop zh-Hans"; icon-gap: 0px; icon: Nav.page == Page.home && Nav.tab == HomeTab.live ? Icons.hot : Icons.play; value: video.views; }
             if video.danmaku != "": StatItem { text-size: ListModel.cols == 3 ? 8px : 10px; text-font: ListModel.cols == 3 ? "Fusion Pixel 8px Prop zh-Hans" : "Fusion Pixel 10px Prop zh-Hans"; icon-gap: 0px; icon: Icons.message-text; value: video.danmaku; }
             if video.progress != "": StatItem { text-size: ListModel.cols == 3 ? 8px : 10px; text-font: ListModel.cols == 3 ? "Fusion Pixel 8px Prop zh-Hans" : "Fusion Pixel 10px Prop zh-Hans"; icon-gap: 0px; icon: Icons.play; value: video.progress; }
             if video.watched != "": StatItem { text-size: ListModel.cols == 3 ? 8px : 10px; text-font: ListModel.cols == 3 ? "Fusion Pixel 8px Prop zh-Hans" : "Fusion Pixel 10px Prop zh-Hans"; icon-gap: 0px; icon: Icons.clock; value: video.watched; }

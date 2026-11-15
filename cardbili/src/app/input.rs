@@ -153,6 +153,10 @@ impl App {
             self.super_chat_key(key);
             return;
         }
+        if self.ui.global::<crate::LiveAreas>().get_open() {
+            self.live_area_key(key);
+            return;
+        }
         if self.ui.global::<crate::Cdn>().get_open() {
             self.cdn_key(key);
             return;

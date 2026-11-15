@@ -40,7 +40,6 @@ pub fn load_list(tab: usize, cookies: Option<String>, tx: Sender<Msg>, force: bo
             || match tab {
                 0 => api::rcmd(cookies.as_deref(), 1),
                 1 => api::popular(cookies.as_deref(), 1),
-                5 => api::live_rooms(1),
                 _ => Err("未知视频列表".into()),
             },
             |result| {
@@ -49,6 +48,24 @@ pub fn load_list(tab: usize, cookies: Option<String>, tx: Sender<Msg>, force: bo
                     Err(error) => Msg::Err(tab, error),
                 };
                 let _ = tx.send(message);
+            },
+        );
+    });
+}
+
+pub fn load_live_list(
+    request: u64,
+    area: crate::model::LiveArea,
+    page: u32,
+    tx: Sender<Msg>,
+    force: bool,
+) {
+    thread::spawn(move || {
+        cached_then_refresh(
+            force || page > 1,
+            || api::live::rooms(page, &area),
+            |result| {
+                let _ = tx.send(Msg::LiveList(request, page, result));
             },
         );
     });
@@ -96,7 +113,6 @@ pub fn load_more(tab: usize, page: u32, cookies: Option<String>, tx: Sender<Msg>
         let res = match tab {
             0 => api::rcmd(cookies.as_deref(), page),
             1 => api::popular(cookies.as_deref(), page),
-            5 => api::live_rooms(page),
             _ => Ok(Vec::new()),
         };
         match res {

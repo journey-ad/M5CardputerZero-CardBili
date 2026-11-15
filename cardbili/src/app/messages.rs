@@ -47,6 +47,8 @@ impl App {
             Msg::Err(t, msg) => self.list_error(t, msg),
             Msg::PlayReady(request, result) => self.play_ready(request, result),
             Msg::LiveReady(request, result) => self.live_ready(request, result),
+            Msg::LiveAreas(result) => self.live_areas_loaded(result),
+            Msg::LiveList(request, page, result) => self.live_list_loaded(request, page, result),
             Msg::Danmaku(g, eng) => self.danmaku_loaded(g, eng),
             Msg::QrReady(request, url) => self.qr_ready(request, url),
             Msg::QrStatus(request, s) => self.qr_status(request, s),

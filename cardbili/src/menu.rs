@@ -21,6 +21,7 @@ pub enum Action {
     Speed,
     Danmaku,
     SuperChat,
+    LiveArea,
     Comments,
 }
 
@@ -46,6 +47,7 @@ impl Action {
             Self::Speed => "倍速",
             Self::Danmaku => "弹幕",
             Self::SuperChat => "醒目留言",
+            Self::LiveArea => "分区",
             Self::Comments => "评论",
         }
     }
@@ -68,6 +70,7 @@ impl Action {
             Self::Speed => "b",
             Self::Danmaku => "d",
             Self::SuperChat => "SUPER_CHAT",
+            Self::LiveArea => "LIVE_AREA",
             Self::Comments => "r",
         }
     }
@@ -103,6 +106,12 @@ pub fn actions(
                 slots[2] = Some(Play);
                 if tab != HomeTab::Live {
                     slots[3] = Some(Detail);
+                }
+            }
+            if tab == HomeTab::Live {
+                slots[1] = Some(LiveArea);
+                if !logged {
+                    slots[3] = Some(Login);
                 }
             }
             slots[4] = Some(if mine_detail >= 0 { Back } else { Help });

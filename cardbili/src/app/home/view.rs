@@ -45,6 +45,14 @@ impl App {
                         self.tx.clone(),
                         false,
                     );
+                } else if self.tab == HomeTab::Live {
+                    tasks::load_live_list(
+                        self.live_list.request,
+                        self.live_list.filter.clone(),
+                        (self.pages[self.tab.index()] + 1) as u32,
+                        self.tx.clone(),
+                        false,
+                    );
                 } else {
                     tasks::load_more(
                         self.tab.index(),

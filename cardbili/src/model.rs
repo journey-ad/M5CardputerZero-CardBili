@@ -59,6 +59,14 @@ pub struct PlayInfo {
     pub live: bool,
 }
 
+// 一级分区的 id 为 0，parent_id 与 id 同为 0 表示全部直播
+#[derive(Clone, Default)]
+pub struct LiveArea {
+    pub parent_id: u64,
+    pub id: u64,
+    pub name: String,
+}
+
 #[derive(Clone, Default)]
 pub struct LiveInfo {
     pub room_id: u64,

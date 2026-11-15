@@ -1,35 +1,85 @@
 use super::{api_err, cache, model, net, Item, Value};
 
-// 直播推荐列表，room_id 写入 bvid 复用视频列表与封面管线
-pub fn rooms(page: u32) -> Result<Vec<Item>, String> {
-    let url = format!(
-        "https://api.live.bilibili.com/room/v1/room/get_user_recommend?page={}&page_size=20",
-        page
-    );
-    let v = cache::api_json(&url, None, cache::TTL_LIST)?;
-    if v["code"].as_i64() != Some(0) {
-        return Err(api_err("直播列表", &v));
+// 分区目录同时保留一级分区与子分区
+pub fn areas() -> Result<Vec<model::LiveArea>, String> {
+    let value = cache::api_json(
+        "https://api.live.bilibili.com/room/v1/Area/getList",
+        None,
+        cache::TTL_LIST,
+    )?;
+    if value["code"].as_i64() != Some(0) {
+        return Err(api_err("直播分区", &value));
     }
-    let mut out = Vec::new();
-    for it in v["data"].as_array().into_iter().flatten() {
-        let room_id = it["roomid"].as_i64().unwrap_or(0);
-        if room_id <= 0 {
+    let mut areas = vec![model::LiveArea {
+        name: "全部".into(),
+        ..Default::default()
+    }];
+    for parent in value["data"].as_array().into_iter().flatten() {
+        let Some(parent_id) = parent["id"].as_u64() else {
+            continue;
+        };
+        areas.push(model::LiveArea {
+            parent_id,
+            id: 0,
+            name: parent["name"].as_str().unwrap_or_default().into(),
+        });
+        for child in parent["list"].as_array().into_iter().flatten() {
+            let Some(id) = child["id"].as_str().and_then(|id| id.parse().ok()) else {
+                continue;
+            };
+            areas.push(model::LiveArea {
+                parent_id,
+                id,
+                name: child["name"].as_str().unwrap_or_default().into(),
+            });
+        }
+    }
+    Ok(areas)
+}
+
+// 全部直播使用推荐列表，指定分区按人气排序
+pub fn rooms(page: u32, area: &model::LiveArea) -> Result<model::VideoPage, String> {
+    let filtered = area.parent_id > 0;
+    let url = if filtered {
+        format!(
+            "https://api.live.bilibili.com/room/v3/area/getRoomList?platform=web&parent_area_id={}&area_id={}&sort_type=online&page={page}&page_size=20",
+            area.parent_id, area.id
+        )
+    } else {
+        format!("https://api.live.bilibili.com/room/v1/room/get_user_recommend?page={page}&page_size=20")
+    };
+    let value = cache::api_json(&url, None, cache::TTL_LIST)?;
+    if value["code"].as_i64() != Some(0) {
+        return Err(api_err("直播列表", &value));
+    }
+    let data = &value["data"];
+    let list = if filtered { &data["list"] } else { data };
+    let mut items = Vec::new();
+    for room in list.as_array().into_iter().flatten() {
+        let room_id = room["roomid"].as_u64().unwrap_or(0);
+        if room_id == 0 {
             continue;
         }
         let pic = ["user_cover", "system_cover", "keyframe"]
             .iter()
-            .find_map(|key| it[*key].as_str().filter(|value| !value.is_empty()))
+            .find_map(|key| room[*key].as_str().filter(|value| !value.is_empty()))
             .unwrap_or_default();
-        out.push(Item {
-            title: it["title"].as_str().unwrap_or_default().into(),
-            meta: it["uname"].as_str().unwrap_or_default().into(),
+        items.push(Item {
+            title: room["title"].as_str().unwrap_or_default().into(),
+            meta: room["uname"].as_str().unwrap_or_default().into(),
             bvid: room_id.to_string(),
             pic: pic.into(),
-            views: it["online"].as_i64().map(model::fmt_num),
+            views: room["online"].as_i64().map(model::fmt_num),
             ..Default::default()
         });
     }
-    Ok(out)
+    let total = data["count"].as_u64();
+    let has_more = !items.is_empty() && total.map_or(true, |total| u64::from(page) * 20 < total);
+    Ok(model::VideoPage {
+        items,
+        has_more,
+        total,
+    })
 }
 
 pub fn room(room_id: u64, cookies: Option<&str>) -> Result<model::LiveInfo, String> {

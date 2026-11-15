@@ -115,6 +115,15 @@ impl App {
 
 impl App {
     pub(super) fn menu_actions(&self) -> [Option<menu::Action>; 5] {
+        if self.ui.global::<crate::LiveAreas>().get_open() {
+            return [
+                Some(menu::Action::Refresh),
+                Some(menu::Action::Select),
+                None,
+                None,
+                Some(menu::Action::Back),
+            ];
+        }
         if self.ui.global::<crate::Cdn>().get_open() {
             return [
                 Some(menu::Action::SpeedTest),

@@ -46,6 +46,17 @@ export global ListModel {
     in-out property <length> title-shift: 0px;
 }
 
+// 直播分区：目录、选择位置与加载状态
+export global LiveAreas {
+    callback key(string);
+    in-out property <bool> open: false;
+    in-out property <bool> loading: false;
+    in-out property <string> error: "";
+    in-out property <string> title: "选择直播分区";
+    in-out property <[string]> rows: [];
+    in-out property <int> selected: 0;
+}
+
 // 通用状态文本：首页状态栏、空状态、播放占位共用
 export global Status {
     in-out property <string> status: "";
