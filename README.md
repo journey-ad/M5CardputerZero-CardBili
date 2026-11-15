@@ -106,6 +106,8 @@ python3 scripts/check-release.py --deb dist/cardbili_*_arm64.deb
 
 [Cardputer Zero skill](.agents/skills/cardputer-zero/SKILL.md) 提供构建、部署、截图与设备调试说明
 
+[音视频性能报告](docs/performance/2026-11-15-playback.md) 包含两轮真机基准和屏幕吞吐评估，复测脚本保存在 `scripts/benchmarks/`
+
 也可参考项目中的 [官方开发 skill](.agents/skills/cardputer-zero-application/SKILL.md)
 
 ## 贡献

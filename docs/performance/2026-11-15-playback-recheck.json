@@ -1,0 +1,124 @@
+[
+  {
+    "binary": "/var/tmp/cardbili-bench/baseline",
+    "controls": "hidden",
+    "resource_seconds": 28.05764677900015,
+    "resources": {
+      "app": {
+        "cpu_pct": 28.120676199777733,
+        "rss_mean_kib": 9456.689655172413,
+        "rss_max_kib": 9756.0
+      },
+      "pacat": {
+        "cpu_pct": 1.532559032434021,
+        "rss_mean_kib": 4000.0,
+        "rss_max_kib": 4000.0
+      },
+      "ffmpeg": {
+        "cpu_pct": 48.685479960578434,
+        "rss_mean_kib": 26701.793103448275,
+        "rss_max_kib": 26900.0
+      }
+    },
+    "timings": {
+      "frame_interval": {
+        "count": 890,
+        "max_ms": 49.01766,
+        "mean_ms": 33.69182647191014,
+        "over_100ms": 0,
+        "p95_ms": 44.73755
+      },
+      "handoff": {
+        "count": 890,
+        "max_ms": 3.9727900000000003,
+        "mean_ms": 1.446770668539327,
+        "over_100ms": 0,
+        "p95_ms": 1.86692
+      },
+      "render": {
+        "count": 890,
+        "max_ms": 13.998724000000001,
+        "mean_ms": 5.62872905842696,
+        "over_100ms": 0,
+        "p95_ms": 8.082322
+      },
+      "submit": {
+        "count": 890,
+        "max_ms": 9.330044,
+        "mean_ms": 1.72873458764045,
+        "over_100ms": 0,
+        "p95_ms": 5.712828
+      },
+      "sync": {
+        "count": 2345,
+        "max_ms": 5.647206,
+        "mean_ms": 0.9069930012793177,
+        "over_100ms": 0,
+        "p95_ms": 2.443561
+      }
+    },
+    "temperature_millicelsius": 52616,
+    "cpu_frequency_khz": 1000000
+  },
+  {
+    "binary": "/var/tmp/cardbili-bench/round2",
+    "controls": "hidden",
+    "resource_seconds": 28.055204136000157,
+    "resources": {
+      "app": {
+        "cpu_pct": 23.346827092215328,
+        "rss_mean_kib": 9891.586206896553,
+        "rss_max_kib": 10356.0
+      },
+      "pacat": {
+        "cpu_pct": 1.461404443940196,
+        "rss_mean_kib": 4000.0,
+        "rss_max_kib": 4000.0
+      },
+      "ffmpeg": {
+        "cpu_pct": 47.40653440098686,
+        "rss_mean_kib": 26998.620689655174,
+        "rss_max_kib": 27356.0
+      }
+    },
+    "timings": {
+      "frame_interval": {
+        "count": 887,
+        "max_ms": 49.930526,
+        "mean_ms": 33.81952461217589,
+        "over_100ms": 0,
+        "p95_ms": 43.977917999999995
+      },
+      "handoff": {
+        "count": 887,
+        "max_ms": 0.07114300000000001,
+        "mean_ms": 0.012864330326944761,
+        "over_100ms": 0,
+        "p95_ms": 0.018645
+      },
+      "render": {
+        "count": 887,
+        "max_ms": 11.896220000000001,
+        "mean_ms": 5.831176983089058,
+        "over_100ms": 0,
+        "p95_ms": 8.441715
+      },
+      "submit": {
+        "count": 887,
+        "max_ms": 8.104999999999999,
+        "mean_ms": 1.5423600112739555,
+        "over_100ms": 0,
+        "p95_ms": 4.559301
+      },
+      "sync": {
+        "count": 2355,
+        "max_ms": 5.031113,
+        "mean_ms": 0.13015019660297228,
+        "over_100ms": 0,
+        "p95_ms": 0.27249
+      }
+    },
+    "temperature_millicelsius": 53692,
+    "cpu_frequency_khz": 1000000
+  }
+]

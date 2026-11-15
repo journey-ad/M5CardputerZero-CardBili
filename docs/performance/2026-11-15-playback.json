@@ -754,5 +754,383 @@
     "cpu_frequency_khz": 1000000,
     "version": "round1",
     "trial": 3
+  },
+  {
+    "binary": "/var/tmp/cardbili-bench/round2",
+    "controls": "hidden",
+    "resource_seconds": 28.047923955999977,
+    "resources": {
+      "app": {
+        "cpu_pct": 23.06766094399634,
+        "rss_mean_kib": 9726.206896551725,
+        "rss_max_kib": 10036.0
+      },
+      "pacat": {
+        "cpu_pct": 1.497437031913209,
+        "rss_mean_kib": 4000.0,
+        "rss_max_kib": 4000.0
+      },
+      "ffmpeg": {
+        "cpu_pct": 47.062306717272286,
+        "rss_mean_kib": 26669.379310344826,
+        "rss_max_kib": 26860.0
+      }
+    },
+    "timings": {
+      "frame_interval": {
+        "count": 881,
+        "max_ms": 228.233067,
+        "mean_ms": 34.03888380363222,
+        "over_100ms": 1,
+        "p95_ms": 44.013551
+      },
+      "handoff": {
+        "count": 881,
+        "max_ms": 0.044527000000000004,
+        "mean_ms": 0.012497607264472186,
+        "over_100ms": 0,
+        "p95_ms": 0.017706
+      },
+      "render": {
+        "count": 881,
+        "max_ms": 15.266791,
+        "mean_ms": 5.828673524404086,
+        "over_100ms": 0,
+        "p95_ms": 8.365647000000001
+      },
+      "submit": {
+        "count": 881,
+        "max_ms": 16.800349999999998,
+        "mean_ms": 1.5036576799091934,
+        "over_100ms": 0,
+        "p95_ms": 4.547395
+      },
+      "sync": {
+        "count": 2337,
+        "max_ms": 2.043095,
+        "mean_ms": 0.12592573341891314,
+        "over_100ms": 0,
+        "p95_ms": 0.265965
+      }
+    },
+    "temperature_millicelsius": 53692,
+    "cpu_frequency_khz": 1000000,
+    "version": "round2",
+    "trial": 1
+  },
+  {
+    "binary": "/var/tmp/cardbili-bench/round2",
+    "controls": "hidden",
+    "resource_seconds": 28.06114707400002,
+    "resources": {
+      "app": {
+        "cpu_pct": 23.234973191958673,
+        "rss_mean_kib": 9869.931034482759,
+        "rss_max_kib": 10200.0
+      },
+      "pacat": {
+        "cpu_pct": 1.4610949399851312,
+        "rss_mean_kib": 4000.0,
+        "rss_max_kib": 4000.0
+      },
+      "ffmpeg": {
+        "cpu_pct": 47.32522147073791,
+        "rss_mean_kib": 26851.58620689655,
+        "rss_max_kib": 27000.0
+      }
+    },
+    "timings": {
+      "frame_interval": {
+        "count": 882,
+        "max_ms": 48.500049000000004,
+        "mean_ms": 33.99991037414963,
+        "over_100ms": 0,
+        "p95_ms": 44.000846
+      },
+      "handoff": {
+        "count": 882,
+        "max_ms": 0.067129,
+        "mean_ms": 0.012734698412698394,
+        "over_100ms": 0,
+        "p95_ms": 0.018436
+      },
+      "render": {
+        "count": 882,
+        "max_ms": 16.746449,
+        "mean_ms": 5.864912853741493,
+        "over_100ms": 0,
+        "p95_ms": 8.032001000000001
+      },
+      "submit": {
+        "count": 882,
+        "max_ms": 8.174228000000001,
+        "mean_ms": 1.5882847176870765,
+        "over_100ms": 0,
+        "p95_ms": 4.612691000000001
+      },
+      "sync": {
+        "count": 2349,
+        "max_ms": 3.878958,
+        "mean_ms": 0.12729215879097477,
+        "over_100ms": 0,
+        "p95_ms": 0.28044199999999997
+      }
+    },
+    "temperature_millicelsius": 55844,
+    "cpu_frequency_khz": 1000000,
+    "version": "round2",
+    "trial": 2
+  },
+  {
+    "binary": "/var/tmp/cardbili-bench/round2",
+    "controls": "hidden",
+    "resource_seconds": 28.05395575900002,
+    "resources": {
+      "app": {
+        "cpu_pct": 23.16963802124315,
+        "rss_mean_kib": 9880.275862068966,
+        "rss_max_kib": 10280.0
+      },
+      "pacat": {
+        "cpu_pct": 1.4614694751861061,
+        "rss_mean_kib": 4000.0,
+        "rss_max_kib": 4000.0
+      },
+      "ffmpeg": {
+        "cpu_pct": 47.08783357855723,
+        "rss_mean_kib": 26923.862068965518,
+        "rss_max_kib": 27104.0
+      }
+    },
+    "timings": {
+      "frame_interval": {
+        "count": 886,
+        "max_ms": 48.913475999999996,
+        "mean_ms": 33.83761622799095,
+        "over_100ms": 0,
+        "p95_ms": 43.965571000000004
+      },
+      "handoff": {
+        "count": 886,
+        "max_ms": 0.067702,
+        "mean_ms": 0.012803020316027081,
+        "over_100ms": 0,
+        "p95_ms": 0.019634
+      },
+      "render": {
+        "count": 886,
+        "max_ms": 12.750582999999999,
+        "mean_ms": 5.78362156094808,
+        "over_100ms": 0,
+        "p95_ms": 8.003599
+      },
+      "submit": {
+        "count": 886,
+        "max_ms": 7.766589,
+        "mean_ms": 1.5114411433408574,
+        "over_100ms": 0,
+        "p95_ms": 4.52628
+      },
+      "sync": {
+        "count": 2346,
+        "max_ms": 4.946968,
+        "mean_ms": 0.1323659859335038,
+        "over_100ms": 0,
+        "p95_ms": 0.283827
+      }
+    },
+    "temperature_millicelsius": 54768,
+    "cpu_frequency_khz": 1000000,
+    "version": "round2",
+    "trial": 3
+  },
+  {
+    "binary": "/var/tmp/cardbili-bench/round2",
+    "controls": "visible",
+    "resource_seconds": 28.059164280000005,
+    "resources": {
+      "app": {
+        "cpu_pct": 29.366519678824872,
+        "rss_mean_kib": 9830.620689655172,
+        "rss_max_kib": 10208.0
+      },
+      "pacat": {
+        "cpu_pct": 1.4611981879026938,
+        "rss_mean_kib": 3640.0,
+        "rss_max_kib": 3640.0
+      },
+      "ffmpeg": {
+        "cpu_pct": 46.72270303269345,
+        "rss_mean_kib": 26959.724137931036,
+        "rss_max_kib": 27180.0
+      }
+    },
+    "timings": {
+      "frame_interval": {
+        "count": 888,
+        "max_ms": 49.197809,
+        "mean_ms": 33.789613465090106,
+        "over_100ms": 0,
+        "p95_ms": 43.96377
+      },
+      "handoff": {
+        "count": 888,
+        "max_ms": 0.29476399999999997,
+        "mean_ms": 0.013338502252252266,
+        "over_100ms": 0,
+        "p95_ms": 0.020415
+      },
+      "render": {
+        "count": 1261,
+        "max_ms": 14.415903,
+        "mean_ms": 5.422317354480569,
+        "over_100ms": 0,
+        "p95_ms": 8.637689
+      },
+      "submit": {
+        "count": 1261,
+        "max_ms": 10.242175,
+        "mean_ms": 0.9982398675654246,
+        "over_100ms": 0,
+        "p95_ms": 4.297307999999999
+      },
+      "sync": {
+        "count": 2345,
+        "max_ms": 1.610736,
+        "mean_ms": 0.1621151317697227,
+        "over_100ms": 0,
+        "p95_ms": 0.344447
+      }
+    },
+    "temperature_millicelsius": 54768,
+    "cpu_frequency_khz": 1000000,
+    "version": "round2",
+    "trial": 1
+  },
+  {
+    "binary": "/var/tmp/cardbili-bench/round2",
+    "controls": "visible",
+    "resource_seconds": 28.059557999999925,
+    "resources": {
+      "app": {
+        "cpu_pct": 29.615576980934705,
+        "rss_mean_kib": 9862.620689655172,
+        "rss_max_kib": 10156.0
+      },
+      "pacat": {
+        "cpu_pct": 1.496816165101393,
+        "rss_mean_kib": 4000.0,
+        "rss_max_kib": 4000.0
+      },
+      "ffmpeg": {
+        "cpu_pct": 47.18534768081534,
+        "rss_mean_kib": 26929.51724137931,
+        "rss_max_kib": 27152.0
+      }
+    },
+    "timings": {
+      "frame_interval": {
+        "count": 883,
+        "max_ms": 50.244129,
+        "mean_ms": 33.96391353001134,
+        "over_100ms": 0,
+        "p95_ms": 43.99711
+      },
+      "handoff": {
+        "count": 883,
+        "max_ms": 0.081867,
+        "mean_ms": 0.013574816534541333,
+        "over_100ms": 0,
+        "p95_ms": 0.021873
+      },
+      "render": {
+        "count": 1260,
+        "max_ms": 15.476218999999999,
+        "mean_ms": 5.437381587301587,
+        "over_100ms": 0,
+        "p95_ms": 8.820666
+      },
+      "submit": {
+        "count": 1260,
+        "max_ms": 9.911912000000001,
+        "mean_ms": 1.0450662460317468,
+        "over_100ms": 0,
+        "p95_ms": 4.376612000000001
+      },
+      "sync": {
+        "count": 2348,
+        "max_ms": 3.350459,
+        "mean_ms": 0.1682994948892673,
+        "over_100ms": 0,
+        "p95_ms": 0.344967
+      }
+    },
+    "temperature_millicelsius": 55844,
+    "cpu_frequency_khz": 1000000,
+    "version": "round2",
+    "trial": 2
+  },
+  {
+    "binary": "/var/tmp/cardbili-bench/round2",
+    "controls": "visible",
+    "resource_seconds": 28.04869546200007,
+    "resources": {
+      "app": {
+        "cpu_pct": 29.34182807592558,
+        "rss_mean_kib": 9902.068965517241,
+        "rss_max_kib": 10192.0
+      },
+      "pacat": {
+        "cpu_pct": 1.497395843485874,
+        "rss_mean_kib": 4000.0,
+        "rss_max_kib": 4000.0
+      },
+      "ffmpeg": {
+        "cpu_pct": 46.775793967939684,
+        "rss_mean_kib": 26942.48275862069,
+        "rss_max_kib": 27176.0
+      }
+    },
+    "timings": {
+      "frame_interval": {
+        "count": 892,
+        "max_ms": 49.412797000000005,
+        "mean_ms": 33.63995964910312,
+        "over_100ms": 0,
+        "p95_ms": 43.962832
+      },
+      "handoff": {
+        "count": 892,
+        "max_ms": 0.12707100000000002,
+        "mean_ms": 0.01313082286995515,
+        "over_100ms": 0,
+        "p95_ms": 0.02005
+      },
+      "render": {
+        "count": 1259,
+        "max_ms": 14.378899,
+        "mean_ms": 5.447417914217626,
+        "over_100ms": 0,
+        "p95_ms": 8.779976
+      },
+      "submit": {
+        "count": 1259,
+        "max_ms": 9.438397,
+        "mean_ms": 1.027333082605242,
+        "over_100ms": 0,
+        "p95_ms": 4.428889
+      },
+      "sync": {
+        "count": 2349,
+        "max_ms": 4.004452000000001,
+        "mean_ms": 0.1670456632609617,
+        "over_100ms": 0,
+        "p95_ms": 0.323874
+      }
+    },
+    "temperature_millicelsius": 54768,
+    "cpu_frequency_khz": 1000000,
+    "version": "round2",
+    "trial": 3
   }
 ]

@@ -1,0 +1,20 @@
+[
+  {
+    "requested_fps": 30,
+    "seconds": 10.00001264499997,
+    "submitted_fps": 29.99996206504806,
+    "spi_bytes": 32643300,
+    "spi_full_frames_per_second": 30.00299514944802,
+    "submit_mean_ms": 0.7827126699946044,
+    "submit_p95_ms": 1.9730849999177735
+  },
+  {
+    "requested_fps": 60,
+    "seconds": 10.000000583999963,
+    "submitted_fps": 59.99999649600043,
+    "spi_bytes": 42937077,
+    "spi_full_frames_per_second": 39.46422287911306,
+    "submit_mean_ms": 0.37576985333165186,
+    "submit_p95_ms": 0.42125999993913865
+  }
+]

@@ -12,4 +12,5 @@ mod tick;
 mod super_chat;
 mod triple;
 mod view;
+pub(super) use view::PlaybackDisplay;
 pub(super) use triple::TripleFeedback;

@@ -42,7 +42,7 @@ impl App {
         }
         if !self.settings.danmaku_enabled {
             self.super_chat.announcements.clear();
-        } else if !panel.get_open() {
+        } else if !panel.get_open() && !self.super_chat.announcements.is_empty() {
             if let Some(player) = self
                 .player
                 .as_ref()

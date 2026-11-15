@@ -330,7 +330,7 @@ impl Display {
                     std::slice::from_raw_parts(self.buffer.as_ptr() as *const u8, FB_BYTES)
                 };
                 self.fbmap[..FB_BYTES].copy_from_slice(out);
-                // 完整帧写入后立即提交，等待本次显示传输结束
+                // 完整帧写入后提交给显示驱动
                 if let Err(error) = self.fb_file.sync_data() {
                     eprintln!("提交显示帧失败: {error}");
                     return false;

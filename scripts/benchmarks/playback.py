@@ -73,12 +73,15 @@ def snapshot(pids):
 
 
 def run(binary, media, controls, output):
+    binary, media, output = binary.resolve(), media.resolve(), output.resolve()
     class Handler(SimpleHTTPRequestHandler):
         def log_message(self, *args):
             pass
 
     # 本机 HTTP 保留正式播放器的输入参数，同时固定媒体内容
     server = ThreadingHTTPServer(("127.0.0.1", 0), partial(Handler, directory=str(media.parent)))
+    # server_close 等待媒体连接线程结束后再退出解释器
+    server.daemon_threads = False
     threading.Thread(target=server.serve_forever, daemon=True).start()
     env = os.environ.copy()
     private = output.parent / "runtime"
