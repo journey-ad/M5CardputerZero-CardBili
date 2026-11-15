@@ -49,7 +49,10 @@ impl App {
                         || self.direction_hold.is_some()
                         || self.last_input.elapsed() < Duration::from_millis(3000)
                 })
-                .unwrap_or(true)
+                .unwrap_or(
+                    !g_player.get_has_frame()
+                        || self.last_input.elapsed() < Duration::from_millis(3000),
+                )
         } else {
             true
         };

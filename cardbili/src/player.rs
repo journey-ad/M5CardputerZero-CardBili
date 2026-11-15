@@ -117,7 +117,7 @@ impl Player {
             audio: None,
             live: info.live,
             tx,
-            frames: Arc::new(frames::Frames::default()),
+            frames: Arc::new(frames::Frames::new(info.live)),
         };
         p.base = state.position.clamp(0.0, p.duration);
         p.spawn(p.base);
@@ -196,7 +196,7 @@ impl Player {
         stop_child(&mut self.child, "音视频");
         stop_child(&mut self.audio, "音频");
         self.frames.stop();
-        self.frames = Arc::new(frames::Frames::default());
+        self.frames = Arc::new(frames::Frames::new(self.live));
         self.frames.pause(self.paused);
         #[cfg(target_os = "linux")]
         let audio_pipe = match audio::start(self.frames.clone()) {
@@ -242,6 +242,10 @@ impl Player {
             vec![&self.video_url, &self.audio_url]
         };
         for url in inputs {
+            if self.live {
+                // 输入线程缓存压缩包，解码帧队列维持 500ms
+                args.extend(["-thread_queue_size".into(), "128".into()]);
+            }
             args.extend([
                 "-threads".into(),
                 "4".into(),
@@ -438,9 +442,10 @@ impl Player {
     }
 
     pub fn stalled(&self) -> bool {
+        let timeout = if self.live && self.ready { 8 } else { 30 };
         !self.finished
             && !(self.paused && self.ready)
-            && self.last_frame.elapsed() > Duration::from_secs(30)
+            && self.last_frame.elapsed() > Duration::from_secs(timeout)
     }
 
     pub fn take_frame(&self) -> Option<(u64, Vec<u8>)> {

@@ -12,6 +12,10 @@ impl App {
             return;
         };
         if !player.paused || self.frames_in_seg == 0 {
+            if self.live.is_some() && self.live_recovery.attempts > 0 {
+                crate::diagnostics::write(format_args!("[直播] 重连恢复 gen={g}"));
+                self.live_recovery = super::LiveRecovery::default();
+            }
             player.frame_ready();
             self.frames_in_seg = index;
             self.latest = Some((g, pixels));
@@ -19,6 +23,12 @@ impl App {
     }
 
     pub(in crate::app) fn playback_ended(&mut self, g: u64) {
+        if self.live.is_some()
+            && self.player.as_ref().is_some_and(|p| p.gen == g && !p.finished)
+        {
+            self.recover_live("直播流已断开");
+            return;
+        }
         if self.player.as_ref().is_some_and(|p| p.gen == g)
             && self.current_play.as_ref().is_some_and(|info| {
                 self.player.as_ref().unwrap().position(self.frames_in_seg) >= info.duration - 1.0
@@ -112,7 +122,7 @@ impl App {
     pub(in crate::app) fn live_ready(
         &mut self,
         request: u64,
-        result: Result<model::LiveInfo, String>,
+        result: Result<model::LiveInfo, crate::api::live::RoomError>,
     ) {
         if self.page != Page::Player || request != self.play_request {
             return;
@@ -142,16 +152,25 @@ impl App {
                     self.tx.clone(),
                     player::PlaybackState::default(),
                 ));
-                self.live_danmaku = Some(crate::live_danmaku::Connection::start(
-                    info.room_id,
-                    self.cookies.clone(),
-                ));
+                if self.live_danmaku.is_none() {
+                    self.live_danmaku = Some(crate::live_danmaku::Connection::start(
+                        info.room_id,
+                        self.cookies.clone(),
+                    ));
+                }
                 self.status = "加载中…".into();
                 self.status_detail.clear();
                 self.live = Some(info);
             }
+            Err(crate::api::live::RoomError::Request(error)) => {
+                crate::diagnostics::write(format_args!("[直播] 获取播放地址失败: {error}"));
+                self.recover_live("直播连接失败");
+            }
             Err(error) => {
-                self.status = error;
+                self.live_recovery = super::LiveRecovery::default();
+                self.live_danmaku = None;
+                self.ui.global::<crate::Player>().set_has_frame(false);
+                self.status = error.to_string();
                 self.status_detail.clear();
             }
         }

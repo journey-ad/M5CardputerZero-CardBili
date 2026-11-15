@@ -43,9 +43,17 @@ impl State {
 pub(super) struct Frames {
     state: Mutex<State>,
     changed: Condvar,
+    live: bool,
 }
 
 impl Frames {
+    pub fn new(live: bool) -> Self {
+        Self {
+            live,
+            ..Self::default()
+        }
+    }
+
     pub fn pause(&self, paused: bool) {
         let mut state = self.state.lock().unwrap();
         state.position(Instant::now());
@@ -109,7 +117,25 @@ impl Frames {
     pub fn publish(&self, index: u64, pixels: Vec<u8>) -> bool {
         let mut state = self.state.lock().unwrap();
         while !state.stopped && state.pending.len() >= CAPACITY {
-            state = self.changed.wait(state).unwrap();
+            if self.live && !state.paused {
+                let position = state.position(Instant::now());
+                let (next, _) = self
+                    .changed
+                    .wait_timeout_while(state, Duration::from_millis(250), |state| {
+                        !state.stopped && !state.paused && state.pending.len() >= CAPACITY
+                    })
+                    .unwrap();
+                state = next;
+                // 音频时钟停滞时释放一帧，让解码器继续输出音频
+                if !state.paused
+                    && state.pending.len() >= CAPACITY
+                    && state.position(Instant::now()) <= position
+                {
+                    state.pending.pop_front();
+                }
+            } else {
+                state = self.changed.wait(state).unwrap();
+            }
         }
         if state.stopped {
             return false;

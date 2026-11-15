@@ -99,6 +99,7 @@ impl App {
         self.ui.global::<crate::SuperChat>().set_available(false);
         self.ui.global::<crate::SuperChat>().set_rows(ModelRc::default());
         self.live = None;
+        self.live_recovery = playback::LiveRecovery::default();
         self.ui.global::<crate::Player>().set_live(false);
         if self.requested_play.is_none() {
             self.play_start = 0.0;

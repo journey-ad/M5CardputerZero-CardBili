@@ -1,4 +1,6 @@
 mod messages;
+mod live;
+pub(super) use live::LiveRecovery;
 use std::time::Duration;
 
 const TRIPLE_HOLD_DELAY: Duration = Duration::from_millis(300);

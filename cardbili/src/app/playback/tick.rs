@@ -5,8 +5,13 @@ impl App {
     pub(in crate::app) fn tick(&mut self) {
         self.tick_super_chat();
         if let Some(player) = self.player.as_ref().filter(|player| player.stalled()) {
-            self.playback_failed(player.gen, "播放超时，按播放键重试".into());
+            if self.live.is_some() {
+                self.recover_live("直播画面长时间未更新");
+            } else {
+                self.playback_failed(player.gen, "播放超时，按播放键重试".into());
+            }
         }
+        self.tick_live_recovery();
         if let Some(connection) = self.live_danmaku.as_ref() {
             for event in connection.events.try_iter().take(64) {
                 match event {

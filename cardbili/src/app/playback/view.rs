@@ -40,6 +40,7 @@ impl App {
         if self.page == Page::Player {
             self.sync_triple();
             let g_player = self.ui.global::<crate::Player>();
+            g_player.set_reconnect_text(self.live_recovery.notice(Instant::now()).into());
 
             g_player.set_liked(self.controls.liked.unwrap_or(false));
             g_player.set_reaction_busy(self.controls.busy);

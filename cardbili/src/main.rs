@@ -45,7 +45,7 @@ pub enum Msg {
     Following(u64, u32, Result<model::FollowingPage, String>),
     Err(usize, String),
     PlayReady(u64, Result<model::PlayInfo, String>),
-    LiveReady(u64, Result<model::LiveInfo, String>),
+    LiveReady(u64, Result<model::LiveInfo, api::live::RoomError>),
     LiveAreas(Result<Vec<model::LiveArea>, String>),
     LiveList(u64, u32, Result<model::VideoPage, String>),
     Danmaku(u64, danmaku::Engine),

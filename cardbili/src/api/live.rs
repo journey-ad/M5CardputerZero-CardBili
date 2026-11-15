@@ -82,18 +82,42 @@ pub fn rooms(page: u32, area: &model::LiveArea) -> Result<model::VideoPage, Stri
     })
 }
 
-pub fn room(room_id: u64, cookies: Option<&str>) -> Result<model::LiveInfo, String> {
+// 下播与不支持的编码属于终止状态，网络请求失败可重新获取地址
+#[derive(Debug)]
+pub enum RoomError {
+    Offline,
+    Unsupported,
+    Request(String),
+}
+
+impl From<String> for RoomError {
+    fn from(error: String) -> Self {
+        Self::Request(error)
+    }
+}
+
+impl std::fmt::Display for RoomError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Offline => f.write_str("直播间未开播"),
+            Self::Unsupported => f.write_str("暂无兼容的 AVC 直播流，请换个直播间"),
+            Self::Request(error) => f.write_str(error),
+        }
+    }
+}
+
+pub fn room(room_id: u64, cookies: Option<&str>) -> Result<model::LiveInfo, RoomError> {
     let info_url = format!(
         "https://api.live.bilibili.com/xlive/web-room/v1/index/getH5InfoByRoom?room_id={}",
         room_id
     );
     let v = net::get_json(&info_url, cookies)?;
     if v["code"].as_i64() != Some(0) {
-        return Err(api_err("直播间信息", &v));
+        return Err(api_err("直播间信息", &v).into());
     }
     let room = &v["data"]["room_info"];
     if room["live_status"].as_i64() != Some(1) {
-        return Err("直播间未开播".into());
+        return Err(RoomError::Offline);
     }
     let room_id = room["room_id"]
         .as_u64()
@@ -105,9 +129,9 @@ pub fn room(room_id: u64, cookies: Option<&str>) -> Result<model::LiveInfo, Stri
     );
     let p = net::get_json(&play_url, cookies)?;
     if p["code"].as_i64() != Some(0) {
-        return Err(api_err("直播播放地址", &p));
+        return Err(api_err("直播播放地址", &p).into());
     }
-    let url = stream_url(&p["data"]).ok_or("暂无兼容的 AVC 直播流，请换个直播间")?;
+    let url = stream_url(&p["data"]).ok_or(RoomError::Unsupported)?;
     crate::diagnostics::write(format_args!(
         "[直播] 房间={} 流={}",
         room_id,
