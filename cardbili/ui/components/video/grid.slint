@@ -1,32 +1,46 @@
 import { Text } from "../base/text.slint";
-// 视频卡片：封面、时长角标、标题、统计与作者
+// 视频卡片：封面、角标、标题、统计与作者
 import { Nav, ListModel } from "../../state.slint";
-import { Icons } from "../base/icons.slint";
+import { Icon, Icons } from "../base/icons.slint";
 import { HomeTab, Page } from "../../types.slint";
 import { StatItem } from "../base/stat.slint";
 
 export component GridView inherits Rectangle {
     clip: true;
+    property <bool> live: Nav.page == Page.home && Nav.tab == HomeTab.live;
+
+    for header in ListModel.headers: Text {
+        x: 3px; y: header.top * 1px - ListModel.grid-offset + (root.live ? 4px : 0px);
+        width: parent.width - 6px; height: ListModel.header-height - (root.live ? 6px : 0px);
+        text: header.title; color: #8b95a7;
+        font-family: root.live ? "Fusion Pixel 12px Prop zh-Hans" : "Fusion Pixel 10px Prop zh-Hans";
+        font-size: root.live ? 12px : 10px;
+        vertical-alignment: center;
+    }
 
     for video[i] in ListModel.grid-rows: Rectangle {
-        x: Math.mod(i, ListModel.cols) * ListModel.cell-w;
-        y: ((i - Math.mod(i, ListModel.cols)) / ListModel.cols) * ListModel.cell-h - ListModel.grid-offset;
+        x: ListModel.grid-columns[i] * ListModel.cell-w;
+        y: ListModel.grid-tops[i] * 1px - ListModel.grid-offset;
         width: ListModel.cell-w;
         height: ListModel.cell-h;
         background: #0f1623;
         thumbnail := Image {
             x: 1px; y: 1px; width: parent.width - 2px;
-            height: parent.height - ((video.views != "" || video.danmaku != "" || video.progress != "" || video.watched != "") ? 42px : 30px);
+            height: parent.height - ((!root.live && (video.views != "" || video.danmaku != "" || video.progress != "" || video.watched != "")) ? 42px : 30px);
             source: ListModel.grid-covers[i]; image-fit: cover;
         }
-        if video.duration != "": Rectangle {
+        if (root.live ? video.views : video.duration) != "": Rectangle {
             x: thumbnail.x + thumbnail.width - self.width - 4px;
             y: thumbnail.y + thumbnail.height - self.height - 4px;
-            width: duration.preferred-width + 8px; height: 14px;
+            width: badge.x + badge.preferred-width + 4px; height: 14px;
             background: #000000b8; border-radius: 2px;
-            duration := Text {
-                x: 4px; y: 0px; height: parent.height;
-                text: video.duration; color: #ffffff;
+            if root.live: Icon {
+                x: 4px; y: 1px;
+                source: Icons.hot; colorize: #ffffff;
+            }
+            badge := Text {
+                x: root.live ? 18px : 4px; y: 0px; height: parent.height;
+                text: root.live ? video.views : video.duration; color: #ffffff;
                 font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
                 vertical-alignment: center;
             }
@@ -36,11 +50,11 @@ export component GridView inherits Rectangle {
             text: video.title; color: #e6ebf5; font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
             vertical-alignment: center; overflow: elide;
         }
-        if video.views != "" || video.danmaku != "" || video.progress != "" || video.watched != "" : HorizontalLayout {
+        if !root.live && (video.views != "" || video.danmaku != "" || video.progress != "" || video.watched != "") : HorizontalLayout {
             x: 2px; y: thumbnail.y + thumbnail.height + 14px;
             width: parent.width - 4px; height: 12px;
             spacing: 4px; alignment: start;
-            if video.views != "": StatItem { text-size: ListModel.cols == 3 ? 8px : 10px; text-font: ListModel.cols == 3 ? "Fusion Pixel 8px Prop zh-Hans" : "Fusion Pixel 10px Prop zh-Hans"; icon-gap: 0px; icon: Nav.page == Page.home && Nav.tab == HomeTab.live ? Icons.hot : Icons.play; value: video.views; }
+            if video.views != "": StatItem { text-size: ListModel.cols == 3 ? 8px : 10px; text-font: ListModel.cols == 3 ? "Fusion Pixel 8px Prop zh-Hans" : "Fusion Pixel 10px Prop zh-Hans"; icon-gap: 0px; icon: Icons.play; value: video.views; }
             if video.danmaku != "": StatItem { text-size: ListModel.cols == 3 ? 8px : 10px; text-font: ListModel.cols == 3 ? "Fusion Pixel 8px Prop zh-Hans" : "Fusion Pixel 10px Prop zh-Hans"; icon-gap: 0px; icon: Icons.message-text; value: video.danmaku; }
             if video.progress != "": StatItem { text-size: ListModel.cols == 3 ? 8px : 10px; text-font: ListModel.cols == 3 ? "Fusion Pixel 8px Prop zh-Hans" : "Fusion Pixel 10px Prop zh-Hans"; icon-gap: 0px; icon: Icons.play; value: video.progress; }
             if video.watched != "": StatItem { text-size: ListModel.cols == 3 ? 8px : 10px; text-font: ListModel.cols == 3 ? "Fusion Pixel 8px Prop zh-Hans" : "Fusion Pixel 10px Prop zh-Hans"; icon-gap: 0px; icon: Icons.clock; value: video.watched; }

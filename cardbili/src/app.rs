@@ -95,6 +95,9 @@ pub fn run(settings: Settings) {
         app.settings_changed = false;
         app.go_back = false;
         app.tick();
+        if app.quit {
+            return;
+        }
         if let Some(message) = pending.take() {
             app.handle_message(message);
         }
@@ -104,6 +107,9 @@ pub fn run(settings: Settings) {
         display.poll_keys(&app.ui);
         while let Ok(key) = krx.try_recv() {
             app.handle_key(key);
+            if app.quit {
+                return;
+            }
         }
         app.navigate();
         app.sync_view();

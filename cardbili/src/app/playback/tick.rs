@@ -26,6 +26,12 @@ impl App {
                                 .push(dm, player.position(self.frames_in_seg));
                         }
                     }
+                    crate::live_danmaku::Event::Audience { text, initial } => {
+                        let player = self.ui.global::<crate::Player>();
+                        if !initial || player.get_live_audience().is_empty() {
+                            player.set_live_audience(text.into());
+                        }
+                    }
                     crate::live_danmaku::Event::Unavailable => {
                         self.toast("直播弹幕连接失败，正在重连…")
                     }

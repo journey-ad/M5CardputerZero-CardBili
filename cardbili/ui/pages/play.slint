@@ -41,6 +41,7 @@ export component PlayPage inherits Rectangle {
         }
     }
     property <length> loading-dots-width: Status.loading-dots >= 0 ? 15px : 0px;
+    property <length> audience-width: Player.live && Player.live-audience != "" ? audience.preferred-width + 21px : 0px;
 
     // 暂停时在画面中央显示继续播放按钮
     if Player.paused && Player.triple-phase == 0: Rectangle {
@@ -54,7 +55,7 @@ export component PlayPage inherits Rectangle {
         visible: Player.controls-visible;
         x: 0px; y: 0px; width: parent.width; height: 20px; background: #000000cc;
         Rectangle {
-            x: 0px; y: 0px; width: Player.live ? parent.width - online.preferred-width - 26px : parent.width - 6px; height: 20px; clip: true;
+            x: 0px; y: 0px; width: Player.live ? parent.width - online.preferred-width - 26px - root.audience-width : parent.width - 6px; height: 20px; clip: true;
             if Player.ptitle-marquee: Text {
                 x: -Player.ptitle-shift; y: 0px; height: 20px; text: Player.ptitle; color: #e6ebf5;
                 font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px; vertical-alignment: center;
@@ -80,6 +81,17 @@ export component PlayPage inherits Rectangle {
     if Player.live && Player.controls-visible && Player.watching != "": Icon {
         x: online.x - 15px; y: 4px;
         source: Icons.hot; colorize: #9aa6ba;
+    }
+    audience := Text {
+        x: online.x - 21px - self.preferred-width; y: 0px; height: 20px;
+        text: Player.live-audience; color: #9aa6ba;
+        font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
+        vertical-alignment: center;
+        visible: Player.live && Player.controls-visible && Player.live-audience != "";
+    }
+    if Player.live && Player.controls-visible && Player.live-audience != "": Icon {
+        x: audience.x - 15px; y: 4px;
+        source: Icons.eye-minimal; colorize: #9aa6ba;
     }
     TouchArea { x: 0px; y: 0px; width: parent.width; height: 20px; enabled: Player.controls-visible; clicked => { Player.key(Player.live ? "SPACE" : "p"); } }
 

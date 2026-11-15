@@ -28,6 +28,7 @@ export global Layout {
 export global ListModel {
     in-out property <[VideoRow]> rows: [];
     in-out property <[HistoryHeader]> headers: [];
+    in-out property <length> header-height: 30px;
     in-out property <[float]> row-tops: [];
     in-out property <float> scroll-y: 0;
     in-out property <float> content-height: 0;
@@ -41,6 +42,8 @@ export global ListModel {
     in-out property <length> cell-h: 84px;
     in-out property <[image]> grid-covers: [];
     in-out property <[VideoRow]> grid-rows: [];
+    in-out property <[int]> grid-columns: [];
+    in-out property <[float]> grid-tops: [];
     in-out property <int> grid-active: -1;
     in-out property <bool> title-marquee: false;
     in-out property <length> title-shift: 0px;
@@ -93,6 +96,7 @@ export global Player {
     in-out property <string> reconnect-text: "";
     in-out property <string> ptitle: "";
     in-out property <string> watching: "";
+    in-out property <string> live-audience: "";
     in-out property <bool> ptitle-marquee: false;
     in-out property <length> ptitle-shift: 0px;
     in-out property <float> progress: 0.0;

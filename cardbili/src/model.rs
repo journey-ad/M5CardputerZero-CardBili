@@ -45,6 +45,11 @@ pub struct VideoPage {
     pub total: Option<u64>,
 }
 
+pub struct LivePage {
+    pub following: Vec<Item>,
+    pub popular: VideoPage,
+}
+
 #[derive(Clone, Default)]
 pub struct PlayInfo {
     pub aid: i64,

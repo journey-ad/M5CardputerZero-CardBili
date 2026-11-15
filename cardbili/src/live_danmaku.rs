@@ -14,6 +14,7 @@ const HEARTBEAT: Duration = Duration::from_secs(30);
 
 pub enum Event {
     Danmaku(Dm),
+    Audience { text: String, initial: bool },
     Unavailable,
 }
 
@@ -33,6 +34,17 @@ impl Connection {
         thread::spawn(move || {
             let result = api::live::super_chat_messages(room, initial_cookies.as_deref());
             let _ = initial_tx.send(super_chat::Update::Initial(result));
+        });
+        let audience_tx = tx.clone();
+        let audience_cookies = cookies.clone();
+        thread::spawn(move || match api::live::audience(room, audience_cookies.as_deref()) {
+            Ok(text) => {
+                let _ = audience_tx.send(Event::Audience {
+                    text,
+                    initial: true,
+                });
+            }
+            Err(error) => diagnostics::write(format_args!("[直播观众] 房间={room} {error}")),
         });
         thread::spawn(move || {
             let mut delay = 2;
@@ -206,6 +218,11 @@ fn receive(
                         };
                         if let Some(update) = super_chat::parse_update(&value) {
                             let _ = sc_tx.send(update);
+                        } else if let Some(text) = parse_audience(&value) {
+                            let _ = tx.try_send(Event::Audience {
+                                text,
+                                initial: false,
+                            });
                         } else if let Some(dm) = parse_danmaku(&value) {
                             if !received {
                                 diagnostics::write(format_args!(
@@ -279,6 +296,16 @@ fn decode(
         bytes = &bytes[size..];
     }
     Ok(())
+}
+
+fn parse_audience(value: &Value) -> Option<String> {
+    if value["cmd"].as_str()? != "ONLINE_RANK_COUNT" {
+        return None;
+    }
+    value["data"]["online_count_text"]
+        .as_str()
+        .filter(|text| !text.is_empty())
+        .map(str::to_owned)
 }
 
 fn parse_danmaku(value: &Value) -> Option<Dm> {

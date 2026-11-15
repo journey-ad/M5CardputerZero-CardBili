@@ -67,7 +67,7 @@ pub(in crate::app) fn list_source(tab: HomeTab, mine_detail: i32) -> Option<usiz
     }
 }
 
-// 首屏刷新保留后续页、已解码封面和当前视频的选中位置
+// 首屏刷新保留后续页、已解码封面和选中项的列表位置
 pub(in crate::app) fn refresh_first_page(
     items: &mut Vec<model::Item>,
     covers: &mut Vec<Option<slint::Image>>,
@@ -75,7 +75,6 @@ pub(in crate::app) fn refresh_first_page(
     mut fresh: Vec<model::Item>,
     selection: i32,
 ) -> i32 {
-    let selected = items.get(selection as usize).map(|item| item.bvid.clone());
     let images: HashMap<_, _> = items
         .iter()
         .zip(covers.iter())
@@ -93,10 +92,7 @@ pub(in crate::app) fn refresh_first_page(
         .iter()
         .map(|item| images.get(&item.bvid).cloned().flatten())
         .collect();
-    selected
-        .and_then(|bvid| items.iter().position(|item| item.bvid == bvid))
-        .map(|index| index as i32)
-        .unwrap_or(selection.clamp(0, (items.len() as i32 - 1).max(0)))
+    selection.clamp(0, (items.len() as i32 - 1).max(0))
 }
 
 impl App {
@@ -120,7 +116,14 @@ impl App {
             _ => None,
         };
         if let Some(step) = step {
-            let next = (self.sel + step).max(0);
+            let next = if self.page == Page::Home
+                && self.tab == HomeTab::Live
+                && matches!(key, "UP" | "DOWN")
+            {
+                self.live_list.move_vertical(self.sel, step)
+            } else {
+                (self.sel + step).max(0)
+            };
             if next < len as i32 {
                 self.sel = next;
             }

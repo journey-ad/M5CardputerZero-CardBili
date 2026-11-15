@@ -47,7 +47,7 @@ pub enum Msg {
     PlayReady(u64, Result<model::PlayInfo, String>),
     LiveReady(u64, Result<model::LiveInfo, api::live::RoomError>),
     LiveAreas(Result<Vec<model::LiveArea>, String>),
-    LiveList(u64, u32, Result<model::VideoPage, String>),
+    LiveList(u64, u32, Result<model::LivePage, String>),
     Danmaku(u64, danmaku::Engine),
     QrReady(u64, String),
     QrStatus(u64, String),

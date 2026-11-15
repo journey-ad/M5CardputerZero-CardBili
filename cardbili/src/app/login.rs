@@ -51,6 +51,8 @@ impl App {
         crate::diagnostics::write(format_args!("[登录] 登录成功，已保存账号会话"));
         self.mid = util::parse_mid(&ck);
         self.cookies = Some(ck);
+        self.loaded[HomeTab::Live.index()] = false;
+        self.live_list.request += 1;
         self.account_dirty = true;
         login.set_qr_status("登录成功".into());
         self.acct_loaded = false;

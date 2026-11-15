@@ -8,12 +8,15 @@ import { StatItem } from "../base/stat.slint";
 export component ListView inherits Rectangle {
     in property <bool> show-author: true;
     clip: true;
+    property <bool> live: Nav.page == Page.home && Nav.tab == HomeTab.live;
     property <length> max-top: max(0px, ListModel.content-height * 1px - root.height);
     property <length> top: min(ListModel.scroll-y * 1px, self.max-top);
     for header in ListModel.headers: Text {
-        x: 8px; y: header.top * 1px - root.top; width: parent.width - 16px; height: ListModel.row-height;
+        x: 8px; y: header.top * 1px - root.top + (root.live ? 4px : 0px);
+        width: parent.width - 16px; height: ListModel.header-height - (root.live ? 6px : 0px);
         text: header.title; color: #8b95a7;
-        font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
+        font-family: root.live ? "Fusion Pixel 12px Prop zh-Hans" : "Fusion Pixel 10px Prop zh-Hans";
+        font-size: root.live ? 12px : 10px;
         vertical-alignment: center;
     }
     for row[i] in ListModel.rows: Rectangle {
@@ -33,7 +36,7 @@ export component ListView inherits Rectangle {
         HorizontalLayout {
             x: 8px; y: 17px; width: parent.width - 16px; height: 12px; spacing: 4px; alignment: start;
             if row.duration != "" && row.progress == "": StatItem { icon: Icons.clock; value: row.duration; }
-            if row.views != "": StatItem { icon: Nav.page == Page.home && Nav.tab == HomeTab.live ? Icons.hot : Icons.play; value: row.views; }
+            if row.views != "": StatItem { icon: root.live ? Icons.hot : Icons.play; value: row.views; }
             if row.likes != "": StatItem { icon: Icons.thumbs-up; value: row.likes; }
             if row.progress != "": StatItem { icon: Icons.play; show-icon: row.progress != "已看完"; value: row.progress; }
             if row.watched != "": StatItem { icon: Icons.clock; value: row.watched; }

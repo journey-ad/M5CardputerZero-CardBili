@@ -26,17 +26,10 @@ impl App {
         self.favorites.loading = false;
         match result {
             Ok(folders) => {
-                let selected = self
+                self.favorites.selection = self
                     .favorites
-                    .folders
-                    .get(self.favorites.selection)
-                    .map(|folder| folder.id);
-                if let Some(index) = folders
-                    .iter()
-                    .position(|folder| Some(folder.id) == selected)
-                {
-                    self.favorites.selection = index;
-                }
+                    .selection
+                    .min(folders.len().saturating_sub(1));
                 let missing = folders
                     .iter()
                     .filter(|folder| !self.favorites.covers.contains_key(&folder.id))

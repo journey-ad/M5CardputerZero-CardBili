@@ -1,15 +1,98 @@
 use super::super::*;
 use slint::ComponentHandle as _;
 
+const POPULAR_LIMIT: usize = 20;
+
 #[derive(Default)]
 pub(in crate::app) struct LiveState {
     pub areas: Vec<model::LiveArea>,
     pub filter: model::LiveArea,
     pub request: u64,
+    pub following_count: usize,
     parent: Option<u64>,
 }
 
 impl LiveState {
+    pub(in crate::app) fn layout(
+        &self,
+        len: usize,
+        columns: usize,
+        cell_height: f32,
+        header_height: f32,
+    ) -> LiveLayout {
+        let following = self.following_count.min(len);
+        let popular = (following + POPULAR_LIMIT).min(len);
+        let mut headers = Vec::new();
+        let mut tops = Vec::with_capacity(len);
+        let mut top = 0.0;
+        for (start, end, title) in [
+            (0, following, "我的关注"),
+            (following, popular, "热门直播"),
+            (popular, len, "全部直播"),
+        ] {
+            if start == end {
+                continue;
+            }
+            headers.push(crate::HistoryHeader {
+                title: title.into(),
+                top,
+            });
+            top += header_height;
+            tops.extend((0..end - start).map(|index| top + (index / columns) as f32 * cell_height));
+            top += (end - start).div_ceil(columns) as f32 * cell_height;
+        }
+        LiveLayout {
+            headers,
+            tops,
+            header_height,
+        }
+    }
+
+    fn section_start(&self, index: usize) -> usize {
+        if index < self.following_count {
+            0
+        } else if index < self.following_count + POPULAR_LIMIT {
+            self.following_count
+        } else {
+            self.following_count + POPULAR_LIMIT
+        }
+    }
+
+    pub(in crate::app) fn column(&self, index: usize, columns: usize) -> usize {
+        (index - self.section_start(index)) % columns
+    }
+
+    pub(in crate::app) fn move_vertical(&self, selected: i32, step: i32) -> i32 {
+        let columns = step.unsigned_abs() as usize;
+        let index = selected as usize;
+        let start = self.section_start(index);
+        let column = self.column(index, columns);
+        if step > 0 {
+            let end = if index < self.following_count {
+                self.following_count
+            } else if index < self.following_count + POPULAR_LIMIT {
+                self.following_count + POPULAR_LIMIT
+            } else {
+                return selected + step;
+            };
+            let next_row = index + columns - column;
+            if next_row >= end {
+                return (end + column) as i32;
+            }
+            return (next_row + column).min(end - 1) as i32;
+        }
+        if index >= start + columns {
+            return (index - columns) as i32;
+        }
+        if start == 0 {
+            return 0;
+        }
+        // 跨区向上时保持列位置，末行缺列时选中该区最后一项
+        let previous_start = self.section_start(start - 1);
+        let last_row = start - 1 - (start - 1 - previous_start) % columns;
+        (last_row + column).min(start - 1) as i32
+    }
+
     fn options(&self) -> Vec<&model::LiveArea> {
         self.areas
             .iter()
@@ -18,6 +101,22 @@ impl LiveState {
                 None => area.id == 0,
             })
             .collect()
+    }
+}
+
+pub(in crate::app) struct LiveLayout {
+    pub headers: Vec<crate::HistoryHeader>,
+    pub tops: Vec<f32>,
+    header_height: f32,
+}
+
+impl LiveLayout {
+    pub fn selection_top(&self, selected: usize) -> f64 {
+        let top = self.tops.get(selected).copied().unwrap_or_default();
+        self.headers
+            .iter()
+            .find(|header| header.top + self.header_height == top)
+            .map_or(top, |header| header.top) as f64
     }
 }
 
@@ -160,6 +259,7 @@ impl App {
             return;
         }
         self.live_list.filter = area;
+        self.live_list.following_count = 0;
         let source = HomeTab::Live.index();
         // 切换分区时清空旧列表，刷新与翻页共用新的请求编号
         self.lists[source].clear();
@@ -182,7 +282,7 @@ impl App {
         &mut self,
         request: u64,
         page: u32,
-        result: Result<model::VideoPage, String>,
+        result: Result<model::LivePage, String>,
     ) {
         let source = HomeTab::Live.index();
         if request != self.live_list.request
@@ -192,16 +292,26 @@ impl App {
         }
         match result {
             Ok(data) => {
+                let popular = data.popular;
                 if page == 1 {
                     let update_more = self.pages[source] <= 1 && !self.loading_more[source];
-                    self.list_loaded(source, data.items);
+                    let mut items = data.following;
+                    self.live_list.following_count = items.len();
+                    let mut known: HashSet<_> = items.iter().map(|item| item.bvid.clone()).collect();
+                    items.extend(
+                        popular
+                            .items
+                            .into_iter()
+                            .filter(|item| known.insert(item.bvid.clone())),
+                    );
+                    self.list_loaded(source, items);
                     if update_more {
-                        self.has_more[source] = data.has_more;
+                        self.has_more[source] = popular.has_more;
                     }
                 } else {
-                    let previous = self.lists[source].len();
-                    self.list_more(source, data.items);
-                    self.has_more[source] = data.has_more && self.lists[source].len() > previous;
+                    self.list_more(source, popular.items);
+                    self.pages[source] = page as usize;
+                    self.has_more[source] = popular.has_more;
                 }
             }
             Err(error) => self.list_error(source, error),

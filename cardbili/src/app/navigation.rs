@@ -101,6 +101,7 @@ impl App {
         self.live = None;
         self.live_recovery = playback::LiveRecovery::default();
         self.ui.global::<crate::Player>().set_live(false);
+        self.ui.global::<crate::Player>().set_live_audience("".into());
         if self.requested_play.is_none() {
             self.play_start = 0.0;
             self.requested_cid = None;

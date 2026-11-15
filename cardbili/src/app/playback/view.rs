@@ -97,7 +97,13 @@ impl App {
                 }
                 let est = display.title_width;
                 let clip = if self.live.is_some() {
-                    WIDTH as f64 - util::est_w(&g_player.get_watching(), 10.0) - 32.0
+                    let audience = g_player.get_live_audience();
+                    let audience_width = if audience.is_empty() {
+                        0.0
+                    } else {
+                        util::est_w(&audience, 10.0) + 21.0
+                    };
+                    WIDTH as f64 - util::est_w(&g_player.get_watching(), 10.0) - 32.0 - audience_width
                 } else {
                     WIDTH as f64 - 12.0
                 };

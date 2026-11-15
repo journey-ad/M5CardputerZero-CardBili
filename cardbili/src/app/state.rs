@@ -161,7 +161,14 @@ impl App {
 
         let force0 = std::env::var("BILI_FORCE").is_ok();
         if tab == HomeTab::Live {
-            tasks::load_live_list(0, model::LiveArea::default(), 1, tx.clone(), force0);
+            tasks::load_live_list(
+                0,
+                model::LiveArea::default(),
+                1,
+                cookies.clone(),
+                tx.clone(),
+                force0,
+            );
         } else if tab.is_video() {
             tasks::load_list(tab.index(), cookies.clone(), tx.clone(), force0);
         }

@@ -50,11 +50,6 @@ impl App {
         match result {
             Ok(result) => {
                 tasks::load_following_avatars(result.items.clone(), request, self.tx.clone());
-                let selected = self
-                    .following
-                    .items
-                    .get(self.following.selection)
-                    .map(|user| user.owner.mid.clone());
                 if page == 1 {
                     let tail = self.following.items.split_off(
                         self.following
@@ -71,14 +66,10 @@ impl App {
                 self.following
                     .items
                     .retain(|user| known.insert(user.owner.mid.clone()));
-                if let Some(index) = self
+                self.following.selection = self
                     .following
-                    .items
-                    .iter()
-                    .position(|user| Some(&user.owner.mid) == selected.as_ref())
-                {
-                    self.following.selection = index;
-                }
+                    .selection
+                    .min(self.following.items.len().saturating_sub(1));
                 if page >= self.following.page {
                     self.following.page = page;
                     self.following.has_more = result.has_more;

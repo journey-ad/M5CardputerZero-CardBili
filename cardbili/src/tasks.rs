@@ -57,13 +57,14 @@ pub fn load_live_list(
     request: u64,
     area: crate::model::LiveArea,
     page: u32,
+    cookies: Option<String>,
     tx: Sender<Msg>,
     force: bool,
 ) {
     thread::spawn(move || {
         cached_then_refresh(
             force || page > 1,
-            || api::live::rooms(page, &area),
+            || api::live::list(page, &area, cookies.as_deref()),
             |result| {
                 let _ = tx.send(Msg::LiveList(request, page, result));
             },

@@ -1,5 +1,72 @@
 use super::{api_err, cache, model, net, Item, Value};
 
+pub fn list(
+    page: u32,
+    area: &model::LiveArea,
+    cookies: Option<&str>,
+) -> Result<model::LivePage, String> {
+    let popular = rooms(page, area)?;
+    let following = if let (1, Some(cookies)) = (page, cookies) {
+        following(area, cookies).unwrap_or_else(|error| {
+            crate::diagnostics::write(format_args!("[关注直播] {error}"));
+            Vec::new()
+        })
+    } else {
+        Vec::new()
+    };
+    Ok(model::LivePage { following, popular })
+}
+
+fn following(area: &model::LiveArea, cookies: &str) -> Result<Vec<Item>, String> {
+    let mut items = Vec::new();
+    let mut known = std::collections::HashSet::new();
+    let mut page = 1;
+    let mut received = 0;
+    loop {
+        let url = format!(
+            "https://api.live.bilibili.com/xlive/web-ucenter/v1/xfetter/GetWebList?page={page}&page_size=20"
+        );
+        let value = cache::api_json(&url, Some(cookies), cache::TTL_LIST)?;
+        if value["code"].as_i64() != Some(0) {
+            return Err(api_err("关注直播", &value));
+        }
+        let data = &value["data"];
+        let Some(rooms) = data["rooms"].as_array().filter(|rooms| !rooms.is_empty()) else {
+            break;
+        };
+        received += rooms.len() as u64;
+        for room in rooms {
+            let room_id = room["room_id"].as_u64().unwrap_or(0);
+            if room_id == 0 || !known.insert(room_id) || !following_in_area(room, area) {
+                continue;
+            }
+            let pic = ["cover_from_user", "keyframe"]
+                .iter()
+                .find_map(|key| room[*key].as_str().filter(|value| !value.is_empty()))
+                .unwrap_or_default();
+            items.push(Item {
+                title: room["title"].as_str().unwrap_or_default().into(),
+                meta: room["uname"].as_str().unwrap_or_default().into(),
+                bvid: room_id.to_string(),
+                pic: pic.into(),
+                views: room["online"].as_i64().map(model::fmt_num),
+                ..Default::default()
+            });
+        }
+        if received >= data["count"].as_u64().unwrap_or(received) {
+            break;
+        }
+        page += 1;
+    }
+    Ok(items)
+}
+
+fn following_in_area(room: &Value, area: &model::LiveArea) -> bool {
+    room["live_status"].as_i64() == Some(1)
+        && (area.parent_id == 0 || room["area_v2_parent_id"].as_u64() == Some(area.parent_id))
+        && (area.id == 0 || room["area_v2_id"].as_u64() == Some(area.id))
+}
+
 // 分区目录同时保留一级分区与子分区
 pub fn areas() -> Result<Vec<model::LiveArea>, String> {
     let value = cache::api_json(
@@ -38,7 +105,7 @@ pub fn areas() -> Result<Vec<model::LiveArea>, String> {
 }
 
 // 全部直播使用推荐列表，指定分区按人气排序
-pub fn rooms(page: u32, area: &model::LiveArea) -> Result<model::VideoPage, String> {
+fn rooms(page: u32, area: &model::LiveArea) -> Result<model::VideoPage, String> {
     let filtered = area.parent_id > 0;
     let url = if filtered {
         format!(
@@ -104,6 +171,23 @@ impl std::fmt::Display for RoomError {
             Self::Request(error) => f.write_str(error),
         }
     }
+}
+
+pub fn audience(room_id: u64, cookies: Option<&str>) -> Result<String, String> {
+    let url = format!(
+        "https://api.live.bilibili.com/xlive/web-room/v1/index/getInfoByRoom?room_id={room_id}"
+    );
+    let value = net::get_json(&url, cookies)?;
+    if value["code"].as_i64() != Some(0) {
+        return Err(api_err("在线观众", &value));
+    }
+    let rank = &value["data"]["room_rank_info"]["user_rank_entry"]["user_contribution_rank_entry"];
+    rank["count_text"]
+        .as_str()
+        .filter(|text| !text.is_empty())
+        .map(str::to_owned)
+        .or_else(|| rank["count"].as_i64().map(model::fmt_num))
+        .ok_or_else(|| "直播间未提供在线观众数".into())
 }
 
 pub fn room(room_id: u64, cookies: Option<&str>) -> Result<model::LiveInfo, RoomError> {

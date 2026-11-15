@@ -134,6 +134,7 @@ impl App {
                 self.live_list.request,
                 self.live_list.filter.clone(),
                 1,
+                self.cookies.clone(),
                 self.tx.clone(),
                 force,
             );

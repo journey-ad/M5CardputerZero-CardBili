@@ -34,6 +34,7 @@ export component SuperChatDialog inherits Rectangle {
             clip: true;
             body := VerticalLayout {
                 y: -SuperChat.scroll; width: parent.width;
+                height: self.preferred-height;
                 spacing: 6px;
                 for message in SuperChat.rows: Rectangle {
                     background: message.accent;

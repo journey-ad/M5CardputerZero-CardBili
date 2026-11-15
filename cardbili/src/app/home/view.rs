@@ -50,6 +50,7 @@ impl App {
                         self.live_list.request,
                         self.live_list.filter.clone(),
                         (self.pages[self.tab.index()] + 1) as u32,
+                        self.cookies.clone(),
                         self.tx.clone(),
                         false,
                     );
@@ -112,7 +113,7 @@ impl App {
         let history = !collection && self.tab == HomeTab::Mine && self.mine_detail == 3;
         let layout = if history { VideoLayout::List } else { self.view };
         let columns = video_columns(layout);
-        let mut cell_height = if layout == VideoLayout::TwoColumns {
+        let mut cell_height: f64 = if layout == VideoLayout::TwoColumns {
             113.0
         } else {
             84.0
@@ -136,10 +137,12 @@ impl App {
         } else {
             (&self.lists[source], &self.covers[source])
         };
-        let has_stats = items.iter().any(|item| {
-            item.views.as_deref().is_some_and(|v| !v.is_empty())
-                || item.danmaku.as_deref().is_some_and(|v| !v.is_empty())
-        });
+        let live = !collection && self.tab == HomeTab::Live;
+        let has_stats = !live
+            && items.iter().any(|item| {
+                item.views.as_deref().is_some_and(|v| !v.is_empty())
+                    || item.danmaku.as_deref().is_some_and(|v| !v.is_empty())
+            });
         if !has_stats {
             cell_height -= 12.0;
         }
@@ -150,6 +153,26 @@ impl App {
         } else {
             self.home_dirty
         };
+        let header_height = if live {
+            22.0
+        } else if layout == VideoLayout::List {
+            row_height
+        } else {
+            12.0
+        };
+        list_model.set_header_height(header_height as f32);
+        let live_layout = live.then(|| {
+            self.live_list.layout(
+                items.len(),
+                columns,
+                (if layout == VideoLayout::List {
+                    row_height
+                } else {
+                    cell_height
+                }) as f32,
+                header_height as f32,
+            )
+        });
         let (start, end, visible_count) = if layout == VideoLayout::List {
             let tops: Vec<f64> = if !dirty && self.row_tops.len() == items.len() {
                 self.row_tops.iter().map(|v| *v as f64).collect()
@@ -159,10 +182,12 @@ impl App {
                     .iter()
                     .map(|v| *v as f64)
                     .collect()
+            } else if let Some(live) = &live_layout {
+                live.tops.iter().map(|top| *top as f64).collect()
             } else {
                 (0..items.len()).map(|i| i as f64 * row_height).collect()
             };
-            // 分组首项的可见范围包含前面的日期标题
+            // 分组首项的可见范围包含前面的标题
             let sel_top = selected
                 .checked_sub(1)
                 .map(|i| tops[i] + row_height)
@@ -184,20 +209,34 @@ impl App {
             let rows = ((content_height / row_height).ceil() as usize + 1).min(items.len().max(1));
             (0, items.len(), rows)
         } else {
-            let selected_y = (selected / columns) as f64 * cell_height;
-            let total_rows = items.len().div_ceil(columns);
+            let (selected_y, selected_top, total) = if let Some(live) = &live_layout {
+                let selected_y = live.tops.get(selected).copied().unwrap_or_default() as f64;
+                let total = live.tops.last().map_or(0.0, |top| *top as f64 + cell_height);
+                (selected_y, live.selection_top(selected), total)
+            } else {
+                let selected_y = (selected / columns) as f64 * cell_height;
+                let total = items.len().div_ceil(columns) as f64 * cell_height;
+                (selected_y, selected_y, total)
+            };
             self.grid_scroll = scroll_to_visible(
                 self.grid_scroll,
-                selected_y,
+                selected_top,
                 selected_y + cell_height,
                 content_height,
-                total_rows as f64 * cell_height,
+                total,
             );
-            let first_row = (self.grid_scroll / cell_height) as usize;
-            let start = first_row * columns;
+            let start = live_layout.as_ref().map_or_else(
+                || (self.grid_scroll / cell_height) as usize * columns,
+                |live| {
+                    live.tops
+                        .iter()
+                        .position(|top| *top as f64 + cell_height > self.grid_scroll)
+                        .unwrap_or(items.len())
+                },
+            );
             let rows = (content_height / cell_height).ceil() as usize;
             let end = (start + (rows + 1) * columns).min(items.len());
-            list_model.set_grid_offset((self.grid_scroll - first_row as f64 * cell_height) as f32);
+            list_model.set_grid_offset(self.grid_scroll as f32);
             (start, end, rows * columns)
         };
 
@@ -255,13 +294,21 @@ impl App {
                     let prepared = build_history_rows(items, row_height as f32);
                     self.row_tops = prepared.tops.clone();
                     sync_list(&self.ui, prepared.rows, prepared.headers, prepared.tops);
+                } else if let Some(live) = live_layout {
+                    self.row_tops = live.tops.clone();
+                    sync_list(
+                        &self.ui,
+                        items.iter().map(video_row).collect(),
+                        live.headers,
+                        live.tops,
+                    );
                 } else {
                     let rows: Vec<VideoRow> = items.iter().map(video_row).collect();
                     let tops: Vec<f32> = (0..items.len())
                         .map(|i| i as f32 * row_height as f32)
                         .collect();
                     self.row_tops = tops.clone();
-                    sync_list(&self.ui, rows, Vec::new(), tops.clone());
+                    sync_list(&self.ui, rows, Vec::new(), tops);
                 }
             } else {
                 let mut rows = Vec::with_capacity(end - start);
@@ -281,6 +328,30 @@ impl App {
                 list_model.set_cols(columns as i32);
                 list_model.set_cell_w((content_width / columns as f64) as f32);
                 list_model.set_cell_h(cell_height as f32);
+                list_model.set_grid_columns(ModelRc::new(VecModel::from(
+                    (start..end)
+                        .map(|index| {
+                            (if live_layout.is_some() {
+                                self.live_list.column(index, columns)
+                            } else {
+                                index % columns
+                            }) as i32
+                        })
+                        .collect::<Vec<_>>(),
+                )));
+                list_model.set_grid_tops(ModelRc::new(VecModel::from(
+                    (start..end)
+                        .map(|index| {
+                            live_layout.as_ref().map_or(
+                                (index / columns) as f32 * cell_height as f32,
+                                |live| live.tops[index],
+                            )
+                        })
+                        .collect::<Vec<_>>(),
+                )));
+                list_model.set_headers(ModelRc::new(VecModel::from(
+                    live_layout.map_or_else(Vec::new, |live| live.headers),
+                )));
                 list_model.set_grid_rows(ModelRc::new(VecModel::from(rows)));
                 list_model.set_grid_covers(ModelRc::new(VecModel::from(images)));
             }

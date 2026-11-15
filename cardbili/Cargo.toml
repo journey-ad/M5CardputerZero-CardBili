@@ -1,6 +1,6 @@
 [package]
 name = "cardbili"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 license = "MIT"
 description = "Bilibili client for the Linux-based Cardputer Zero"
