@@ -22,7 +22,7 @@ mod sections;
 mod state;
 mod view;
 
-use crate::player::{HEIGHT, VID_BYTES, WIDTH};
+use crate::player::{HEIGHT, WIDTH};
 use crate::settings::Settings;
 use crate::{
     danmaku, menu, model, player, tasks, util, AppWindow, Cmt, HomeTab, MenuPosition, Msg, Page,
@@ -33,7 +33,7 @@ use components::*;
 use detail::DetailDisplay;
 use detail::{show_detail, show_detail_loading, sync_thumb};
 use navigation::BackTarget;
-use slint::{ComponentHandle, ModelRc, Rgb8Pixel, VecModel};
+use slint::{ComponentHandle, ModelRc, VecModel};
 use state::App;
 use std::collections::{HashMap, HashSet};
 use std::sync::mpsc;

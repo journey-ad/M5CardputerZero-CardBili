@@ -14,8 +14,8 @@ struct State {
     audio_ended: bool,
     #[cfg(not(target_os = "linux"))]
     next: Option<Instant>,
-    pending: VecDeque<(u64, Vec<u8>)>,
-    latest: Option<(u64, Vec<u8>)>,
+    pending: VecDeque<(u64, super::VideoFrame)>,
+    latest: Option<(u64, super::VideoFrame)>,
     audio_sample: Option<(f64, Instant)>,
     position: f64,
 }
@@ -114,7 +114,7 @@ impl Frames {
         self.changed.notify_all();
     }
 
-    pub fn publish(&self, index: u64, pixels: Vec<u8>) -> bool {
+    pub fn publish(&self, index: u64, pixels: super::VideoFrame) -> bool {
         let mut state = self.state.lock().unwrap();
         while !state.stopped && state.pending.len() >= CAPACITY {
             if self.live && !state.paused {
@@ -208,7 +208,7 @@ impl Frames {
         Some(notify)
     }
 
-    pub fn take(&self) -> Option<(u64, Vec<u8>)> {
+    pub fn take(&self) -> Option<(u64, super::VideoFrame)> {
         self.state.lock().unwrap().latest.take()
     }
 }

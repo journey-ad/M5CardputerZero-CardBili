@@ -4,18 +4,15 @@ use slint::ComponentHandle as _;
 impl App {
     pub(in crate::app) fn sync_playback(&mut self) {
         // --- 应用最新帧 ---
-        if let Some((frame_gen, bytes)) = self.latest.take() {
+        if let Some((frame_gen, pixels)) = self.latest.take() {
             if self.page == Page::Player
                 && self
                     .player
                     .as_ref()
                     .is_some_and(|player| player.gen == frame_gen)
-                && bytes.len() == VID_BYTES
             {
-                let mut pb = slint::SharedPixelBuffer::<Rgb8Pixel>::new(WIDTH, HEIGHT);
-                pb.make_mut_bytes().copy_from_slice(&bytes);
                 let g_player = self.ui.global::<crate::Player>();
-                g_player.set_frame(slint::Image::from_rgb8(pb));
+                g_player.set_frame(slint::Image::from_rgb8(pixels));
                 g_player.set_has_frame(true);
                 if self.live.is_some() && self.settings.danmaku_enabled {
                     if let Some(player) = &self.player {

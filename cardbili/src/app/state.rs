@@ -108,7 +108,7 @@ pub(super) struct App {
     pub(super) back_taps: (u8, Option<Instant>),
     pub(super) back_hint: bool,
     pub(super) return_home: bool,
-    pub(super) latest: Option<(u64, Vec<u8>)>,
+    pub(super) latest: Option<(u64, player::VideoFrame)>,
     pub(super) settings_changed: bool,
     pub(super) go_back: bool,
 }

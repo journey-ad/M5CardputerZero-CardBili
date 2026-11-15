@@ -18,7 +18,7 @@ use std::time::{Duration, Instant};
 pub const WIDTH: u32 = 320;
 pub const HEIGHT: u32 = 170;
 pub const FPS: f64 = 30.0;
-pub const VID_BYTES: usize = (WIDTH as usize) * (HEIGHT as usize) * 3;
+pub type VideoFrame = slint::SharedPixelBuffer<slint::Rgb8Pixel>;
 
 fn headers(cookies: &str) -> String {
     let mut h = format!("Referer: {}\r\nOrigin: {}\r\n", REFERER, REFERER);
@@ -315,10 +315,11 @@ impl Player {
                 let gen = self.gen;
                 let pending = self.frames.clone();
                 thread::spawn(move || {
-                    let mut buf = vec![0u8; VID_BYTES];
                     let mut frames = 0u64;
                     loop {
-                        if let Err(error) = so.read_exact(&mut buf) {
+                        // 解码输出直接写入像素缓冲，队列与界面依次接收所有权
+                        let mut pixels = VideoFrame::new(WIDTH, HEIGHT);
+                        if let Err(error) = so.read_exact(pixels.make_mut_bytes()) {
                             diagnostics::write(format_args!(
                                 "[视频 pid={pid} gen={gen}] 读取结束 已接收帧数={frames}: {error}"
                             ));
@@ -330,7 +331,7 @@ impl Player {
                                 "[视频 pid={pid} gen={gen}] 首帧已就绪"
                             ));
                         }
-                        if !pending.publish(frames, buf.clone()) {
+                        if !pending.publish(frames, pixels) {
                             break;
                         }
                     }
@@ -448,7 +449,7 @@ impl Player {
             && self.last_frame.elapsed() > Duration::from_secs(timeout)
     }
 
-    pub fn take_frame(&self) -> Option<(u64, Vec<u8>)> {
+    pub fn take_frame(&self) -> Option<(u64, VideoFrame)> {
         self.frames.take()
     }
 
