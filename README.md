@@ -1,6 +1,6 @@
 # CardputerZero-CardBili
 
-适用于 M5Stack [CardputerZero](https://github.com/CardputerZero) 的非官方 BiliBili 客户端
+适用于 M5Stack [CardputerZero](https://github.com/CardputerZero) 的非官方 BiliBili 客户端，支持视频、弹幕、直播等丰富功能
 
 <img src="docs/media/cardbili-demo.webp" alt="CardBili" width="316" />
 
@@ -9,13 +9,15 @@
 - 浏览推荐、热门、关注动态、历史记录与收藏
 - 查看视频详情、评论、作者作品与选集
 - 视频播放、弹幕、进度跳转与倍速控制
+- 直播观看、分区筛选、实时弹幕与醒目留言
+- 用户内容支持 Emoji，可切换单色与彩色像素表情
 - 键盘导航、多种列表布局与外观设置
 
 ## 安装
 
 ### 应用商店
 
-可在设备的官方应用商店搜索 **CardBili** 安装
+在设备自带的官方应用商店搜索 **CardBili** 安装
 
 ### 手动安装
 
@@ -29,7 +31,7 @@ sudo apt install ./cardbili_*_arm64.deb
 
 升级时执行相同命令，卸载使用 `sudo apt remove cardbili`
 
-### 桌面版
+### 桌面版（预览用）
 
 桌面版以窗口形式运行，功能与设备版一致，可在本机测试或非 Cardputer Zero 设备使用。构建产物发布在 [Releases](https://github.com/journey-ad/M5CardputerZero-CardBili/releases) 页面
 
@@ -73,6 +75,10 @@ macOS 首次运行如被 Gatekeeper 拦截，执行 `xattr -dr com.apple.quarant
 | --- | --- | --- |
 | ![视频详情](docs/screenshots/detail.png) | ![播放](docs/screenshots/player.png) | ![评论](docs/screenshots/comments.png) |
 
+| 直播列表 | 分区选择 | 直播播放 |
+| --- | --- | --- |
+| ![直播列表](docs/screenshots/live.png) | ![分区选择](docs/screenshots/live-areas.png) | ![直播播放](docs/screenshots/live-player.png) |
+
 | 作者作品 | 选集 |
 | --- | --- |
 | ![作者作品](docs/screenshots/author.png) | ![选集](docs/screenshots/episodes.png) |
@@ -106,9 +112,9 @@ python3 scripts/check-release.py --deb dist/cardbili_*_arm64.deb
 
 [Cardputer Zero skill](.agents/skills/cardputer-zero/SKILL.md) 提供构建、部署、截图与设备调试说明
 
-[音视频性能报告](docs/performance/2026-11-15-playback.md) 包含两轮真机基准和屏幕吞吐评估，复测脚本保存在 `scripts/benchmarks/`
-
 也可参考项目中的 [官方开发 skill](.agents/skills/cardputer-zero-application/SKILL.md)
+
+[音视频性能报告](docs/performance/2026-11-15-playback.md) 包含真机基准评测，复测脚本保存在 `scripts/benchmarks/`
 
 ## 贡献
 
@@ -122,6 +128,7 @@ python3 scripts/check-release.py --deb dist/cardbili_*_arm64.deb
 - [Slint](https://github.com/slint-ui/slint)：图形界面框架
 - [FFmpeg](https://ffmpeg.org/)：音视频解码
 - [Fusion Pixel Font](https://github.com/TakWolf/fusion-pixel-font)：中文像素字体
+- [Mona Font](https://github.com/MonadABXY/mona-font)：Emoji 像素字体
 - [Pixelarticons](https://github.com/halfmage/pixelarticons)：界面图标
 - [M5Stack / CardputerZero](https://github.com/CardputerZero)：硬件平台与应用生态
 
