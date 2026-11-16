@@ -8,6 +8,7 @@ pub mod volume;
 use crate::diagnostics;
 use crate::model::PlayInfo;
 use crate::net::{REFERER, UA};
+use crate::settings::Settings;
 use crate::Msg;
 use std::io::{Read, Write};
 use std::process::{Child, Command, Stdio};
@@ -87,6 +88,7 @@ pub struct Player {
     child: Option<Child>,
     audio: Option<Child>,
     live: bool,
+    scale_filter: String,
     tx: Sender<Msg>,
     frames: Arc<frames::Frames>,
 }
@@ -97,8 +99,25 @@ impl Player {
         cookies: String,
         gen: u64,
         tx: Sender<Msg>,
+        settings: &Settings,
         state: PlaybackState,
     ) -> Player {
+        let scale_filter = if settings.pixel_optimize {
+            format!(
+                "scale={}:{}:force_original_aspect_ratio=decrease:force_divisible_by=2:flags=area,scale={}:{}:force_original_aspect_ratio=decrease:force_divisible_by=2:flags=bicubic",
+                WIDTH * 2,
+                HEIGHT * 2,
+                WIDTH,
+                HEIGHT
+            )
+        } else {
+            format!(
+                "scale={}:{}:force_original_aspect_ratio=decrease:force_divisible_by=2:flags={}",
+                WIDTH,
+                HEIGHT,
+                settings.scale_algorithm.ffmpeg_flag()
+            )
+        };
         let mut p = Player {
             gen,
             title: info.title.clone(),
@@ -116,6 +135,7 @@ impl Player {
             child: None,
             audio: None,
             live: info.live,
+            scale_filter,
             tx,
             frames: Arc::new(frames::Frames::new(info.live)),
         };
@@ -225,8 +245,8 @@ impl Player {
         ));
         let hd = headers(&self.cookies);
         let vf = format!(
-            "setpts@speed='if(isnan(PREV_OUTPTS),0,PREV_OUTPTS+(PTS-PREV_INPTS)/{})',fps=30,scale={}:{}:force_original_aspect_ratio=decrease:force_divisible_by=2:flags=fast_bilinear,pad={}:{}:(ow-iw)/2:(oh-ih)/2:color=black",
-            self.rate, WIDTH, HEIGHT, WIDTH, HEIGHT
+            "setpts@speed='if(isnan(PREV_OUTPTS),0,PREV_OUTPTS+(PTS-PREV_INPTS)/{})',fps=30,{},pad={}:{}:(ow-iw)/2:(oh-ih)/2:color=black",
+            self.rate, self.scale_filter, WIDTH, HEIGHT
         );
         let mut args: Vec<String> = vec![
             "-hide_banner".into(),

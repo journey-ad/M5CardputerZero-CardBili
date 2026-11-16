@@ -1,10 +1,10 @@
-use slint::ComponentHandle as _;
 use super::super::*;
+use slint::ComponentHandle as _;
 use slint::Model;
 
 impl App {
     pub(in crate::app) fn sync_home(&mut self) {
-        let preferences = self.ui.global::<crate::Preferences>();
+        let settings_page = self.ui.global::<crate::SettingsPage>();
         let list_model = self.ui.global::<crate::ListModel>();
         let g_collection = self.ui.global::<crate::Collection>();
         if self.page != Page::Home && self.page != Page::Collection {
@@ -17,15 +17,19 @@ impl App {
         // 选中项保持在当前页面范围内
         if self.page == Page::Home {
             let len = if self.tab == HomeTab::Settings {
-                let appearance = preferences.get_appearance_items().row_count() as i32;
-                let general = preferences.get_general_items().row_count() as i32;
-                appearance + general
+                let appearance = settings_page.get_appearance_items().row_count() as i32;
+                let general = settings_page.get_general_items().row_count() as i32;
+                let advanced = settings_page.get_advanced_items().row_count() as i32;
+                appearance + general + advanced
             } else if self.tab == HomeTab::Mine && self.mine_detail < 0 {
                 3
             } else {
                 self.lists[list_source(self.tab, self.mine_detail).unwrap()].len() as i32
             };
             self.sel = self.sel.clamp(0, (len - 1).max(0));
+            if self.tab == HomeTab::Settings {
+                self.sync_settings_scroll();
+            }
 
             // 视频列表接近底部时自动加载下一页
             if self.tab.is_video()
@@ -111,7 +115,11 @@ impl App {
         let content_height = geometry.get_video_height() as f64;
         let row_height = list_model.get_row_height() as f64;
         let history = !collection && self.tab == HomeTab::Mine && self.mine_detail == 3;
-        let layout = if history { VideoLayout::List } else { self.view };
+        let layout = if history {
+            VideoLayout::List
+        } else {
+            self.view
+        };
         let columns = video_columns(layout);
         let mut cell_height: f64 = if layout == VideoLayout::TwoColumns {
             113.0
@@ -197,13 +205,8 @@ impl App {
                 .map(|top| top + row_height)
                 .unwrap_or(0.0);
             let total = tops.last().map(|v| v + row_height).unwrap_or(0.0);
-            self.list_scroll = scroll_to_visible(
-                self.list_scroll,
-                sel_top,
-                sel_bottom,
-                content_height,
-                total,
-            );
+            self.list_scroll =
+                scroll_to_visible(self.list_scroll, sel_top, sel_bottom, content_height, total);
             list_model.set_content_height(total as f32);
             list_model.set_scroll_y(self.list_scroll as f32);
             let rows = ((content_height / row_height).ceil() as usize + 1).min(items.len().max(1));
@@ -211,7 +214,10 @@ impl App {
         } else {
             let (selected_y, selected_top, total) = if let Some(live) = &live_layout {
                 let selected_y = live.tops.get(selected).copied().unwrap_or_default() as f64;
-                let total = live.tops.last().map_or(0.0, |top| *top as f64 + cell_height);
+                let total = live
+                    .tops
+                    .last()
+                    .map_or(0.0, |top| *top as f64 + cell_height);
                 (selected_y, live.selection_top(selected), total)
             } else {
                 let selected_y = (selected / columns) as f64 * cell_height;
@@ -265,9 +271,8 @@ impl App {
             .get(selected)
             .map(|item| util::est_w(&item.title, 12.0))
             .unwrap_or(0.0);
-        list_model.set_title_marquee(
-            layout == VideoLayout::List && title_width > content_width - 16.0,
-        );
+        list_model
+            .set_title_marquee(layout == VideoLayout::List && title_width > content_width - 16.0);
         list_model.set_title_shift(yoyo_shift(title_width, content_width - 16.0, self.marq_t));
 
         let grid_start = if layout == VideoLayout::List {
@@ -342,10 +347,11 @@ impl App {
                 list_model.set_grid_tops(ModelRc::new(VecModel::from(
                     (start..end)
                         .map(|index| {
-                            live_layout.as_ref().map_or(
-                                (index / columns) as f32 * cell_height as f32,
-                                |live| live.tops[index],
-                            )
+                            live_layout
+                                .as_ref()
+                                .map_or((index / columns) as f32 * cell_height as f32, |live| {
+                                    live.tops[index]
+                                })
                         })
                         .collect::<Vec<_>>(),
                 )));

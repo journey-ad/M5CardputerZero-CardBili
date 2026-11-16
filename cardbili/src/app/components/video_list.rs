@@ -1,5 +1,5 @@
-use slint::ComponentHandle as _;
 use super::super::*;
+use slint::ComponentHandle as _;
 
 pub(in crate::app) fn video_columns(view: VideoLayout) -> usize {
     match view {
@@ -20,6 +20,18 @@ pub(in crate::app) fn scroll_to_visible(
         .min(item_top)
         .max(item_bottom - viewport_height)
         .clamp(0.0, (content_height - viewport_height).max(0.0))
+}
+
+/// 选中行超出可见范围时调整首行
+pub(in crate::app) fn ensure_visible(first: usize, selected: usize, visible: usize) -> usize {
+    first
+        .min(selected)
+        .max(selected.saturating_sub(visible.saturating_sub(1)))
+}
+
+/// 视口能容纳的整行数
+pub(in crate::app) fn visible_rows(video_height: f32, top: f32, row_height: f32) -> usize {
+    (((video_height - top) / row_height) as usize).max(1)
 }
 
 pub(in crate::app) fn video_row(item: &model::Item) -> VideoRow {
@@ -102,11 +114,12 @@ impl App {
             self.settings_changed = true;
             return true;
         }
-        let layout = if self.page == Page::Home && self.tab == HomeTab::Mine && self.mine_detail == 3 {
-            VideoLayout::List
-        } else {
-            self.view
-        };
+        let layout =
+            if self.page == Page::Home && self.tab == HomeTab::Mine && self.mine_detail == 3 {
+                VideoLayout::List
+            } else {
+                self.view
+            };
         let columns = video_columns(layout) as i32;
         let step = match key {
             "UP" => Some(-columns),

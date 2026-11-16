@@ -1,5 +1,5 @@
-use slint::ComponentHandle as _;
 use super::*;
+use slint::ComponentHandle as _;
 
 impl App {
     pub(super) fn sync_view(&mut self) {
@@ -20,9 +20,7 @@ impl App {
                 detail.get_title_width() as f64,
                 self.marq_t,
             ));
-            let m = (detail.get_content_h() as f64
-                - detail.get_viewport_h() as f64)
-                .max(0.0);
+            let m = (detail.get_content_h() as f64 - detail.get_viewport_h() as f64).max(0.0);
             if (m - self.detail_maxv).abs() > 0.5 {
                 self.detail_maxv = m;
             }
@@ -58,12 +56,14 @@ impl App {
         };
         let actions = self.menu_actions();
         if self.menu_view != Some(actions) {
-            self.ui.global::<crate::Menu>().set_labels(ModelRc::new(VecModel::from(
-                actions
-                    .iter()
-                    .map(|action| action.map(menu::Action::label).unwrap_or("").into())
-                    .collect::<Vec<slint::SharedString>>(),
-            )));
+            self.ui
+                .global::<crate::Menu>()
+                .set_labels(ModelRc::new(VecModel::from(
+                    actions
+                        .iter()
+                        .map(|action| action.map(menu::Action::label).unwrap_or("").into())
+                        .collect::<Vec<slint::SharedString>>(),
+                )));
             self.menu_view = Some(actions);
         }
         g_player.set_controls_visible(controls_show);
@@ -84,26 +84,38 @@ impl App {
         });
         g_status.set_status(status.into());
         g_status.set_detail(self.status_detail.as_str().into());
-        self.ui.global::<crate::ListModel>().set_loading(self.loading);
-        let layout = if self.page == Page::Home && self.tab == HomeTab::Mine && self.mine_detail == 3 {
-            VideoLayout::List
-        } else {
-            self.view
-        };
+        self.ui
+            .global::<crate::ListModel>()
+            .set_loading(self.loading);
+        let layout =
+            if self.page == Page::Home && self.tab == HomeTab::Mine && self.mine_detail == 3 {
+                VideoLayout::List
+            } else {
+                self.view
+            };
         nav.set_view(layout);
-        self.ui.global::<crate::Danmaku>().set_enabled(self.settings.danmaku_enabled);
+        self.ui
+            .global::<crate::Danmaku>()
+            .set_enabled(self.settings.danmaku_enabled);
+        preferences.set_danmaku_default(self.settings.danmaku_enabled);
         preferences.set_danmaku_opacity(self.settings.danmaku_opacity);
         preferences.set_menu_position(self.settings.menu_position);
         preferences.set_record_history(self.settings.record_history);
         preferences.set_debug_log(self.settings.debug_log);
         preferences.set_color_emoji(self.settings.color_emoji);
-        self.ui.global::<crate::Cdn>().set_current(crate::cdn::index(&self.settings.cdn) as i32);
+        preferences.set_pixel_optimize(self.settings.pixel_optimize);
+        preferences.set_scale_algorithm_name(self.settings.scale_algorithm.label().into());
+        self.ui
+            .global::<crate::Cdn>()
+            .set_current(crate::cdn::index(&self.settings.cdn) as i32);
         preferences.set_cdn_name(
             crate::cdn::OPTIONS[crate::cdn::index(&self.settings.cdn)]
                 .name
                 .into(),
         );
-        self.ui.global::<crate::Meta>().set_about_scroll(self.about_scroll as f32);
+        self.ui
+            .global::<crate::Meta>()
+            .set_about_scroll(self.about_scroll as f32);
         nav.set_help(self.help);
         nav.set_mine_detail(self.mine_detail >= 0);
         self.sync_cache();
@@ -145,7 +157,9 @@ impl App {
             return [
                 Some(menu::Action::TogglePlay),
                 Some(menu::Action::Refresh),
-                super_chat.get_available().then_some(menu::Action::SuperChat),
+                super_chat
+                    .get_available()
+                    .then_some(menu::Action::SuperChat),
                 Some(menu::Action::Danmaku),
                 None,
             ];

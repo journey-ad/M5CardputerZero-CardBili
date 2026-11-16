@@ -120,11 +120,7 @@ impl App {
             return;
         }
         if self.sections.dirty {
-            self.sections.first = self
-                .sections
-                .first
-                .min(self.sections.selection)
-                .max(self.sections.selection.saturating_sub(4));
+            self.sections.first = ensure_visible(self.sections.first, self.sections.selection, 5);
             let parts = self
                 .sections
                 .parts

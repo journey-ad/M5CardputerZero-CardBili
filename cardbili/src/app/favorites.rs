@@ -108,11 +108,7 @@ impl App {
                 .selection
                 .min(self.favorites.folders.len().saturating_sub(1));
             let selected = self.favorites.selection;
-            self.favorites.first = self
-                .favorites
-                .first
-                .min(selected)
-                .max(selected.saturating_sub(3));
+            self.favorites.first = ensure_visible(self.favorites.first, selected, 4);
             favorite.set_folders(ModelRc::new(VecModel::from(
                 self.favorites
                     .folders

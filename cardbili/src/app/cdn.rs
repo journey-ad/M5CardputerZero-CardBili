@@ -1,13 +1,20 @@
-use slint::ComponentHandle as _;
 use super::*;
+use slint::ComponentHandle as _;
 use std::sync::atomic::Ordering;
 
 impl App {
     pub(super) fn open_cdn(&mut self) {
         let g_cdn = self.ui.global::<crate::Cdn>();
         g_cdn.set_open(true);
-        g_cdn.set_selected(crate::cdn::index(&self.settings.cdn) as i32);
+        let selected = crate::cdn::index(&self.settings.cdn) as i32;
+        g_cdn.set_selected(selected);
+        g_cdn.set_first(ensure_visible(0, selected as usize, self.cdn_visible()) as i32);
         self.test_cdns();
+    }
+
+    fn cdn_visible(&self) -> usize {
+        let height = self.ui.global::<crate::Layout>().get_window_height();
+        visible_rows(height, 48.0, 40.0)
     }
 
     pub(super) fn close_cdn(&self) {
@@ -106,6 +113,13 @@ impl App {
             "r" => self.test_cdns(),
             "ESC" | "BACKSPACE" => self.close_cdn(),
             _ => {}
+        }
+        if matches!(key, "UP" | "DOWN" | "LEFT" | "RIGHT") {
+            g_cdn.set_first(ensure_visible(
+                g_cdn.get_first() as usize,
+                g_cdn.get_selected() as usize,
+                self.cdn_visible(),
+            ) as i32);
         }
     }
 }

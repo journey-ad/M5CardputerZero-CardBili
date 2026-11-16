@@ -1,29 +1,63 @@
-import { VideoLayout, MenuPosition, SettingsItem } from "../../types.slint";
-import { Nav, Preferences, Danmaku, Meta } from "../../state.slint";
+import { VideoLayout, MenuPosition } from "../../types.slint";
+import { Nav, Preferences, Meta } from "../../state.slint";
 import { Icon, Icons } from "../base/icons.slint";
 import { ToggleSwitch } from "../base/switch.slint";
 import { Text } from "../base/text.slint";
 
-// 单个设置项，外观/常规两个列表共用
+export enum SettingsItem {
+    list-style, danmaku, danmaku-opacity, menu-position, record-history,
+    debug-log, cdn, cache, about, emoji-style, pixel-optimize, scale-algorithm,
+}
+
+export enum SettingsKind { choice, toggle, action }
+
+export struct SettingsRow {
+    item: SettingsItem,
+    label: string,
+    kind: SettingsKind,
+    value: string,
+    checked: bool,
+    disabled: bool,
+}
+
+export global SettingsPage {
+    out property <[SettingsRow]> appearance-items: [
+        {
+            item: SettingsItem.menu-position, label: "首页布局", kind: SettingsKind.choice,
+            value: Preferences.menu-position == MenuPosition.top ? "顶部" : (Preferences.menu-position == MenuPosition.left ? "左侧" : "右侧"),
+        },
+        {
+            item: SettingsItem.list-style, label: "视频列表风格", kind: SettingsKind.choice,
+            value: Nav.view == VideoLayout.list ? "列表" : (Nav.view == VideoLayout.three-columns ? "3列" : "2列"),
+        },
+        { item: SettingsItem.danmaku, label: "弹幕默认开关", kind: SettingsKind.toggle, checked: Preferences.danmaku-default },
+        { item: SettingsItem.danmaku-opacity, label: "弹幕不透明度", kind: SettingsKind.choice, value: Preferences.danmaku-opacity + "%" },
+        { item: SettingsItem.emoji-style, label: "Emoji样式", kind: SettingsKind.choice, value: "😀😆😎" },
+    ];
+    out property <[SettingsRow]> general-items: [
+        { item: SettingsItem.record-history, label: "记录播放历史", kind: SettingsKind.toggle, checked: Preferences.record-history },
+        { item: SettingsItem.cache, label: "缓存占用", kind: SettingsKind.action, value: Preferences.cache-size },
+        { item: SettingsItem.about, label: "关于", kind: SettingsKind.action, value: Meta.version },
+    ];
+    out property <[SettingsRow]> advanced-items: [
+        { item: SettingsItem.debug-log, label: "调试日志", kind: SettingsKind.toggle, checked: Preferences.debug-log },
+        { item: SettingsItem.cdn, label: "CDN 设置", kind: SettingsKind.action, value: Preferences.cdn-name },
+        { item: SettingsItem.pixel-optimize, label: "像素优化", kind: SettingsKind.toggle, checked: Preferences.pixel-optimize },
+        {
+            item: SettingsItem.scale-algorithm, label: "采样算法", kind: SettingsKind.choice,
+            value: Preferences.pixel-optimize ? "随像素优化" : Preferences.scale-algorithm-name,
+            disabled: Preferences.pixel-optimize,
+        },
+    ];
+    in-out property <int> first-line: 0;
+}
+
+// 单个设置项，外观/常规/进阶三个列表共用
 component SettingsRowItem inherits Rectangle {
-    in property <SettingsItem> item;
-    in property <string> label;
+    in property <SettingsRow> entry;
     in property <bool> selected: false;
-    property <bool> is-toggle: item == SettingsItem.danmaku || item == SettingsItem.record-history || item == SettingsItem.debug-log;
-    property <bool> adjustable: item != SettingsItem.cdn && item != SettingsItem.cache && item != SettingsItem.about;
-    property <string> value: {
-        if item == SettingsItem.list-style {
-            return Nav.view == VideoLayout.list ? "列表" : (Nav.view == VideoLayout.three-columns ? "3列" : "2列");
-        }
-        if item == SettingsItem.danmaku-opacity { return Preferences.danmaku-opacity + "%"; }
-        if item == SettingsItem.emoji-style { return "😀😆😎"; }
-        if item == SettingsItem.menu-position {
-            return Preferences.menu-position == MenuPosition.top ? "顶部" : (Preferences.menu-position == MenuPosition.left ? "左侧" : "右侧");
-        }
-        if item == SettingsItem.cdn { return Preferences.cdn-name; }
-        if item == SettingsItem.cache { return Preferences.cache-size; }
-        return Meta.version;
-    }
+    property <bool> is-toggle: entry.kind == SettingsKind.toggle;
+    property <bool> adjustable: entry.kind != SettingsKind.action;
     background: selected ? #1f2b45 : #0f1623;
     border-radius: 3px;
 
@@ -31,7 +65,7 @@ component SettingsRowItem inherits Rectangle {
         x: 10px;
         width: parent.width - 144px;
         height: parent.height;
-        text: label;
+        text: entry.label;
         color: selected ? #e6ebf5 : #9aa6ba;
         font-size: 12px;
         vertical-alignment: center;
@@ -39,11 +73,7 @@ component SettingsRowItem inherits Rectangle {
     if is-toggle: ToggleSwitch {
         x: parent.width - self.width - 12px;
         y: (parent.height - self.height) / 2;
-        checked: {
-            if item == SettingsItem.danmaku { return Danmaku.enabled; }
-            if item == SettingsItem.record-history { return Preferences.record-history; }
-            return Preferences.debug-log;
-        }
+        checked: root.entry.checked;
     }
     if adjustable && !is-toggle: Rectangle {
         x: parent.width - 130px;
@@ -52,13 +82,13 @@ component SettingsRowItem inherits Rectangle {
         Icon {
             x: 2px; y: 1px; width: 20px; height: 20px;
             source: Icons.left;
-            colorize: selected ? #7fb0ff : #6f7c92;
-            opacity: item == SettingsItem.danmaku-opacity && Preferences.danmaku-opacity == 0 ? 0.3 : 1;
+            colorize: root.entry.disabled ? #4a5568 : (selected ? #7fb0ff : #6f7c92);
+            opacity: root.entry.disabled ? 0.5 : (entry.item == SettingsItem.danmaku-opacity && Preferences.danmaku-opacity == 0 ? 0.3 : 1);
         }
         Text {
             x: 24px; width: 72px; height: parent.height;
-            text: value;
-            color: selected ? #7fb0ff : #9aa6ba;
+            text: entry.value;
+            color: root.entry.disabled ? #4a5568 : (selected ? #7fb0ff : #9aa6ba);
             font-size: 12px;
             horizontal-alignment: center;
             vertical-alignment: center;
@@ -66,13 +96,13 @@ component SettingsRowItem inherits Rectangle {
         Icon {
             x: 98px; y: 1px; width: 20px; height: 20px;
             source: Icons.right;
-            colorize: selected ? #7fb0ff : #6f7c92;
-            opacity: item == SettingsItem.danmaku-opacity && Preferences.danmaku-opacity == 100 ? 0.3 : 1;
+            colorize: root.entry.disabled ? #4a5568 : (selected ? #7fb0ff : #6f7c92);
+            opacity: root.entry.disabled ? 0.5 : (entry.item == SettingsItem.danmaku-opacity && Preferences.danmaku-opacity == 100 ? 0.3 : 1);
         }
     }
     if !adjustable: Text {
-        x: parent.width - (item == SettingsItem.cache ? 154px : 130px); width: item == SettingsItem.cache ? 118px : 94px; height: parent.height;
-        text: value;
+        x: parent.width - (entry.item == SettingsItem.cache ? 154px : 130px); width: entry.item == SettingsItem.cache ? 118px : 94px; height: parent.height;
+        text: entry.value;
         overflow: elide; color: #9aa6ba;
         font-size: 12px;
         font-family: "Fusion Pixel 12px Prop zh-Hans";
@@ -85,55 +115,56 @@ component SettingsRowItem inherits Rectangle {
     }
 }
 
+component SettingsGroup inherits Rectangle {
+    in property <string> title;
+    in property <[SettingsRow]> rows;
+    in property <int> first-index;
+    width: 100%;
+    height: (rows.length + 1) * 24px;
+
+    Text {
+        x: 16px;
+        y: 0px;
+        width: parent.width - 32px;
+        height: 24px;
+        text: root.title;
+        color: #6f7c92;
+        font-size: 10px;
+        font-family: "Fusion Pixel 10px Prop zh-Hans";
+        vertical-alignment: center;
+    }
+    for row[i] in root.rows: SettingsRowItem {
+        entry: row;
+        selected: root.first-index + i == Nav.sel;
+        x: 6px;
+        y: (i + 1) * 24px;
+        width: parent.width - 12px;
+        height: 22px;
+    }
+}
+
 export component SettingsPanel inherits Rectangle {
     clip: true;
-    // 外观设置分组的项数，用于定位常规设置标题和跨组选中
-    property <int> appearance-count: Preferences.appearance-items.length;
-    // 选中项的显示行号
-    property <int> sel-line: Nav.sel + 1 + (Nav.sel >= root.appearance-count ? 1 : 0);
-    property <int> first-line: max(0, root.sel-line - floor((root.height - 4px) / 24px) + 1);
 
-    // 外观设置标题
-    Text {
-        x: 16px;
-        y: 4px + (0 - root.first-line) * 24px;
-        width: parent.width - 32px;
-        height: 24px;
-        text: "外观设置";
-        color: #6f7c92;
-        font-size: 10px;
-        font-family: "Fusion Pixel 10px Prop zh-Hans";
-        vertical-alignment: center;
+    // 外观设置标题和选项
+    appearance := SettingsGroup {
+        title: "外观设置";
+        rows: SettingsPage.appearance-items;
+        first-index: 0;
+        y: 4px - SettingsPage.first-line * 24px;
     }
-    // 常规设置标题
-    Text {
-        x: 16px;
-        y: 4px + (root.appearance-count + 1 - root.first-line) * 24px;
-        width: parent.width - 32px;
-        height: 24px;
-        text: "常规设置";
-        color: #6f7c92;
-        font-size: 10px;
-        font-family: "Fusion Pixel 10px Prop zh-Hans";
-        vertical-alignment: center;
+    // 常规设置标题和选项
+    general := SettingsGroup {
+        title: "常规设置";
+        rows: SettingsPage.general-items;
+        first-index: appearance.rows.length;
+        y: appearance.y + appearance.height;
     }
-
-    for row[i] in Preferences.appearance-items: SettingsRowItem {
-        item: row.item;
-        label: row.label;
-        selected: i == Nav.sel;
-        x: 6px;
-        y: 4px + (i + 1 - root.first-line) * 24px;
-        width: parent.width - 12px;
-        height: 22px;
-    }
-    for row[j] in Preferences.general-items: SettingsRowItem {
-        item: row.item;
-        label: row.label;
-        selected: root.appearance-count + j == Nav.sel;
-        x: 6px;
-        y: 4px + (root.appearance-count + 2 + j - root.first-line) * 24px;
-        width: parent.width - 12px;
-        height: 22px;
+    // 进阶设置标题和选项
+    SettingsGroup {
+        title: "进阶设置";
+        rows: SettingsPage.advanced-items;
+        first-index: general.first-index + general.rows.length;
+        y: general.y + general.height;
     }
 }

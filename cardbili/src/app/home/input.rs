@@ -1,5 +1,5 @@
-use slint::ComponentHandle as _;
 use super::super::*;
+use slint::ComponentHandle as _;
 
 impl App {
     pub(in crate::app) fn home_key(&mut self, k: &str) {

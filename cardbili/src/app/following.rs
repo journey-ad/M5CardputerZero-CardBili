@@ -1,5 +1,5 @@
-use slint::ComponentHandle as _;
 use super::*;
+use slint::ComponentHandle as _;
 
 #[derive(Default)]
 pub(super) struct FollowingState {
@@ -121,11 +121,7 @@ impl App {
         }
         let g_following = self.ui.global::<crate::Following>();
         if self.following.dirty {
-            self.following.first = self
-                .following
-                .first
-                .min(selected)
-                .max(selected.saturating_sub(3));
+            self.following.first = ensure_visible(self.following.first, selected, 4);
             g_following.set_rows(ModelRc::new(VecModel::from(
                 self.following
                     .items

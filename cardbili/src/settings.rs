@@ -14,6 +14,8 @@ pub struct Settings {
     pub debug_log: bool,
     pub color_emoji: bool,
     pub cdn: String,
+    pub pixel_optimize: bool,
+    pub scale_algorithm: ScaleAlgorithm,
 }
 
 impl Default for Settings {
@@ -27,7 +29,80 @@ impl Default for Settings {
             debug_log: false,
             color_emoji: true,
             cdn: "backup".into(),
+            pixel_optimize: false,
+            scale_algorithm: ScaleAlgorithm::Area,
         }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ScaleAlgorithm {
+    Neighbor,
+    FastBilinear,
+    Bilinear,
+    Bicubic,
+    Lanczos,
+    Area,
+    Spline,
+}
+
+impl ScaleAlgorithm {
+    pub const ALL: [Self; 7] = [
+        Self::Neighbor,
+        Self::FastBilinear,
+        Self::Bilinear,
+        Self::Bicubic,
+        Self::Lanczos,
+        Self::Area,
+        Self::Spline,
+    ];
+
+    pub fn from_index(index: i32) -> Self {
+        Self::ALL[index.clamp(0, Self::ALL.len() as i32 - 1) as usize]
+    }
+
+    pub fn index(self) -> i32 {
+        Self::ALL.iter().position(|item| *item == self).unwrap_or(0) as i32
+    }
+
+    pub fn cycle(self, step: i32) -> Self {
+        Self::from_index((self.index() + step).rem_euclid(Self::ALL.len() as i32))
+    }
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Neighbor => "Nearest",
+            Self::FastBilinear => "Fast",
+            Self::Bilinear => "Bilinear",
+            Self::Bicubic => "Bicubic",
+            Self::Lanczos => "Lanczos",
+            Self::Area => "Area",
+            Self::Spline => "Spline",
+        }
+    }
+
+    pub fn ffmpeg_flag(self) -> &'static str {
+        match self {
+            Self::Neighbor => "neighbor",
+            Self::FastBilinear => "fast_bilinear",
+            Self::Bilinear => "bilinear",
+            Self::Bicubic => "bicubic",
+            Self::Lanczos => "lanczos",
+            Self::Area => "area",
+            Self::Spline => "spline",
+        }
+    }
+}
+
+impl Serialize for ScaleAlgorithm {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_i32(self.index())
+    }
+}
+
+impl<'de> Deserialize<'de> for ScaleAlgorithm {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        i32::deserialize(deserializer).map(Self::from_index)
     }
 }
 

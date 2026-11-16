@@ -24,7 +24,10 @@ impl App {
 
     pub(in crate::app) fn playback_ended(&mut self, g: u64) {
         if self.live.is_some()
-            && self.player.as_ref().is_some_and(|p| p.gen == g && !p.finished)
+            && self
+                .player
+                .as_ref()
+                .is_some_and(|p| p.gen == g && !p.finished)
         {
             self.recover_live("直播流已断开");
             return;
@@ -92,6 +95,7 @@ impl App {
                     self.cookies.clone().unwrap_or_default(),
                     self.gen,
                     self.tx.clone(),
+                    &self.settings,
                     player::PlaybackState {
                         position: std::mem::take(&mut self.play_start),
                         ..Default::default()
@@ -150,6 +154,7 @@ impl App {
                     self.cookies.clone().unwrap_or_default(),
                     self.gen,
                     self.tx.clone(),
+                    &self.settings,
                     player::PlaybackState::default(),
                 ));
                 if self.live_danmaku.is_none() {
