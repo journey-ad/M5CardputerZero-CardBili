@@ -201,13 +201,17 @@ pub fn localize_count(text: &str) -> String {
 const MONTHS_EN: [&str; 12] = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 pub fn watch_time(ts: i64) -> String {
-    if ts <= 0 {
-        return String::new();
-    }
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_secs() as i64)
         .unwrap_or(0);
+    watch_time_at(ts, now)
+}
+
+fn watch_time_at(ts: i64, now: i64) -> String {
+    if ts <= 0 {
+        return String::new();
+    }
     let local = ts + 8 * 3600;
     let day = local.div_euclid(86400);
     let sod = local.rem_euclid(86400);
@@ -232,15 +236,19 @@ pub fn date_of(ts: i64) -> String {
     format!("{}-{:02}-{:02}", year, month, date)
 }
 pub fn history_day_label(ts: i64) -> String {
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs() as i64)
+        .unwrap_or(0);
+    history_day_label_at(ts, now)
+}
+
+fn history_day_label_at(ts: i64, now: i64) -> String {
     if ts <= 0 {
         return String::new();
     }
     let local = ts + 8 * 3600;
     let day = local.div_euclid(86400);
-    let now = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_secs() as i64)
-        .unwrap_or(0);
     let today = (now + 8 * 3600).div_euclid(86400);
     match today - day {
         0 => crate::i18n::tr("今天").into(),
@@ -340,19 +348,4 @@ pub struct Chapter {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn server_counts_follow_the_language() {
-        crate::i18n::set(crate::i18n::Language::En);
-        assert_eq!(localize_count("46.9万"), "469K");
-        assert_eq!(localize_count("1.2亿"), "120M");
-        assert_eq!(localize_count("998"), "998");
-        assert_eq!(localize_count("直播中"), "直播中");
-        assert_eq!(fmt_num(12_345), "12.3K");
-        crate::i18n::set(crate::i18n::Language::Zh);
-        assert_eq!(localize_count("46.9万"), "46.9万");
-        assert_eq!(fmt_num(12_345), "1.2万");
-    }
-}
+mod tests;

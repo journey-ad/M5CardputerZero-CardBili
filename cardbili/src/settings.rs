@@ -210,3 +210,6 @@ impl<'de> Deserialize<'de> for MenuPosition {
         i32::deserialize(deserializer).map(Self::from_index)
     }
 }
+
+#[cfg(test)]
+mod tests;

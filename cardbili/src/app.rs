@@ -75,17 +75,7 @@ pub fn run(settings: Settings) {
     }
     set_language(&ui, crate::i18n::current());
     ui.show().expect("show");
-    let area_keys = ktx.clone();
-    ui.global::<crate::LiveAreas>().on_key(move |key| {
-        let _ = area_keys.send(key.to_string());
-    });
-    ui.global::<crate::Player>().on_key(move |key| {
-        let _ = ktx.send(key.to_string());
-    });
-    let confirm_tx = tx.clone();
-    ui.global::<crate::Confirm>().on_result(move |accepted| {
-        let _ = confirm_tx.send(Msg::Confirmed(accepted));
-    });
+    connect_ui(&ui, tx.clone(), ktx);
     let mut app = App::new(ui, tx, settings);
     #[cfg(feature = "desktop")]
     if !crate::diagnostics::ffmpeg_available() {
@@ -155,3 +145,20 @@ pub fn run(settings: Settings) {
     }
     app.history.flush();
 }
+
+fn connect_ui(ui: &AppWindow, tx: mpsc::Sender<Msg>, ktx: mpsc::Sender<String>) {
+    let area_keys = ktx.clone();
+    ui.global::<crate::LiveAreas>().on_key(move |key| {
+        let _ = area_keys.send(key.to_string());
+    });
+    ui.global::<crate::Player>().on_key(move |key| {
+        let _ = ktx.send(key.to_string());
+    });
+    let confirm_tx = tx.clone();
+    ui.global::<crate::Confirm>().on_result(move |accepted| {
+        let _ = confirm_tx.send(Msg::Confirmed(accepted));
+    });
+}
+
+#[cfg(test)]
+mod tests;

@@ -230,3 +230,6 @@ impl Cdn {
         text
     }
 }
+
+#[cfg(test)]
+mod tests;
