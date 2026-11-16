@@ -112,7 +112,7 @@ pub fn comments(aid: i64, page: u32, cookies: Option<&str>) -> Result<CommentPag
         .flatten()
         .filter_map(|reply| {
             let content = &reply["content"];
-            let text = content["message"].as_str()?.to_string();
+            let text = super::unescape_xml(content["message"].as_str()?);
             // 正文里的 [名称] 占位与 content.emote 的图片地址一一对应
             let emotes = content["emote"]
                 .as_object()
@@ -134,7 +134,7 @@ pub fn comments(aid: i64, page: u32, cookies: Option<&str>) -> Result<CommentPag
                 })
                 .unwrap_or_default();
             Some(Comment {
-                user: reply["member"]["uname"].as_str().unwrap_or_default().into(),
+                user: super::unescape_xml(reply["member"]["uname"].as_str().unwrap_or_default()).into(),
                 text,
                 created_at: reply["ctime"].as_i64().unwrap_or_default(),
                 likes: reply["like"].as_i64().unwrap_or_default(),

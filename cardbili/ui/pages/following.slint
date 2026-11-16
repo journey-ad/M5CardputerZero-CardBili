@@ -10,12 +10,14 @@ export component FollowingPage inherits Rectangle {
     }
     for user[index] in Following.rows: Rectangle {
         x: 6px; y: 26px + index * 30px; width: parent.width - 12px; height: 28px;
-        background: index == Following.selected ? #1f2b45 : #101726;
-        if user.has-avatar: Image { x: 3px; y: 2px; width: 24px; height: 24px; source: user.avatar; image-fit: cover; }
-        if !user.has-avatar: Icon { x: 6px; y: 6px; width: 16px; height: 16px; source: Icons.user; colorize: #7fb0ff; }
-        Text { x: 30px; y: 0px; width: parent.width - 50px; height: 17px; text: user.user; color: #e6ebf5; font-size: 12px; vertical-alignment: center; overflow: elide; }
-        Text { x: 30px; y: 15px; width: parent.width - 50px; height: 14px; text: user.text; color: #8b95a7; font-size: 10px; font-family: "Fusion Pixel 10px Prop zh-Hans"; vertical-alignment: center; overflow: elide; }
-        Icon { x: parent.width - 18px; y: 8px; source: Icons.right; colorize: #6f7c92; }
+        background: user.header ? #16233a : (index == Following.selected ? #1f2b45 : #101726);
+        if user.header: Text { x: 8px; y: 0px; width: parent.width - 76px; height: parent.height; text: user.user; color: #7fb0ff; font-size: 11px; font-weight: 700; vertical-alignment: center; overflow: elide; }
+        if user.header: Text { x: parent.width - 68px; y: 0px; width: 60px; height: parent.height; text: user.text; color: #5f7391; font-size: 9px; horizontal-alignment: right; vertical-alignment: center; }
+        if !user.header: Image { x: 3px; y: 2px; width: 24px; height: 24px; source: user.avatar; image-fit: cover; visible: user.has-avatar; }
+        if !user.header: Icon { x: 6px; y: 6px; width: 16px; height: 16px; source: Icons.user; colorize: #7fb0ff; visible: !user.has-avatar; }
+        if !user.header: Text { x: 30px; y: 0px; width: parent.width - 50px; height: 17px; text: user.user; color: #e6ebf5; font-size: 12px; vertical-alignment: center; overflow: elide; }
+        if !user.header: Text { x: 30px; y: 15px; width: parent.width - 50px; height: 14px; text: user.text; color: #8b95a7; font-size: 10px; font-family: "Fusion Pixel 10px Prop zh-Hans"; vertical-alignment: center; overflow: elide; }
+        if !user.header: Icon { x: parent.width - 18px; y: 8px; source: Icons.right; colorize: #6f7c92; }
     }
     if Following.rows.length == 0 || Following.error != "": Rectangle {
         x: 8px; y: Following.rows.length == 0 ? 60px : 112px; width: parent.width - 16px; height: 36px;

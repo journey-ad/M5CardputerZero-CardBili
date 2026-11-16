@@ -363,12 +363,46 @@ fn parse_params(p: &str, text: String) -> Option<crate::danmaku::Dm> {
     })
 }
 
-fn unescape_xml(s: &str) -> String {
-    s.replace("&lt;", "<")
-        .replace("&gt;", ">")
-        .replace("&quot;", "\"")
-        .replace("&#39;", "'")
-        .replace("&amp;", "&")
+// 解码命名字符实体与十进制/十六进制数字实体
+pub(crate) fn unescape_xml(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut rest = s;
+    while let Some(pos) = rest.find('&') {
+        out.push_str(&rest[..pos]);
+        let tail = &rest[pos + 1..];
+        let decoded = tail
+            .find(';')
+            .filter(|&end| end <= 10)
+            .and_then(|end| {
+                let ch = match &tail[..end] {
+                    "lt" => Some('<'),
+                    "gt" => Some('>'),
+                    "quot" => Some('"'),
+                    "apos" => Some('\''),
+                    "amp" => Some('&'),
+                    "nbsp" => Some(' '),
+                    entity => entity.strip_prefix('#').and_then(|num| match num {
+                        _ if num.starts_with('x') || num.starts_with('X') => {
+                            u32::from_str_radix(&num[1..], 16).ok().and_then(char::from_u32)
+                        }
+                        _ => num.parse::<u32>().ok().and_then(char::from_u32),
+                    }),
+                };
+                ch.map(|c| (c, end + 1))
+            });
+        match decoded {
+            Some((c, consumed)) => {
+                out.push(c);
+                rest = &tail[consumed..];
+            }
+            None => {
+                out.push('&');
+                rest = tail;
+            }
+        }
+    }
+    out.push_str(rest);
+    out
 }
 
 pub fn account(cookies: Option<&str>) -> Result<Account, String> {
@@ -540,6 +574,79 @@ pub fn author_profile(mid: &str, cookies: Option<&str>) -> Result<model::AuthorP
     })
 }
 
+// 全部关注分区的哨兵 tagid，与 B 站真实分组 id 区分
+pub const ALL_FOLLOWING_TAGID: i64 = i64::MIN;
+
+pub struct FollowingTag {
+    pub tagid: i64,
+    pub name: String,
+    pub count: u64,
+}
+
+pub fn following_tags(cookies: &str) -> Result<Vec<FollowingTag>, String> {
+    let value = cache::api_json(
+        "https://api.bilibili.com/x/relation/tags",
+        Some(cookies),
+        cache::TTL_LIST,
+    )?;
+    if value["code"].as_i64() != Some(0) {
+        return Err(api_err("关注分组", &value));
+    }
+    Ok(value["data"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|tag| {
+            Some(FollowingTag {
+                tagid: tag["tagid"].as_i64()?,
+                name: tag["name"].as_str().unwrap_or_default().into(),
+                count: tag["count"].as_u64().unwrap_or(0),
+            })
+        })
+        .collect())
+}
+
+// 从 B 站用户 JSON 构造关注项，两个关注列表接口共用
+fn parse_following(user: &serde_json::Value) -> Option<model::Following> {
+    Some(model::Following {
+        owner: Owner {
+            mid: user["mid"].as_i64()?.to_string(),
+            name: user["uname"].as_str().unwrap_or_default().into(),
+        },
+        face: user["face"].as_str().unwrap_or_default().into(),
+        signature: user["sign"].as_str().unwrap_or_default().replace(['\n', '\r'], " "),
+    })
+}
+
+pub fn tag_followings(
+    tagid: i64,
+    page: u32,
+    cookies: &str,
+) -> Result<model::FollowingPage, String> {
+    let params = net::query_string(&[
+        ("tagid".into(), tagid.to_string()),
+        ("pn".into(), page.to_string()),
+        ("ps".into(), "20".into()),
+        ("order".into(), "desc".into()),
+    ]);
+    let value = cache::api_json(
+        &format!("https://api.bilibili.com/x/relation/tag?{params}"),
+        Some(cookies),
+        cache::TTL_LIST,
+    )?;
+    if value["code"].as_i64() != Some(0) {
+        return Err(api_err("关注分组", &value));
+    }
+    let items = value["data"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(parse_following)
+        .collect::<Vec<_>>();
+    let has_more = items.len() == 20;
+    Ok(model::FollowingPage { items, has_more })
+}
+
 pub fn followings(mid: &str, page: u32, cookies: &str) -> Result<model::FollowingPage, String> {
     let params = net::query_string(&[
         ("vmid".into(), mid.into()),
@@ -560,20 +667,7 @@ pub fn followings(mid: &str, page: u32, cookies: &str) -> Result<model::Followin
         .as_array()
         .into_iter()
         .flatten()
-        .filter_map(|user| {
-            let mid = user["mid"].as_i64()?.to_string();
-            Some(model::Following {
-                owner: Owner {
-                    mid,
-                    name: user["uname"].as_str().unwrap_or_default().into(),
-                },
-                face: user["face"].as_str().unwrap_or_default().into(),
-                signature: user["sign"]
-                    .as_str()
-                    .unwrap_or_default()
-                    .replace(['\n', '\r'], " "),
-            })
-        })
+        .filter_map(parse_following)
         .collect::<Vec<_>>();
     let has_more = !items.is_empty()
         && value["data"]["total"]

@@ -196,18 +196,19 @@ impl App {
                     .following
                     .items
                     .iter()
-                    .filter(|user| !self.following.avatars.contains_key(&user.owner.mid))
-                    .cloned()
+                    .filter_map(|entry| match entry {
+                        following::FollowingEntry::User(user)
+                            if !self.following.avatars.contains_key(&user.owner.mid) =>
+                        {
+                            Some(user.clone())
+                        }
+                        _ => None,
+                    })
                     .collect();
                 tasks::load_following_avatars(missing, self.following_request, self.tx.clone());
-                self.following.pending_page = 1;
-                tasks::load_following(
-                    self.mid.clone(),
-                    1,
-                    self.cookies.clone().unwrap_or_default(),
-                    self.following_request,
-                    self.tx.clone(),
-                );
+                if self.following.items.is_empty() {
+                    self.load_following();
+                }
             }
             Some(BackTarget::Collection(previous)) => {
                 self.page = Page::Collection;

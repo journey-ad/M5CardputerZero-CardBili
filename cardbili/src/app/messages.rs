@@ -25,7 +25,10 @@ impl App {
                     self.favorites.dirty = true;
                 }
             }
-            Msg::Following(request, page, result) => self.following_loaded(request, page, result),
+            Msg::FollowingTags(request, result) => self.following_tags_loaded(request, result),
+            Msg::FollowingGroup(request, tagid, page, result) => {
+                self.following_group_loaded(request, tagid, page, result)
+            }
             Msg::Dynamic(request, offset, result) => self.dynamic_loaded(request, offset, result),
             Msg::History(request, first, result) => self.history_loaded(request, first, result),
             Msg::Comments(request, page, result) => self.comments_loaded(request, page, result),

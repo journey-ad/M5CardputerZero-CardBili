@@ -306,13 +306,49 @@ pub fn load_dynamic(
     });
 }
 
-pub fn load_following(mid: String, page: u32, cookies: String, request: u64, tx: Sender<Msg>) {
+pub fn load_following_tags(cookies: String, request: u64, tx: Sender<Msg>) {
+    thread::spawn(move || {
+        let result = api::following_tags(&cookies);
+        let _ = tx.send(Msg::FollowingTags(request, result));
+    });
+}
+
+pub fn load_following_group(
+    tagid: i64,
+    page: u32,
+    cookies: String,
+    request: u64,
+    tx: Sender<Msg>,
+) {
+    thread::spawn(move || {
+        cached_then_refresh(
+            page > 1,
+            || api::tag_followings(tagid, page, &cookies),
+            |result| {
+                let _ = tx.send(Msg::FollowingGroup(request, tagid, page, result));
+            },
+        );
+    });
+}
+
+pub fn load_all_followings(
+    mid: String,
+    page: u32,
+    cookies: String,
+    request: u64,
+    tx: Sender<Msg>,
+) {
     thread::spawn(move || {
         cached_then_refresh(
             page > 1,
             || api::followings(&mid, page, &cookies),
             |result| {
-                let _ = tx.send(Msg::Following(request, page, result));
+                let _ = tx.send(Msg::FollowingGroup(
+                    request,
+                    api::ALL_FOLLOWING_TAGID,
+                    page,
+                    result,
+                ));
             },
         );
     });
