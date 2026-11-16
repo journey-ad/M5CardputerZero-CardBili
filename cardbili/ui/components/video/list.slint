@@ -7,6 +7,8 @@ import { StatItem } from "../base/stat.slint";
 
 export component ListView inherits Rectangle {
     in property <bool> show-author: true;
+    // 收藏夹视频列表展示弹幕数量
+    property <bool> show-danmaku: Nav.page == Page.collection;
     clip: true;
     property <bool> live: Nav.page == Page.home && Nav.tab == HomeTab.live;
     property <length> max-top: max(0px, ListModel.content-height * 1px - root.height);
@@ -38,6 +40,7 @@ export component ListView inherits Rectangle {
             if row.duration != "" && row.progress == "": StatItem { icon: Icons.clock; value: row.duration; }
             if row.views != "": StatItem { icon: root.live ? Icons.hot : Icons.play; value: row.views; }
             if row.likes != "": StatItem { icon: Icons.thumbs-up; value: row.likes; }
+            if root.show-danmaku && row.danmaku != "": StatItem { icon: Icons.message-text; value: row.danmaku; }
             if row.progress != "": StatItem { icon: Icons.play; show-icon: row.progress != "已看完"; value: row.progress; }
             if row.watched != "": StatItem { icon: Icons.clock; value: row.watched; }
         }
