@@ -24,4 +24,6 @@ mkdir -p "$SYS_LIB"
 "$AR_aarch64_unknown_linux_musl" crs "$SYS_LIB/libdl.a"
 cargo rustc --locked --release --target aarch64-unknown-linux-musl -- -L "native=$SYS_LIB"
 cd "$ROOT"
-docker build --platform linux/arm64 --output type=local,dest=dist/ffmpeg cardbili/ffmpeg
+if [[ ${SKIP_FFMPEG:-0} != 1 ]]; then
+    docker build --platform linux/arm64 --output type=local,dest=dist/ffmpeg cardbili/ffmpeg
+fi
