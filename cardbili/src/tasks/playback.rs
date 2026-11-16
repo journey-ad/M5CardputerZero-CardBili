@@ -1,4 +1,8 @@
-use crate::{api, model::VideoAction, Msg};
+use crate::{
+    api,
+    model::{CommentEmote, VideoAction},
+    Msg,
+};
 use std::{sync::mpsc::Sender, thread};
 
 pub fn fetch_liked(bvid: String, cookies: String, request: u64, tx: Sender<Msg>) {
@@ -26,6 +30,19 @@ pub fn comments(aid: i64, page: u32, cookies: Option<String>, request: u64, tx: 
     thread::spawn(move || {
         let result = api::playback::comments(aid, page, cookies.as_deref());
         let _ = tx.send(Msg::Comments(request, page, result));
+    });
+}
+
+// 表情图片依次下载，成功后立即显示，失败时保留原文
+pub fn comment_emotes(emotes: Vec<CommentEmote>, tx: Sender<Msg>) {
+    thread::spawn(move || {
+        for emote in emotes {
+            if let Some(image) = crate::cache::emote(&emote.url, crate::emoji::SIZE as u32) {
+                if tx.send(Msg::CommentEmote(emote.name, image)).is_err() {
+                    break;
+                }
+            }
+        }
     });
 }
 

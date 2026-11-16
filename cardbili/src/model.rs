@@ -93,11 +93,18 @@ pub struct Account {
 }
 
 #[derive(Clone, Default)]
+pub struct CommentEmote {
+    pub name: String,
+    pub url: String,
+}
+
+#[derive(Clone, Default)]
 pub struct Comment {
     pub user: String,
     pub text: String,
     pub created_at: i64,
     pub likes: i64,
+    pub emotes: Vec<CommentEmote>,
 }
 
 #[derive(Clone, Default)]

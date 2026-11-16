@@ -2,11 +2,12 @@ import { Preferences } from "../../state.slint";
 
 export struct EmojiPlacement { glyph: int, x: length, y: length }
 
-// 原生 Text 负责尺寸与排版，Mona 表情填入预留的字符位置
+// 原生 Text 负责尺寸与排版，Emoji 和评论表情填入预留的字符位置
 export global EmojiFont {
-    pure callback prepare(string) -> string;
-    pure callback layout(string, length, length, length, TextHorizontalAlignment, TextVerticalAlignment, TextWrap, TextOverflow) -> [EmojiPlacement];
-    pure callback glyph(int, bool) -> image;
+    in-out property <int> revision;
+    pure callback prepare(string, int) -> string;
+    pure callback layout(string, int, length, length, length, TextHorizontalAlignment, TextVerticalAlignment, TextWrap, TextOverflow) -> [EmojiPlacement];
+    pure callback glyph(int, bool, int) -> image;
     pure callback monochrome(int) -> bool;
 }
 
@@ -39,20 +40,21 @@ export component Text {
         width: root.width;
         height: root.height;
         font-size: 12px;
-        text: EmojiFont.prepare(root.text);
+        text: EmojiFont.prepare(root.text, EmojiFont.revision);
     }
     Rectangle {
         x: 0px; y: 0px;
         width: root.width;
         height: root.height;
         clip: true;
-        for emoji in EmojiFont.layout(root.text, root.font-size, root.width, root.height, root.horizontal-alignment, root.vertical-alignment, root.wrap, root.overflow): Image {
+        for emoji in EmojiFont.layout(root.text, EmojiFont.revision, root.font-size, root.width, root.height, root.horizontal-alignment, root.vertical-alignment, root.wrap, root.overflow): Image {
             x: emoji.x;
             y: emoji.y;
             width: 12px;
             height: 12px;
-            source: EmojiFont.glyph(emoji.glyph, Preferences.color-emoji);
+            source: EmojiFont.glyph(emoji.glyph, Preferences.color-emoji, EmojiFont.revision);
             colorize: Preferences.color-emoji || !EmojiFont.monochrome(emoji.glyph) ? #0000 : root.color;
+            image-fit: contain;
             image-rendering: pixelated;
         }
     }

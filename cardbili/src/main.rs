@@ -32,6 +32,7 @@ pub enum Msg {
     Liked(u64, Result<bool, String>),
     Reaction(u64, Result<model::ReactionResult, String>),
     Comments(u64, u32, Result<model::CommentPage, String>),
+    CommentEmote(String, cache::Pixels),
     Frame(u64),
     Volume(Result<i32, String>),
     PlaybackEnded(u64),

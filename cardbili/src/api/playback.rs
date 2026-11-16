@@ -1,5 +1,5 @@
 use super::{api_err, cache, net};
-use crate::model::{Comment, CommentPage, ReactionResult, VideoAction};
+use crate::model::{Comment, CommentEmote, CommentPage, ReactionResult, VideoAction};
 
 pub fn liked(bvid: &str, cookies: &str) -> Result<bool, String> {
     let value = net::get_json(
@@ -111,12 +111,28 @@ pub fn comments(aid: i64, page: u32, cookies: Option<&str>) -> Result<CommentPag
         .into_iter()
         .flatten()
         .filter_map(|reply| {
-            let text = reply["content"]["message"].as_str()?.to_string();
+            let content = &reply["content"];
+            let text = content["message"].as_str()?.to_string();
+            // 正文里的 [名称] 占位与 content.emote 的图片地址一一对应
+            let emotes = content["emote"]
+                .as_object()
+                .map(|map| {
+                    map.iter()
+                        .filter_map(|(name, emote)| {
+                            Some(CommentEmote {
+                                name: name.clone(),
+                                url: emote["url"].as_str()?.to_string(),
+                            })
+                        })
+                        .collect()
+                })
+                .unwrap_or_default();
             Some(Comment {
                 user: reply["member"]["uname"].as_str().unwrap_or_default().into(),
                 text,
                 created_at: reply["ctime"].as_i64().unwrap_or_default(),
                 likes: reply["like"].as_i64().unwrap_or_default(),
+                emotes,
             })
         })
         .collect();

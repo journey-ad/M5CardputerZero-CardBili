@@ -29,6 +29,7 @@ impl App {
             Msg::Dynamic(request, offset, result) => self.dynamic_loaded(request, offset, result),
             Msg::History(request, first, result) => self.history_loaded(request, first, result),
             Msg::Comments(request, page, result) => self.comments_loaded(request, page, result),
+            Msg::CommentEmote(name, image) => crate::emoji::register_emote(&self.ui, name, image),
             Msg::Volume(result) => {
                 if self.page == Page::Player {
                     match result {

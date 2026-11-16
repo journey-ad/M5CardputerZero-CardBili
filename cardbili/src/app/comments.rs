@@ -11,6 +11,7 @@ pub(super) struct Comments {
     pub error: String,
     pub scroll: f64,
     pub dirty: bool,
+    pub requested_emotes: std::collections::HashSet<String>,
 }
 
 impl App {
@@ -57,6 +58,22 @@ impl App {
         match result {
             Ok(result) => {
                 self.comment_page.has_more = result.has_more && !result.items.is_empty();
+                let mut pending = Vec::new();
+                for item in &result.items {
+                    for emote in &item.emotes {
+                        if !crate::emoji::has_emote(&emote.name)
+                            && self
+                                .comment_page
+                                .requested_emotes
+                                .insert(emote.name.clone())
+                        {
+                            pending.push(emote.clone());
+                        }
+                    }
+                }
+                if !pending.is_empty() {
+                    tasks::playback::comment_emotes(pending, self.tx.clone());
+                }
                 self.comment_page.items.extend(result.items);
                 self.comment_page.page = page;
                 self.comment_page.dirty = true;

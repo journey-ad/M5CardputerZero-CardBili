@@ -325,14 +325,19 @@ pub fn api_json_with(
 
 // 带缓存的封面：命中直接返回已缩放像素，未命中下载并回填
 pub fn cover(pic: &str) -> Option<Pixels> {
-    cached_image(pic, 180, 120)
+    cached_image(pic, 180, 120, false)
 }
 
 pub fn avatar(url: &str) -> Option<Pixels> {
-    cached_image(url, 64, 64)
+    cached_image(url, 64, 64, false)
 }
 
-fn cached_image(pic: &str, width: u32, height: u32) -> Option<Pixels> {
+// 评论表情保留透明通道，按目标尺寸等比缩放
+pub fn emote(url: &str, size: u32) -> Option<Pixels> {
+    cached_image(url, size, size, true)
+}
+
+fn cached_image(pic: &str, width: u32, height: u32, alpha: bool) -> Option<Pixels> {
     init();
     let mut url = pic.to_string();
     if let Some(p) = url.find('@') {
@@ -346,21 +351,30 @@ fn cached_image(pic: &str, width: u32, height: u32) -> Option<Pixels> {
     if url.is_empty() {
         return None;
     }
-    let path = cache_path(
-        &img_dir(),
-        &key_of(&format!("{url}@{width}x{height}")),
-        "raw",
-    );
+    let (key, extension) = if alpha {
+        (format!("{url}#emote{width}"), "emote")
+    } else {
+        (format!("{url}@{width}x{height}"), "raw")
+    };
+    let path = cache_path(&img_dir(), &key_of(&key), extension);
+    let channels = if alpha { 4 } else { 3 };
     if let Ok(data) = fs::read(&path) {
         if data.len() >= 8 {
             let w = u32::from_le_bytes([data[0], data[1], data[2], data[3]]);
             let h = u32::from_le_bytes([data[4], data[5], data[6], data[7]]);
-            touch(&path);
-            diagnostics::write(format_args!(
-                "[缓存] 图片命中 {} 尺寸={w}x{h}",
-                path.display()
-            ));
-            return Some((w, h, data[8..].to_vec()));
+            if w > 0
+                && h > 0
+                && w <= width
+                && h <= height
+                && data.len() == 8 + w as usize * h as usize * channels
+            {
+                touch(&path);
+                diagnostics::write(format_args!(
+                    "[缓存] 图片命中 {} 尺寸={w}x{h}",
+                    path.display()
+                ));
+                return Some((w, h, data[8..].to_vec()));
+            }
         }
     }
     diagnostics::write(format_args!(
@@ -369,12 +383,18 @@ fn cached_image(pic: &str, width: u32, height: u32) -> Option<Pixels> {
     ));
     // 图片 CDN 按目标尺寸的两倍缩放，缓存仍使用原图地址作为标识
     let download_url = if crate::cdn::host(&url).ends_with(".hdslb.com") {
-        format!("{url}@{}w_{}h_0e.jpg", width * 2, height * 2)
+        let format = if alpha { "png" } else { "jpg" };
+        format!("{url}@{}w_{}h_0e.{format}", width * 2, height * 2)
     } else {
         url.clone()
     };
     let paused = IMAGE_DOWNLOAD_PAUSED.0.lock().unwrap();
-    drop(IMAGE_DOWNLOAD_PAUSED.1.wait_while(paused, |paused| *paused).unwrap());
+    drop(
+        IMAGE_DOWNLOAD_PAUSED
+            .1
+            .wait_while(paused, |paused| *paused)
+            .unwrap(),
+    );
     let bytes = net::get_bytes(&download_url).ok()?;
     let img = image::load_from_memory(&bytes)
         .map_err(|error| {
@@ -384,9 +404,13 @@ fn cached_image(pic: &str, width: u32, height: u32) -> Option<Pixels> {
             ));
         })
         .ok()?;
-    let img = img.thumbnail(width, height).to_rgb8();
-    let (w, h) = img.dimensions();
-    let raw = img.into_raw();
+    let img = img.thumbnail(width, height);
+    let (w, h) = (img.width(), img.height());
+    let raw = if alpha {
+        img.to_rgba8().into_raw()
+    } else {
+        img.to_rgb8().into_raw()
+    };
     let mut buf = Vec::with_capacity(8 + raw.len());
     buf.extend_from_slice(&w.to_le_bytes());
     buf.extend_from_slice(&h.to_le_bytes());

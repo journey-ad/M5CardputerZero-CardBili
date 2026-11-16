@@ -2,7 +2,7 @@ use crate::{AppWindow, EmojiFont, EmojiPlacement};
 use i_slint_core::textlayout::{FontMetrics, TextLayout, TextParagraphLayout, TextShaper};
 use slint::{ComponentHandle, Image, Rgba8Pixel, SharedPixelBuffer};
 use std::cell::RefCell;
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::ops::ControlFlow;
 
 pub(crate) const SIZE: usize = 12;
@@ -17,6 +17,41 @@ include!(concat!(env!("OUT_DIR"), "/emoji_font.rs"));
 pub(crate) enum Token {
     Character(char),
     Emoji(u16),
+}
+
+// 外部表情图使用 65536 起的字形编号
+const EXTERNAL_BASE: i32 = 0x1_0000;
+
+#[derive(Default)]
+struct Emotes {
+    images: Vec<Image>,
+    index: HashMap<String, usize>,
+}
+
+thread_local! {
+    static EMOTES: RefCell<Emotes> = RefCell::new(Emotes::default());
+}
+
+pub(crate) fn has_emote(name: &str) -> bool {
+    EMOTES.with(|emotes| emotes.borrow().index.contains_key(name))
+}
+
+pub(crate) fn register_emote(ui: &AppWindow, name: String, (w, h, raw): crate::cache::Pixels) {
+    let image = Image::from_rgba8(SharedPixelBuffer::<Rgba8Pixel>::clone_from_slice(
+        &raw, w, h,
+    ));
+    EMOTES.with(|emotes| {
+        let mut emotes = emotes.borrow_mut();
+        if let Some(&index) = emotes.index.get(&name) {
+            emotes.images[index] = image;
+        } else {
+            let index = emotes.images.len();
+            emotes.images.push(image);
+            emotes.index.insert(name, index);
+        }
+    });
+    let global = ui.global::<EmojiFont>();
+    global.set_revision(global.get_revision() + 1);
 }
 
 // 最长匹配完整表情，VS16 使用表情字形，VS15 保留文字字形
@@ -73,18 +108,34 @@ pub(crate) fn tokens(mut text: &str) -> impl Iterator<Item = Token> + '_ {
     })
 }
 
-fn prepare(text: &str) -> (String, Vec<(usize, u16)>) {
+fn prepare(text: &str) -> (String, Vec<(usize, i32)>) {
     let mut prepared = String::with_capacity(text.len());
     let mut emoji = Vec::new();
-    for token in tokens(text) {
-        match token {
-            Token::Character(character) => prepared.push(character),
-            Token::Emoji(glyph) => {
-                emoji.push((prepared.len(), glyph));
+    EMOTES.with(|emotes| {
+        let emotes = emotes.borrow();
+        for chunk in text.split_inclusive(']') {
+            let matched = chunk.rfind('[').and_then(|start| {
+                emotes
+                    .index
+                    .get(&chunk[start..])
+                    .map(|&index| (start, index))
+            });
+            let end = matched.map_or(chunk.len(), |(start, _)| start);
+            for token in tokens(&chunk[..end]) {
+                match token {
+                    Token::Character(character) => prepared.push(character),
+                    Token::Emoji(glyph) => {
+                        emoji.push((prepared.len(), i32::from(glyph)));
+                        prepared.push(PLACEHOLDER);
+                    }
+                }
+            }
+            if let Some((_, index)) = matched {
+                emoji.push((prepared.len(), EXTERNAL_BASE + index as i32));
                 prepared.push(PLACEHOLDER);
             }
         }
-    }
+    });
     (prepared, emoji)
 }
 
@@ -106,10 +157,10 @@ pub(crate) fn pixel(
 
 pub(crate) fn install(ui: &AppWindow) {
     let global = ui.global::<EmojiFont>();
-    global.on_monochrome(|glyph| MONOCHROME[glyph as usize]);
-    global.on_prepare(|text| prepare(&text).0.into());
+    global.on_monochrome(|glyph| MONOCHROME.get(glyph as usize).copied().unwrap_or(false));
+    global.on_prepare(|text, _revision| prepare(&text).0.into());
     global.on_layout(
-        |text, size, width, height, horizontal, vertical, wrap, overflow| {
+        |text, _revision, size, width, height, horizontal, vertical, wrap, overflow| {
             let (text, emoji) = prepare(&text);
             if emoji.is_empty() || width <= 0.0 || height <= 0.0 {
                 return Default::default();
@@ -145,7 +196,7 @@ pub(crate) fn install(ui: &AppWindow) {
                             emoji.binary_search_by_key(&glyph.text_byte_offset, |entry| entry.0)
                         {
                             placements.push(EmojiPlacement {
-                                glyph: i32::from(emoji[index].1),
+                                glyph: emoji[index].1,
                                 x: f32::from(x + glyph.x + SPACING),
                                 y: f32::from(y),
                             });
@@ -160,7 +211,17 @@ pub(crate) fn install(ui: &AppWindow) {
     );
     // 小图缓存最多 128 个，像素数据约占 72 KiB
     let cache = RefCell::new(VecDeque::<(u16, bool, Image)>::new());
-    global.on_glyph(move |glyph, colored| {
+    global.on_glyph(move |glyph, colored, _revision| {
+        if glyph >= EXTERNAL_BASE {
+            return EMOTES.with(|emotes| {
+                emotes
+                    .borrow()
+                    .images
+                    .get((glyph - EXTERNAL_BASE) as usize)
+                    .cloned()
+                    .unwrap_or_default()
+            });
+        }
         let mut cache = cache.borrow_mut();
         if let Some(index) = cache
             .iter()
