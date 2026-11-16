@@ -29,6 +29,7 @@ pub(in crate::app) enum BackTarget {
         paused: bool,
         rate: f64,
         engine: Option<danmaku::Engine>,
+        danmaku_enabled: bool,
         sections: sections::Sections,
     },
 }
@@ -84,6 +85,7 @@ impl App {
                         .map(|player| player.rate)
                         .unwrap_or(1.0),
                     engine: self.danmaku.take(),
+                    danmaku_enabled: self.controls.danmaku_enabled,
                     sections: self.sections.clone(),
                 })
             }
@@ -251,9 +253,11 @@ impl App {
                 paused,
                 rate,
                 engine,
+                danmaku_enabled,
                 sections,
             }) => {
                 self.page = Page::Player;
+                self.controls.danmaku_enabled = danmaku_enabled;
                 self.sections = sections;
                 if self.sections.loading {
                     self.load_chapters();

@@ -29,14 +29,14 @@ impl App {
                 let g_player = self.ui.global::<crate::Player>();
                 g_player.set_frame(slint::Image::from_rgb8(pixels));
                 g_player.set_has_frame(true);
-                if self.live.is_some() && self.settings.danmaku_enabled {
+                if self.live.is_some() && self.controls.danmaku_enabled {
                     self.danmaku_view
                         .update_rows(self.live_engine.rows_at(position));
                 }
                 if let Some(engine) = self
                     .danmaku
                     .as_ref()
-                    .filter(|_| self.settings.danmaku_enabled)
+                    .filter(|_| self.controls.danmaku_enabled)
                 {
                     self.danmaku_view.update(engine, position);
                 }
@@ -90,7 +90,11 @@ impl App {
                     } else if time.1 < 0 {
                         model::mmss(time.0 as f64)
                     } else {
-                        format!("{}/{}", model::mmss(time.0 as f64), model::mmss(time.1 as f64))
+                        format!(
+                            "{}/{}",
+                            model::mmss(time.0 as f64),
+                            model::mmss(time.1 as f64)
+                        )
                     };
                     g_player.set_time_text(text.into());
                     display.time = Some(time);
@@ -103,7 +107,10 @@ impl App {
                     } else {
                         util::est_w(&audience, 10.0) + 21.0
                     };
-                    WIDTH as f64 - util::est_w(&g_player.get_watching(), 10.0) - 32.0 - audience_width
+                    WIDTH as f64
+                        - util::est_w(&g_player.get_watching(), 10.0)
+                        - 32.0
+                        - audience_width
                 } else {
                     WIDTH as f64 - 12.0
                 };

@@ -55,6 +55,20 @@ impl App {
         if navigating {
             self.save_back_target();
         }
+        if self.requested_play.is_some() || self.requested_live.is_some() {
+            let same_live = self
+                .live
+                .as_ref()
+                .is_some_and(|info| self.requested_live == Some(info.room_id));
+            self.controls = playback::Controls {
+                danmaku_enabled: if same_live {
+                    self.controls.danmaku_enabled
+                } else {
+                    self.settings.danmaku_enabled
+                },
+                ..Default::default()
+            };
+        }
         if navigating || self.go_back || self.return_home {
             self.leave_page();
         }
@@ -97,11 +111,15 @@ impl App {
         self.super_chat = crate::super_chat::State::default();
         self.ui.global::<crate::SuperChat>().set_open(false);
         self.ui.global::<crate::SuperChat>().set_available(false);
-        self.ui.global::<crate::SuperChat>().set_rows(ModelRc::default());
+        self.ui
+            .global::<crate::SuperChat>()
+            .set_rows(ModelRc::default());
         self.live = None;
         self.live_recovery = playback::LiveRecovery::default();
         self.ui.global::<crate::Player>().set_live(false);
-        self.ui.global::<crate::Player>().set_live_audience("".into());
+        self.ui
+            .global::<crate::Player>()
+            .set_live_audience("".into());
         if self.requested_play.is_none() {
             self.play_start = 0.0;
             self.requested_cid = None;
@@ -162,23 +180,31 @@ impl App {
             self.start_login("正在生成二维码…");
         }
         if let Some(room_id) = self.requested_live.take() {
-            self.live = Some(model::LiveInfo { room_id, ..Default::default() });
-            self.controls = playback::Controls::default();
+            self.live = Some(model::LiveInfo {
+                room_id,
+                ..Default::default()
+            });
             self.page = Page::Player;
             self.sections = sections::Sections::default();
             self.ui.global::<crate::Player>().set_ptitle("".into());
             self.ui.global::<crate::Player>().set_watching("".into());
             self.ui.global::<crate::Player>().set_progress(0.0);
             self.ui.global::<crate::Player>().set_live(true);
-            self.ui.global::<crate::Player>().set_time_text("--:--".into());
+            self.ui
+                .global::<crate::Player>()
+                .set_time_text("--:--".into());
             self.status = "加载中…".into();
             self.status_detail.clear();
-            tasks::start_live(room_id, self.cookies.clone(), self.play_request, self.tx.clone());
+            tasks::start_live(
+                room_id,
+                self.cookies.clone(),
+                self.play_request,
+                self.tx.clone(),
+            );
         }
         if let Some(bvid) = self.requested_play.take() {
             self.live = None;
             self.ui.global::<crate::Player>().set_live(false);
-            self.controls = playback::Controls::default();
             self.page = Page::Player;
             if self.sections.bvid != bvid {
                 self.sections = sections::Sections {

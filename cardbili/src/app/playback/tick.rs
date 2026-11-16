@@ -20,7 +20,7 @@ impl App {
                             !player.paused
                                 && !player.finished
                                 && self.frames_in_seg > 0
-                                && self.settings.danmaku_enabled
+                                && self.controls.danmaku_enabled
                         }) {
                             self.live_engine
                                 .push(dm, player.position(self.frames_in_seg));
@@ -51,7 +51,7 @@ impl App {
                     if let Some(engine) = self
                         .danmaku
                         .as_ref()
-                        .filter(|_| self.settings.danmaku_enabled)
+                        .filter(|_| self.controls.danmaku_enabled)
                     {
                         self.danmaku_view
                             .update(engine, pp.position(self.frames_in_seg));

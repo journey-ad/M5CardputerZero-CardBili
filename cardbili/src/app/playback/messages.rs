@@ -191,7 +191,7 @@ impl App {
             .as_ref()
             .map(|player| player.position(self.frames_in_seg))
             .unwrap_or(0.0);
-        if self.settings.danmaku_enabled {
+        if self.controls.danmaku_enabled {
             self.danmaku_view.update(&eng, position);
         }
         self.danmaku = Some(eng);

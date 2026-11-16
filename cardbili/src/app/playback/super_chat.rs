@@ -40,7 +40,7 @@ impl App {
         if panel.get_open() {
             panel.set_elapsed(now.saturating_sub(self.super_chat.displayed_at) as i32);
         }
-        if !self.settings.danmaku_enabled {
+        if !self.controls.danmaku_enabled {
             self.super_chat.announcements.clear();
         } else if !panel.get_open() && !self.super_chat.announcements.is_empty() {
             if let Some(player) = self
@@ -132,7 +132,12 @@ impl App {
         let panel = self.ui.global::<crate::SuperChat>();
         panel.set_open(false);
         panel.set_rows(ModelRc::default());
-        panel.set_available(self.super_chat.messages.iter().any(|item| item.visible(now)));
+        panel.set_available(
+            self.super_chat
+                .messages
+                .iter()
+                .any(|item| item.visible(now)),
+        );
         self.direction_hold = None;
         self.return_hold = None;
         self.last_input = Instant::now();

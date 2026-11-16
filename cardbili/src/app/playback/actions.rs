@@ -4,6 +4,7 @@ use slint::ComponentHandle as _;
 
 #[derive(Default)]
 pub(in crate::app) struct Controls {
+    pub danmaku_enabled: bool,
     pub liked: Option<bool>,
     pub busy: bool,
     pub like_hold: Option<(Instant, bool)>,
@@ -138,9 +139,8 @@ impl App {
     }
 
     pub(in crate::app) fn toggle_danmaku(&mut self) {
-        self.settings.danmaku_enabled = !self.settings.danmaku_enabled;
-        self.settings_changed = true;
-        if self.settings.danmaku_enabled {
+        self.controls.danmaku_enabled = !self.controls.danmaku_enabled;
+        if self.controls.danmaku_enabled {
             if self.live.is_some() {
                 if let Some(player) = &self.player {
                     self.danmaku_view.update_rows(

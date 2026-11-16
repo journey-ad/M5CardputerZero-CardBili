@@ -96,7 +96,7 @@ impl App {
         nav.set_view(layout);
         self.ui
             .global::<crate::Danmaku>()
-            .set_enabled(self.settings.danmaku_enabled);
+            .set_enabled(self.controls.danmaku_enabled);
         preferences.set_danmaku_default(self.settings.danmaku_enabled);
         preferences.set_danmaku_opacity(self.settings.danmaku_opacity);
         preferences.set_menu_position(self.settings.menu_position);

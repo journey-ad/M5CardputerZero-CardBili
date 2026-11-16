@@ -61,7 +61,10 @@ impl App {
                 self.settings.scale_algorithm = self.settings.scale_algorithm.cycle(step);
                 self.settings_changed = true;
             }
-            SettingsItem::Danmaku => self.toggle_danmaku(),
+            SettingsItem::Danmaku => {
+                self.settings.danmaku_enabled = !self.settings.danmaku_enabled;
+                self.settings_changed = true;
+            }
             SettingsItem::RecordHistory => self.toggle_record_history(),
             SettingsItem::DebugLog => self.toggle_debug_log(),
             SettingsItem::EmojiStyle => self.toggle_color_emoji(),
