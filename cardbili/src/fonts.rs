@@ -25,14 +25,12 @@ pub(crate) struct LayoutFont {
 
 impl LayoutFont {
     pub(crate) fn new(size: f32) -> Self {
-        let font = *FONTS
+        let (font, glyphs) = FONTS
             .iter()
-            .min_by_key(|font| (f32::from(font.glyphs[0].pixel_size) - size).abs() as i32)
+            .flat_map(|font| font.glyphs.iter().map(move |glyphs| (*font, glyphs)))
+            .min_by_key(|(_, glyphs)| (f32::from(glyphs.pixel_size) - size).abs() as i32)
             .unwrap();
-        Self {
-            font,
-            glyphs: &font.glyphs[0],
-        }
+        Self { font, glyphs }
     }
 }
 

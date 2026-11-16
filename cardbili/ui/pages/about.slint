@@ -1,5 +1,14 @@
 import { Meta } from "../state.slint";
 
+// 关于页两列表格单元，名称与协议共用字体与颜色
+component AboutCell inherits Text {
+    in property <string> label: "";
+    text: self.label;
+    color: #cfd8e6;
+    font-family: "Fusion Pixel 10px Prop zh-Hans";
+    font-size: 10px;
+}
+
 export component AboutPage inherits Rectangle {
     width: 100%; height: 100%; background: #0b0f17;
     property <length> _content-h: body.preferred-height;
@@ -11,8 +20,8 @@ export component AboutPage inherits Rectangle {
             x: 10px; y: -Meta.about-scroll; width: parent.width - 20px; spacing: 8px;
             Rectangle {
                 height: 104px;
-                Image { x: (parent.width - self.width) / 2; y: 8px; width: 48px; height: 48px; source: @image-url("../../assets/app-icon.png"); image-fit: contain; }
-                Text { x: 0px; y: 62px; width: parent.width; height: 20px; text: "CardBili"; color: #7fb0ff; font-family: "Fusion Pixel 16px Prop zh-Hans"; font-size: 16px; horizontal-alignment: center; }
+                Image { x: (parent.width - self.width) / 2; y: 8px; width: 48px; height: 48px; source: @image-url("../../assets/app-icon.png"); image-fit: contain; image-rendering: pixelated; }
+                Text { x: 0px; y: 62px; width: parent.width; height: 20px; text: "CardBili"; color: #7fb0ff; font-family: "Fusion Pixel 8px Prop zh-Hans"; font-size: 16px; horizontal-alignment: center; }
                 Text { x: 0px; y: 86px; width: parent.width; height: 16px; text: Meta.version; color: #9aa6ba; font-size: 12px; horizontal-alignment: center; }
             }
             Text {
@@ -20,6 +29,53 @@ export component AboutPage inherits Rectangle {
                 font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
                 wrap: word-wrap; horizontal-alignment: center;
             }
+            Text {
+                text: "开源组件"; color: #cfd8e6;
+                font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
+                horizontal-alignment: center;
+            }
+            HorizontalLayout {
+                alignment: center;
+                spacing: 8px;
+                VerticalLayout {
+                    spacing: 1px;
+                    AboutCell { label: "Slint"; horizontal-alignment: right; }
+                    AboutCell { label: "FFmpeg"; horizontal-alignment: right; }
+                    AboutCell { label: "OpenSSL"; horizontal-alignment: right; }
+                    AboutCell { label: "Fusion Pixel Font"; horizontal-alignment: right; }
+                    AboutCell { label: "Mona Font"; horizontal-alignment: right; }
+                    AboutCell { label: "Pixelarticons"; horizontal-alignment: right; }
+                }
+                VerticalLayout {
+                    spacing: 1px;
+                    AboutCell { label: "GPL-3.0"; }
+                    AboutCell { label: "LGPLv3"; }
+                    AboutCell { label: "Apache-2.0"; }
+                    AboutCell { label: "OFL-1.1"; }
+                    AboutCell { label: "OFL-1.1"; }
+                    AboutCell { label: "MIT"; }
+                }
+            }
+            Text {
+                text: "LICENSE"; color: #cfd8e6;
+                font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
+                horizontal-alignment: center;
+            }
+            HorizontalLayout {
+                alignment: center;
+                spacing: 8px;
+                VerticalLayout {
+                    spacing: 1px;
+                    AboutCell { label: "原创代码"; horizontal-alignment: right; }
+                    AboutCell { label: "设备构建"; horizontal-alignment: right; }
+                }
+                VerticalLayout {
+                    spacing: 1px;
+                    AboutCell { label: "MIT"; }
+                    AboutCell { label: "GPL-3.0"; }
+                }
+            }
+            Text { text: ""; }
         }
     }
 }
