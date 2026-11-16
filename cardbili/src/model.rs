@@ -96,6 +96,8 @@ pub struct Account {
 pub struct Comment {
     pub user: String,
     pub text: String,
+    pub created_at: i64,
+    pub likes: i64,
 }
 
 #[derive(Clone, Default)]

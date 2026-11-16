@@ -115,6 +115,8 @@ pub fn comments(aid: i64, page: u32, cookies: Option<&str>) -> Result<CommentPag
             Some(Comment {
                 user: reply["member"]["uname"].as_str().unwrap_or_default().into(),
                 text,
+                created_at: reply["ctime"].as_i64().unwrap_or_default(),
+                likes: reply["like"].as_i64().unwrap_or_default(),
             })
         })
         .collect();

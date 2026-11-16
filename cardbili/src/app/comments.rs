@@ -1,5 +1,5 @@
-use slint::ComponentHandle as _;
 use super::*;
+use slint::ComponentHandle as _;
 
 #[derive(Clone, Default)]
 pub(super) struct Comments {
@@ -100,9 +100,11 @@ impl App {
                 self.comment_page
                     .items
                     .iter()
-                    .map(|item| Cmt {
+                    .map(|item| crate::CommentRow {
                         user: item.user.as_str().into(),
                         text: item.text.as_str().into(),
+                        time: model::watch_time(item.created_at).into(),
+                        likes: model::fmt_num(item.likes).into(),
                     })
                     .collect::<Vec<_>>(),
             )));

@@ -1,4 +1,6 @@
 import { Text } from "../base/text.slint";
+import { Icons } from "../base/icons.slint";
+import { StatItem } from "../base/stat.slint";
 import { Comments } from "../../state.slint";
 
 export component CommentList inherits VerticalLayout {
@@ -9,6 +11,17 @@ export component CommentList inherits VerticalLayout {
             padding: 4px; spacing: 3px;
             Text { text: comment.user; color: #7fb0ff; font-size: 10px; font-family: "Fusion Pixel 10px Prop zh-Hans"; overflow: elide; }
             Text { text: comment.text; color: #cfd8e6; font-size: 10px; font-family: "Fusion Pixel 10px Prop zh-Hans"; wrap: word-wrap; }
+            HorizontalLayout {
+                height: 12px;
+                alignment: start;
+                spacing: 8px;
+                StatItem { icon: Icons.thumbs-up; value: comment.likes; }
+                Text {
+                    text: comment.time; color: #8b95a7;
+                    font-size: 10px; font-family: "Fusion Pixel 10px Prop zh-Hans";
+                    vertical-alignment: center;
+                }
+            }
         }
     }
     if Comments.finished && Comments.rows.length > 0: Rectangle { height: 1px; background: #3a4a66; }
