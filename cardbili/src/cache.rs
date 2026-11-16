@@ -232,17 +232,31 @@ fn enforce_limit(total: &mut u64) -> std::io::Result<()> {
     }
     let mut files = entries()?;
     files.sort_by_key(|(_, metadata)| metadata.modified().unwrap_or(UNIX_EPOCH));
+    let mut failure = None;
     for (path, metadata) in files {
         if *total <= LOW_WATER {
             break;
         }
-        fs::remove_file(&path)?;
+        match fs::remove_file(&path) {
+            Ok(()) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => {
+                diagnostics::write(format_args!("[缓存] 淘汰失败 {}: {error}", path.display()));
+                failure = Some(error);
+                continue;
+            }
+        }
         *total = total.saturating_sub(metadata.len());
         diagnostics::write(format_args!(
             "[缓存] 淘汰 {} 字节={} 剩余={total}",
             path.display(),
             metadata.len()
         ));
+    }
+    if *total > LOW_WATER {
+        if let Some(error) = failure {
+            return Err(error);
+        }
     }
     Ok(())
 }
