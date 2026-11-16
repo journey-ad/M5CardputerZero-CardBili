@@ -29,6 +29,10 @@ impl App {
             self.login_favorites = true;
             self.requested_login = true;
         }
+        if self.requested_watch_later && self.cookies.is_none() {
+            self.requested_watch_later = false;
+            self.requested_login = true;
+        }
         if self.go_back
             && self.page == Page::Detail
             && self.detail_scroll >= self.ui.global::<crate::Detail>().get_viewport_h() as f64
@@ -47,6 +51,7 @@ impl App {
             || self.requested_detail.is_some()
             || self.requested_uploader.is_some()
             || self.requested_related.is_some()
+            || self.requested_watch_later
             || self.requested_login
             || self.requested_comments.is_some();
         if navigating || self.go_back || self.return_home {
@@ -269,6 +274,10 @@ impl App {
                 self.requested_related
                     .take()
                     .map(model::VideoSource::Related)
+            })
+            .or_else(|| {
+                std::mem::take(&mut self.requested_watch_later)
+                    .then_some(model::VideoSource::WatchLater)
             });
         if let Some(source) = collection_source {
             self.page = Page::Collection;

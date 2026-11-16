@@ -124,14 +124,15 @@ impl App {
                 model::VideoSource::Favorites(folder) => {
                     format!("{} · {} 条", folder.title, folder.count)
                 }
+                model::VideoSource::WatchLater => "稍后再看".to_string(),
                 model::VideoSource::Author(_) => unreachable!(),
             };
             g_collection.set_title(title.into());
             g_collection.set_empty(
-                if matches!(self.collection.source, model::VideoSource::Favorites(_)) {
-                    "暂无收藏视频"
-                } else {
-                    "暂无相关视频"
+                match self.collection.source {
+                    model::VideoSource::Favorites(_) => "暂无收藏视频",
+                    model::VideoSource::WatchLater => "暂无稍后再看",
+                    _ => "暂无相关视频",
                 }
                 .into(),
             );

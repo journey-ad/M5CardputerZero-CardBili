@@ -51,5 +51,11 @@ export component ListView inherits Rectangle {
             font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
             horizontal-alignment: right; vertical-alignment: center;
         }
+        if row.date != "": Text {
+            x: 8px; y: 29px; width: parent.width - 16px; height: 12px;
+            text: "添加于 " + row.date; color: #8b95a7;
+            font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
+            vertical-alignment: center;
+        }
     }
 }

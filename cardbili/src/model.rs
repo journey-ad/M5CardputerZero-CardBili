@@ -10,6 +10,7 @@ pub struct Item {
     pub danmaku: Option<String>,
     pub progress: i64,
     pub view_at: i64,
+    pub date: Option<String>,
     pub duration_secs: f64,
 }
 
@@ -24,6 +25,7 @@ pub enum VideoSource {
     Author(Owner),
     Related(String),
     Favorites(FavoriteFolder),
+    WatchLater,
 }
 
 impl Default for VideoSource {
@@ -180,6 +182,14 @@ pub fn watch_time(ts: i64) -> String {
             format!("{:02}-{:02} {:02}:{:02}", month, date, hh, mm)
         }
     }
+}
+pub fn date_of(ts: i64) -> String {
+    if ts <= 0 {
+        return String::new();
+    }
+    let day = (ts + 8 * 3600).div_euclid(86400);
+    let (year, month, date) = civil_from_days(day);
+    format!("{}-{:02}-{:02}", year, month, date)
 }
 pub fn history_day_label(ts: i64) -> String {
     if ts <= 0 {

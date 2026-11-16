@@ -1,6 +1,11 @@
 use super::super::*;
+use slint::Model as _;
 
 impl App {
+    fn mine_menu_count(&self) -> i32 {
+        self.ui.global::<crate::MinePage>().get_entries().row_count() as i32
+    }
+
     pub(in crate::app) fn mine_key(&mut self, k: &str) {
         if self.mine_detail < 0 {
             match k {
@@ -8,7 +13,7 @@ impl App {
                     self.sel = (self.sel - 1).max(0);
                 }
                 "DOWN" | "x" | "s" | "RIGHT" | "c" => {
-                    if self.sel < 2 {
+                    if self.sel < self.mine_menu_count() - 1 {
                         self.sel += 1;
                     }
                 }
@@ -17,10 +22,11 @@ impl App {
                         self.requested_following = true;
                         return;
                     }
-                    if self.sel == 1 {
-                        self.requested_home_list = Some(3);
-                    } else {
-                        self.requested_favorites = true;
+                    match self.sel {
+                        1 => self.requested_home_list = Some(3),
+                        2 => self.requested_favorites = true,
+                        3 => self.requested_watch_later = true,
+                        _ => {}
                     }
                 }
                 "r" => {

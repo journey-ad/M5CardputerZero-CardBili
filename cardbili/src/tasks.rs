@@ -175,6 +175,10 @@ pub fn load_collection(
                     .as_deref()
                     .ok_or_else(|| "未登录，请先登录".to_string())
                     .and_then(|cookies| api::favorites::videos(folder.id, page, cookies)),
+                crate::model::VideoSource::WatchLater => cookies
+                    .as_deref()
+                    .ok_or_else(|| "未登录，请先登录".to_string())
+                    .and_then(api::watch_later),
                 crate::model::VideoSource::Related(bvid) => {
                     api::related_videos(bvid, cookies.as_deref())
                 }

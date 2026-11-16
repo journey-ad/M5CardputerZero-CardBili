@@ -22,7 +22,10 @@ impl App {
                 let advanced = settings_page.get_advanced_items().row_count() as i32;
                 appearance + general + advanced
             } else if self.tab == HomeTab::Mine && self.mine_detail < 0 {
-                3
+                self.ui
+                    .global::<crate::MinePage>()
+                    .get_entries()
+                    .row_count() as i32
             } else {
                 self.lists[list_source(self.tab, self.mine_detail).unwrap()].len() as i32
             };
@@ -113,7 +116,7 @@ impl App {
         let geometry = self.ui.global::<crate::Layout>();
         let content_width = geometry.get_video_width() as f64;
         let content_height = geometry.get_video_height() as f64;
-        let row_height = list_model.get_row_height() as f64;
+        let row_height: f64 = 30.0;
         let history = !collection && self.tab == HomeTab::Mine && self.mine_detail == 3;
         let layout = self.view;
         let columns = video_columns(layout);
@@ -141,6 +144,13 @@ impl App {
         } else {
             (&self.lists[source], &self.covers[source])
         };
+        // 稍后再看条目带添加日期，单列一行展示，行高相应加高
+        let row_height = if items.iter().any(|item| item.date.is_some()) {
+            42.0
+        } else {
+            row_height
+        };
+        list_model.set_row_height(row_height as f32);
         let live = !collection && self.tab == HomeTab::Live;
         let has_stats = !live
             && items.iter().any(|item| {

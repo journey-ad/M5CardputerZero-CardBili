@@ -44,6 +44,7 @@ pub(in crate::app) fn video_row(item: &model::Item) -> VideoRow {
         danmaku: item.danmaku.as_deref().unwrap_or_default().into(),
         progress: Default::default(),
         watched: Default::default(),
+        date: item.date.as_deref().unwrap_or_default().into(),
     }
 }
 

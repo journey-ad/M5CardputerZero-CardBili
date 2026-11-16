@@ -162,6 +162,7 @@ pub fn history(
                 danmaku: count_text(&it["stat"]["danmaku"]),
                 progress: it["progress"].as_i64().unwrap_or_default(),
                 view_at: it["view_at"].as_i64().unwrap_or_default(),
+                date: None,
                 duration_secs: d,
             });
         }
@@ -675,4 +676,54 @@ pub fn followings(mid: &str, page: u32, cookies: &str) -> Result<model::Followin
             .map(|total| u64::from(page) * 20 < total)
             .unwrap_or(items.len() == 20);
     Ok(model::FollowingPage { items, has_more })
+}
+
+pub const WATCH_LATER_URL: &str = "https://api.bilibili.com/x/v2/history/toview";
+
+pub fn watch_later(cookies: &str) -> Result<model::VideoPage, String> {
+    let v = cache::api_json(WATCH_LATER_URL, Some(cookies), cache::TTL_LIST)?;
+    if v["code"].as_i64() != Some(0) {
+        return Err(api_err("稍后再看", &v));
+    }
+    let mut items = Vec::new();
+    if let Some(list) = v["data"]["list"].as_array() {
+        for it in list {
+            let bvid = it["bvid"].as_str().unwrap_or_default();
+            if bvid.is_empty() {
+                continue;
+            }
+            let lt = it["long_title"].as_str().unwrap_or("");
+            let title = if !lt.is_empty() {
+                lt.to_string()
+            } else {
+                it["title"].as_str().unwrap_or("").to_string()
+            };
+            let d = model::dur_of(&it["duration"]);
+            let pic = it["pic"].as_str().or_else(|| it["cover"].as_str()).unwrap_or("");
+            let author = it["owner"]["name"]
+                .as_str()
+                .or_else(|| it["author_name"].as_str())
+                .unwrap_or("");
+            let add_at = it["add_at"].as_i64().unwrap_or_default();
+            items.push(Item {
+                title,
+                meta: author.into(),
+                bvid: bvid.into(),
+                pic: pic.into(),
+                duration: model::mmss(d),
+                views: count_text(&it["stat"]["view"]),
+                danmaku: count_text(&it["stat"]["danmaku"]),
+                progress: it["progress"].as_i64().unwrap_or_default(),
+                view_at: add_at,
+                date: Some(model::date_of(add_at)),
+                duration_secs: d,
+                ..Default::default()
+            });
+        }
+    }
+    Ok(model::VideoPage {
+        items,
+        has_more: false,
+        total: None,
+    })
 }
