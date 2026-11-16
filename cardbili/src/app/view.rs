@@ -87,13 +87,7 @@ impl App {
         self.ui
             .global::<crate::ListModel>()
             .set_loading(self.loading);
-        let layout =
-            if self.page == Page::Home && self.tab == HomeTab::Mine && self.mine_detail == 3 {
-                VideoLayout::List
-            } else {
-                self.view
-            };
-        nav.set_view(layout);
+        nav.set_view(self.view);
         self.ui
             .global::<crate::Danmaku>()
             .set_enabled(self.controls.danmaku_enabled);

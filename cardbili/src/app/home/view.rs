@@ -115,11 +115,7 @@ impl App {
         let content_height = geometry.get_video_height() as f64;
         let row_height = list_model.get_row_height() as f64;
         let history = !collection && self.tab == HomeTab::Mine && self.mine_detail == 3;
-        let layout = if history {
-            VideoLayout::List
-        } else {
-            self.view
-        };
+        let layout = self.view;
         let columns = video_columns(layout);
         let mut cell_height: f64 = if layout == VideoLayout::TwoColumns {
             113.0
@@ -320,8 +316,13 @@ impl App {
                 let mut images = Vec::with_capacity(end - start);
                 for (index, item) in items.iter().enumerate().take(end).skip(start) {
                     let mut row = video_row(item);
-                    row.views = compact_card_count(&row.views);
-                    row.danmaku = compact_card_count(&row.danmaku);
+                    if history {
+                        // 历史卡片元信息展示观看时间
+                        row.watched = model::watch_time(item.view_at).into();
+                    } else {
+                        row.views = compact_card_count(&row.views);
+                        row.danmaku = compact_card_count(&row.danmaku);
+                    }
                     rows.push(row);
                     images.push(
                         covers

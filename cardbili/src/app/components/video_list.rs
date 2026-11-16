@@ -114,12 +114,7 @@ impl App {
             self.settings_changed = true;
             return true;
         }
-        let layout =
-            if self.page == Page::Home && self.tab == HomeTab::Mine && self.mine_detail == 3 {
-                VideoLayout::List
-            } else {
-                self.view
-            };
+        let layout = self.view;
         let columns = video_columns(layout) as i32;
         let step = match key {
             "UP" => Some(-columns),
