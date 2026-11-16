@@ -1,12 +1,17 @@
 import { Preferences } from "../../state.slint";
 
+export struct RichPart { text: string, glyph: int, size: length }
+export struct RichLine { height: length, parts: [RichPart] }
+export struct RichLayout { height: length, lines: [RichLine] }
+
 export struct EmojiPlacement { glyph: int, x: length, y: length }
 
 // 原生 Text 负责尺寸与排版，Emoji 和评论表情填入预留的字符位置
 export global EmojiFont {
     in-out property <int> revision;
     pure callback prepare(string, int) -> string;
-    pure callback layout(string, int, length, length, length, TextHorizontalAlignment, TextVerticalAlignment, TextWrap, TextOverflow) -> [EmojiPlacement];
+    pure callback layout(string, int, string, length, length, length, TextHorizontalAlignment, TextVerticalAlignment, TextWrap, TextOverflow) -> [EmojiPlacement];
+    pure callback rich-layout(string, length, string, length, int) -> RichLayout;
     pure callback glyph(int, bool, int) -> image;
     pure callback monochrome(int) -> bool;
 }
@@ -47,7 +52,7 @@ export component Text {
         width: root.width;
         height: root.height;
         clip: true;
-        for emoji in EmojiFont.layout(root.text, EmojiFont.revision, root.font-size, root.width, root.height, root.horizontal-alignment, root.vertical-alignment, root.wrap, root.overflow): Image {
+        for emoji in EmojiFont.layout(root.text, EmojiFont.revision, root.font-family, root.font-size, root.width, root.height, root.horizontal-alignment, root.vertical-alignment, root.wrap, root.overflow): Image {
             x: emoji.x;
             y: emoji.y;
             width: 12px;

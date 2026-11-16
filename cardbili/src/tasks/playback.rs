@@ -33,15 +33,31 @@ pub fn comments(aid: i64, page: u32, cookies: Option<String>, request: u64, tx: 
     });
 }
 
-// 表情图片依次下载，成功后立即显示，失败时保留原文
+// 每批最多四个下载线程，完成后统一更新表情
 pub fn comment_emotes(emotes: Vec<CommentEmote>, tx: Sender<Msg>) {
     thread::spawn(move || {
-        for emote in emotes {
-            if let Some(image) = crate::cache::emote(&emote.url, crate::emoji::SIZE as u32) {
-                if tx.send(Msg::CommentEmote(emote.name, image)).is_err() {
-                    break;
-                }
-            }
+        let images = thread::scope(|scope| {
+            let handles: Vec<_> = emotes
+                .chunks(emotes.len().div_ceil(4).max(1))
+                .map(|batch| {
+                    scope.spawn(move || {
+                        batch
+                            .iter()
+                            .filter_map(|emote| {
+                                crate::cache::emote(&emote.url, emote.size)
+                                    .map(|image| (emote.name.clone(), emote.size, image))
+                            })
+                            .collect::<Vec<_>>()
+                    })
+                })
+                .collect();
+            handles
+                .into_iter()
+                .flat_map(|handle| handle.join().unwrap())
+                .collect::<Vec<_>>()
+        });
+        if !images.is_empty() {
+            let _ = tx.send(Msg::CommentEmotes(images));
         }
     });
 }

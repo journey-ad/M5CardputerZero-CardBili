@@ -96,6 +96,8 @@ pub struct Account {
 pub struct CommentEmote {
     pub name: String,
     pub url: String,
+    // 展示边长：小表情 12，其它类型 24
+    pub size: u32,
 }
 
 #[derive(Clone, Default)]

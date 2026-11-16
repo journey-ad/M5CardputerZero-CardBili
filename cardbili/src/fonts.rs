@@ -24,13 +24,21 @@ pub(crate) struct LayoutFont {
 }
 
 impl LayoutFont {
-    pub(crate) fn new(size: f32) -> Self {
-        let (font, glyphs) = FONTS
+    pub(crate) fn new(family: &str, size: f32) -> Self {
+        let font = FONTS
             .iter()
-            .flat_map(|font| font.glyphs.iter().map(move |glyphs| (*font, glyphs)))
-            .min_by_key(|(_, glyphs)| (f32::from(glyphs.pixel_size) - size).abs() as i32)
-            .unwrap();
-        Self { font, glyphs }
+            .copied()
+            .find(|font| font.family_name.as_slice() == family.as_bytes())
+            .unwrap_or(FONTS[0]);
+        // 与软件渲染器一致，选择不超过请求字号的最大字阶
+        let index = font
+            .glyphs
+            .partition_point(|glyphs| f32::from(glyphs.pixel_size) <= size)
+            .saturating_sub(1);
+        Self {
+            font,
+            glyphs: &font.glyphs[index],
+        }
     }
 }
 

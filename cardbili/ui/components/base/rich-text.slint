@@ -1,0 +1,45 @@
+import { EmojiFont, RichLayout } from "text.slint";
+import { Preferences } from "../../state.slint";
+
+export component RichText {
+    in property <string> text;
+    in property <string> font-family;
+    in property <length> font-size: 12px;
+    in property <brush> color;
+    in property <RichLayout> layout: EmojiFont.rich-layout(root.text, root.width, root.font-family, root.font-size, EmojiFont.revision);
+    min-width: 0px;
+    horizontal-stretch: 1;
+    min-height: root.layout.height;
+    preferred-height: root.layout.height;
+    max-height: root.layout.height;
+    VerticalLayout {
+        width: parent.width; height: parent.height;
+        spacing: 0px;
+        for line in root.layout.lines: HorizontalLayout {
+            height: line.height;
+            spacing: 0px;
+            alignment: start;
+            for part in line.parts: Rectangle {
+                width: part.glyph < 0 ? label.preferred-width : part.size + 2px;
+                height: line.height;
+                horizontal-stretch: 0;
+                label := Text {
+                    width: parent.width; height: parent.height;
+                    text: part.text;
+                    font-family: root.font-family;
+                    font-size: root.font-size;
+                    color: root.color;
+                    vertical-alignment: bottom;
+                }
+                if part.glyph >= 0: Image {
+                    x: 1px; y: parent.height - part.size;
+                    width: part.size; height: part.size;
+                    source: EmojiFont.glyph(part.glyph, Preferences.color-emoji, EmojiFont.revision);
+                    colorize: Preferences.color-emoji || !EmojiFont.monochrome(part.glyph) ? #0000 : root.color;
+                    image-fit: contain;
+                    image-rendering: pixelated;
+                }
+            }
+        }
+    }
+}

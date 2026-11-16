@@ -119,9 +119,15 @@ pub fn comments(aid: i64, page: u32, cookies: Option<&str>) -> Result<CommentPag
                 .map(|map| {
                     map.iter()
                         .filter_map(|(name, emote)| {
+                            let url = emote["url"].as_str()?.to_string();
+                            // 普通小表情使用 12px，装扮等大表情使用 24px
+                            let small = emote["type"].as_u64() == Some(1)
+                                && emote["meta"]["size"].as_u64().unwrap_or(1) <= 1;
+                            let size = if small { 12 } else { 24 };
                             Some(CommentEmote {
                                 name: name.clone(),
-                                url: emote["url"].as_str()?.to_string(),
+                                url,
+                                size,
                             })
                         })
                         .collect()

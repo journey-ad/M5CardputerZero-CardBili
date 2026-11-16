@@ -24,7 +24,8 @@ const EXTERNAL_BASE: i32 = 0x1_0000;
 
 #[derive(Default)]
 struct Emotes {
-    images: Vec<Image>,
+    // 每项保存图像和展示边长
+    images: Vec<(Image, u32)>,
     index: HashMap<String, usize>,
 }
 
@@ -36,18 +37,20 @@ pub(crate) fn has_emote(name: &str) -> bool {
     EMOTES.with(|emotes| emotes.borrow().index.contains_key(name))
 }
 
-pub(crate) fn register_emote(ui: &AppWindow, name: String, (w, h, raw): crate::cache::Pixels) {
-    let image = Image::from_rgba8(SharedPixelBuffer::<Rgba8Pixel>::clone_from_slice(
-        &raw, w, h,
-    ));
+pub(crate) fn register_emotes(ui: &AppWindow, images: Vec<(String, u32, crate::cache::Pixels)>) {
     EMOTES.with(|emotes| {
         let mut emotes = emotes.borrow_mut();
-        if let Some(&index) = emotes.index.get(&name) {
-            emotes.images[index] = image;
-        } else {
-            let index = emotes.images.len();
-            emotes.images.push(image);
-            emotes.index.insert(name, index);
+        for (name, size, (w, h, raw)) in images {
+            let image = Image::from_rgba8(SharedPixelBuffer::<Rgba8Pixel>::clone_from_slice(
+                &raw, w, h,
+            ));
+            if let Some(&index) = emotes.index.get(&name) {
+                emotes.images[index] = (image, size);
+            } else {
+                let index = emotes.images.len();
+                emotes.images.push((image, size));
+                emotes.index.insert(name, index);
+            }
         }
     });
     let global = ui.global::<EmojiFont>();
@@ -108,7 +111,7 @@ pub(crate) fn tokens(mut text: &str) -> impl Iterator<Item = Token> + '_ {
     })
 }
 
-fn prepare(text: &str) -> (String, Vec<(usize, i32)>) {
+fn prepare(text: &str) -> (String, Vec<(usize, i32, i32)>) {
     let mut prepared = String::with_capacity(text.len());
     let mut emoji = Vec::new();
     EMOTES.with(|emotes| {
@@ -125,18 +128,100 @@ fn prepare(text: &str) -> (String, Vec<(usize, i32)>) {
                 match token {
                     Token::Character(character) => prepared.push(character),
                     Token::Emoji(glyph) => {
-                        emoji.push((prepared.len(), i32::from(glyph)));
+                        emoji.push((prepared.len(), i32::from(glyph), SIZE as i32));
                         prepared.push(PLACEHOLDER);
                     }
                 }
             }
             if let Some((_, index)) = matched {
-                emoji.push((prepared.len(), EXTERNAL_BASE + index as i32));
+                let size = emotes.images[index].1 as i32;
+                emoji.push((prepared.len(), EXTERNAL_BASE + index as i32, size));
                 prepared.push(PLACEHOLDER);
             }
         }
     });
     (prepared, emoji)
+}
+
+fn rich_line(
+    text: &str,
+    emoji: &[(usize, i32, i32)],
+    start: usize,
+    end: usize,
+    height: i16,
+) -> crate::RichLine {
+    let mut parts = Vec::new();
+    let mut cursor = start;
+    let first = emoji.partition_point(|entry| entry.0 < start);
+    for &(offset, glyph, size) in emoji[first..].iter().take_while(|entry| entry.0 < end) {
+        if cursor < offset {
+            parts.push(crate::RichPart {
+                text: text[cursor..offset].into(),
+                glyph: -1,
+                size: 0.0,
+            });
+        }
+        parts.push(crate::RichPart {
+            text: Default::default(),
+            glyph,
+            size: size as f32,
+        });
+        cursor = offset + PLACEHOLDER.len_utf8();
+    }
+    if cursor < end {
+        parts.push(crate::RichPart {
+            text: text[cursor..end].into(),
+            glyph: -1,
+            size: 0.0,
+        });
+    }
+    crate::RichLine {
+        height: f32::from(height),
+        parts: slint::ModelRc::new(slint::VecModel::from(parts)),
+    }
+}
+
+// 文字与表情共用解析结果，表情整体换行，行高取文字和图片的最大值
+fn layout_rich(text: &str, width: f32, family: &str, size: f32) -> Vec<crate::RichLine> {
+    if width <= 0.0 {
+        return Vec::new();
+    }
+    let font = crate::fonts::LayoutFont::new(family, size);
+    let (text, emoji) = prepare(text);
+    let mut glyphs = Vec::new();
+    font.shape_text(&text, &mut glyphs);
+    let mut images = emoji.iter().peekable();
+    let mut lines = Vec::new();
+    let mut start = 0;
+    let mut line_width = 0.0;
+    let mut line_height = font.height();
+    for glyph in glyphs {
+        let offset = glyph.text_byte_offset;
+        if text[offset..].starts_with('\n') {
+            lines.push(rich_line(&text, &emoji, start, offset, line_height));
+            start = offset + 1;
+            line_width = 0.0;
+            line_height = font.height();
+            continue;
+        }
+        let (advance, height) = match images.peek() {
+            Some(entry) if entry.0 == offset => {
+                let size = images.next().unwrap().2 as i16;
+                (size + 2 * SPACING, size)
+            }
+            _ => (glyph.advance, font.height()),
+        };
+        if offset > start && line_width + f32::from(advance) > width {
+            lines.push(rich_line(&text, &emoji, start, offset, line_height));
+            start = offset;
+            line_width = 0.0;
+            line_height = font.height();
+        }
+        line_width += f32::from(advance);
+        line_height = line_height.max(height);
+    }
+    lines.push(rich_line(&text, &emoji, start, text.len(), line_height));
+    lines
 }
 
 pub(crate) fn pixel(
@@ -159,13 +244,20 @@ pub(crate) fn install(ui: &AppWindow) {
     let global = ui.global::<EmojiFont>();
     global.on_monochrome(|glyph| MONOCHROME.get(glyph as usize).copied().unwrap_or(false));
     global.on_prepare(|text, _revision| prepare(&text).0.into());
+    global.on_rich_layout(|text, width, family, size, _revision| {
+        let lines = layout_rich(&text, width, &family, size);
+        crate::RichLayout {
+            height: lines.iter().map(|line| line.height).sum(),
+            lines: slint::ModelRc::new(slint::VecModel::from(lines)),
+        }
+    });
     global.on_layout(
-        |text, _revision, size, width, height, horizontal, vertical, wrap, overflow| {
+        |text, _revision, family, size, width, height, horizontal, vertical, wrap, overflow| {
             let (text, emoji) = prepare(&text);
             if emoji.is_empty() || width <= 0.0 || height <= 0.0 {
                 return Default::default();
             }
-            let font = crate::fonts::LayoutFont::new(size);
+            let font = crate::fonts::LayoutFont::new(family.as_str(), size);
             let placeholder = font.glyph_for_char(PLACEHOLDER).unwrap().glyph_id.unwrap();
             let paragraph = TextParagraphLayout {
                 string: &text,
@@ -218,7 +310,7 @@ pub(crate) fn install(ui: &AppWindow) {
                     .borrow()
                     .images
                     .get((glyph - EXTERNAL_BASE) as usize)
-                    .cloned()
+                    .map(|(image, _)| image.clone())
                     .unwrap_or_default()
             });
         }
