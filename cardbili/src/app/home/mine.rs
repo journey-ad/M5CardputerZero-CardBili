@@ -12,7 +12,7 @@ impl App {
                         self.sel += 1;
                     }
                 }
-                "ENTER" => {
+                "ENTER" | "SPACE" => {
                     if self.sel == 0 {
                         self.requested_following = true;
                         return;

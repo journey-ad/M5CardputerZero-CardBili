@@ -112,7 +112,7 @@ impl App {
     pub(in crate::app) fn super_chat_key(&mut self, key: &str) {
         let panel = self.ui.global::<crate::SuperChat>();
         let delta = match key {
-            "ESC" | "BACKSPACE" | "ENTER" | "SUPER_CHAT" | "8" => {
+            "ESC" | "BACKSPACE" | "ENTER" | "SPACE" | "SUPER_CHAT" | "8" => {
                 self.close_super_chat();
                 return;
             }

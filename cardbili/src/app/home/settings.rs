@@ -40,7 +40,7 @@ impl App {
             }
             "LEFT" => -1,
             "RIGHT" => 1,
-            "ENTER" => 0,
+            "ENTER" | "SPACE" => 0,
             _ => return,
         };
         match row.item {

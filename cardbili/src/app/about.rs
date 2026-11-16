@@ -9,7 +9,7 @@ impl App {
             "DOWN" | "x" | "s" | "PGDN" => {
                 self.about_scroll = (self.about_scroll + 20.0).min(limit)
             }
-            "ESC" | "BACKSPACE" | "ENTER" => self.go_back = true,
+            "ESC" | "BACKSPACE" | "ENTER" | "SPACE" => self.go_back = true,
             _ => {}
         }
     }

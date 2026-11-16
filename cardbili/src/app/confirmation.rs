@@ -32,7 +32,7 @@ impl App {
             "TAB" | "BACKTAB" => {
                 confirm.set_selected(!confirm.get_selected());
             }
-            "ENTER" => self.finish_confirmation(confirm.get_selected()),
+            "ENTER" | "SPACE" => self.finish_confirmation(confirm.get_selected()),
             "ESC" | "ESC_HOLD" | "BACKSPACE" | "8" => self.finish_confirmation(false),
             _ => {}
         }
