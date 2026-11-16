@@ -159,7 +159,7 @@ jobs:
           pattern: cardbili-*
           merge-multiple: true
           path: release
-      - name: Create release draft
+      - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
@@ -169,6 +169,16 @@ jobs:
           sha256sum -c SHA256SUMS
           sha256sum cardbili-desktop-* >> SHA256SUMS
           gh release create "$RELEASE_TAG" \
-            --verify-tag --draft --title "$RELEASE_TAG" --generate-notes \
+            --verify-tag --title "$RELEASE_TAG" --generate-notes \
             cardbili_*_arm64.deb cardbili-*-source.tar.gz \
             cardbili-desktop-* SHA256SUMS
+
+  store:
+    needs: release
+    permissions:
+      contents: write
+    uses: ./.github/workflows/publish-store.yml
+    with:
+      tag: ${{ github.ref_name }}
+    secrets:
+      CARDPUTER_STORE_TOKEN: ${{ secrets.CARDPUTER_STORE_TOKEN }}
