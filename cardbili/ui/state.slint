@@ -1,6 +1,6 @@
 import { HomeTab, Page, VideoLayout, MenuPosition } from "types.slint";
 // 页面与组件共用的全局状态
-import { Cmt, CommentRow, DmRow, VideoRow, FavoriteRow, FollowingRow, HistoryHeader, SuperChatRow } from "common.slint";
+import { Cmt, DmRow, VideoRow, FavoriteRow, FollowingRow, HistoryHeader, SuperChatRow } from "common.slint";
 
 // 导航与交互态
 export global Nav {
@@ -192,16 +192,6 @@ export global Collection {
 
 export global Menu {
     in-out property <[string]> labels: [];
-}
-
-export global Comments {
-    in-out property <bool> finished: false;
-    in-out property <[CommentRow]> rows: [];
-    in-out property <bool> loading: false;
-    in-out property <string> error: "";
-    in-out property <length> scroll: 0px;
-    in-out property <length> content-h: 0px;
-    in-out property <length> viewport-h: 0px;
 }
 
 // 收藏夹列表

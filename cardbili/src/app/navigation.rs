@@ -239,11 +239,9 @@ impl App {
             self.detail_bvid = bvid.clone();
             self.detail_display = None;
             self.sections = sections::Sections::default();
-            self.comment_page = comments::Comments {
-                loading: true,
-                dirty: true,
-                ..Default::default()
-            };
+            self.comment_page = comments::Comments::default();
+            self.comment_page.loading = true;
+            self.comment_page.dirty = true;
             self.detail_scroll = std::env::var("BILI_DSCROLL")
                 .ok()
                 .and_then(|value| value.parse().ok())

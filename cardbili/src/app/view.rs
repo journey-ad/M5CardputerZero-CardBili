@@ -13,26 +13,13 @@ impl App {
         self.marq_t += now.duration_since(self.last_tick).as_secs_f64();
         self.last_tick = now;
 
-        // --- 详情页滚动尺寸 ---
+        // --- 详情页标题滚动 ---
         if self.page == Page::Detail && !detail.get_loading() {
             detail.set_title_shift(yoyo_shift(
                 detail.get_title_text_width() as f64,
                 detail.get_title_width() as f64,
                 self.marq_t,
             ));
-            let m = (detail.get_content_h() as f64 - detail.get_viewport_h() as f64).max(0.0);
-            if (m - self.detail_maxv).abs() > 0.5 {
-                self.detail_maxv = m;
-            }
-            if std::env::var("BILI_DSEND").is_ok() {
-                self.detail_scroll = self.detail_maxv;
-                detail.set_scroll(self.detail_scroll as f32);
-            }
-            if self.detail_scroll > self.detail_maxv {
-                self.detail_scroll = self.detail_maxv;
-                detail.set_scroll(self.detail_scroll as f32);
-            }
-            sync_thumb(&self.ui, self.detail_scroll, self.detail_maxv);
         }
 
         // --- 同步 UI ---

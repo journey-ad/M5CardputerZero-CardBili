@@ -9,6 +9,7 @@ export struct EmojiPlacement { glyph: int, x: length, y: length }
 // 原生 Text 负责尺寸与排版，Emoji 和评论表情填入预留的字符位置
 export global EmojiFont {
     in-out property <int> revision;
+    in-out property <int> layout-revision;
     pure callback prepare(string, int) -> string;
     pure callback layout(string, int, string, length, length, length, TextHorizontalAlignment, TextVerticalAlignment, TextWrap, TextOverflow) -> [EmojiPlacement];
     pure callback rich-layout(string, length, string, length, int) -> RichLayout;
@@ -45,14 +46,14 @@ export component Text {
         width: root.width;
         height: root.height;
         font-size: 12px;
-        text: EmojiFont.prepare(root.text, EmojiFont.revision);
+        text: EmojiFont.prepare(root.text, EmojiFont.layout-revision);
     }
     Rectangle {
         x: 0px; y: 0px;
         width: root.width;
         height: root.height;
         clip: true;
-        for emoji in EmojiFont.layout(root.text, EmojiFont.revision, root.font-family, root.font-size, root.width, root.height, root.horizontal-alignment, root.vertical-alignment, root.wrap, root.overflow): Image {
+        for emoji in EmojiFont.layout(root.text, EmojiFont.layout-revision, root.font-family, root.font-size, root.width, root.height, root.horizontal-alignment, root.vertical-alignment, root.wrap, root.overflow): Image {
             x: emoji.x;
             y: emoji.y;
             width: 12px;

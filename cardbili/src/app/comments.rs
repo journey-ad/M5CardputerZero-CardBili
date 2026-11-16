@@ -12,6 +12,11 @@ pub(super) struct Comments {
     pub scroll: f64,
     pub dirty: bool,
     pub requested_emotes: std::collections::HashSet<String>,
+    rows: Vec<crate::CommentRow>,
+    visible: std::ops::Range<usize>,
+    width: f32,
+    layout_revision: i32,
+    list_offset: f32,
 }
 
 impl App {
@@ -76,7 +81,6 @@ impl App {
                 }
                 self.comment_page.items.extend(result.items);
                 self.comment_page.page = page;
-                self.comment_page.dirty = true;
             }
             Err(error) => self.comment_page.error = error,
         }
@@ -112,24 +116,111 @@ impl App {
         if !matches!(self.page, Page::Comments | Page::Detail) {
             return;
         }
-        if self.comment_page.dirty {
-            comments.set_rows(ModelRc::new(VecModel::from(
-                self.comment_page
-                    .items
-                    .iter()
-                    .map(|item| crate::CommentRow {
-                        user: item.user.as_str().into(),
-                        text: item.text.as_str().into(),
-                        time: model::watch_time(item.created_at).into(),
-                        likes: model::fmt_num(item.likes).into(),
-                    })
-                    .collect::<Vec<_>>(),
-            )));
-            self.comment_page.dirty = false;
-        }
-        comments.set_finished(self.comment_page.page > 0 && !self.comment_page.has_more);
-        comments.set_loading(self.comment_page.loading);
-        comments.set_error(self.comment_page.error.as_str().into());
         comments.set_scroll(self.comment_page.scroll as f32);
+        let page = &mut self.comment_page;
+        let scroll = if self.page == Page::Detail {
+            self.detail_scroll
+        } else {
+            page.scroll
+        };
+        if !page.dirty {
+            page.list_offset = comments.get_list_offset();
+        }
+        let anchor = page
+            .rows
+            .partition_point(|row| row.y <= scroll as f32 - page.list_offset)
+            .saturating_sub(1);
+        let anchor_top = page.rows.get(anchor).map_or(0.0, |row| row.y);
+        let width = comments.get_list_width();
+        let revision = self.ui.global::<crate::EmojiFont>().get_layout_revision();
+        let spacing = comments.get_spacing();
+        let mut refresh = page.dirty;
+
+        if page.width != width || page.layout_revision != revision {
+            let mut top = 0.0;
+            for (index, (row, item)) in page.rows.iter_mut().zip(&page.items).enumerate() {
+                let height = if page.width != width
+                    || crate::emoji::layout_changed(&item.text, page.layout_revision)
+                {
+                    comments.invoke_row_height(row.text.clone())
+                } else {
+                    row.height
+                };
+                if row.y != top || row.height != height {
+                    row.y = top;
+                    row.height = height;
+                    refresh |= page.visible.contains(&index);
+                }
+                top += height + spacing;
+            }
+            page.width = width;
+            page.layout_revision = revision;
+        }
+
+        let mut top = page
+            .rows
+            .last()
+            .map_or(0.0, |row| row.y + row.height + spacing);
+        for item in &page.items[page.rows.len()..] {
+            let text: slint::SharedString = item.text.as_str().into();
+            let height = comments.invoke_row_height(text.clone());
+            page.rows.push(crate::CommentRow {
+                user: item.user.as_str().into(),
+                text,
+                time: model::watch_time(item.created_at).into(),
+                likes: model::fmt_num(item.likes).into(),
+                y: top,
+                height,
+            });
+            top += height + spacing;
+        }
+        comments.set_count(page.rows.len() as i32);
+        comments.set_rows_height((top - spacing).max(0.0));
+        comments.set_finished(page.page > 0 && !page.has_more);
+        comments.set_loading(page.loading);
+        comments.set_error(page.error.as_str().into());
+
+        // 行高变化时保持首个可见评论的位置，并限制在有效滚动范围内
+        let shift = f64::from(page.rows.get(anchor).map_or(0.0, |row| row.y) - anchor_top);
+        let limit = f64::from(
+            (page.list_offset + comments.get_content_h() - comments.get_viewport_h()).max(0.0),
+        );
+        if self.page == Page::Detail {
+            let detail = self.ui.global::<crate::Detail>();
+            if !detail.get_loading() {
+                self.detail_maxv = limit;
+                self.detail_scroll = if std::env::var("BILI_DSEND").is_ok() {
+                    limit
+                } else {
+                    (self.detail_scroll + shift).clamp(0.0, limit)
+                };
+                detail.set_scroll(self.detail_scroll as f32);
+                sync_thumb(&self.ui, self.detail_scroll, limit);
+            }
+        } else {
+            page.scroll = (page.scroll + shift).clamp(0.0, limit);
+            comments.set_scroll(page.scroll as f32);
+        }
+
+        let scroll = if self.page == Page::Detail {
+            self.detail_scroll
+        } else {
+            page.scroll
+        } as f32;
+        let top = scroll - page.list_offset;
+        let first = page
+            .rows
+            .partition_point(|row| row.y + row.height < top - 64.0);
+        let end = page
+            .rows
+            .partition_point(|row| row.y < top + comments.get_viewport_h() + 64.0);
+        let visible = first..end;
+        if refresh || page.visible != visible {
+            comments.set_rows(ModelRc::new(VecModel::from(
+                page.rows[visible.clone()].to_vec(),
+            )));
+            page.visible = visible;
+        }
+        page.dirty = false;
     }
 }

@@ -2,52 +2,99 @@ import { RichText } from "../base/rich-text.slint";
 import { Text, EmojiFont, RichLayout } from "../base/text.slint";
 import { Icons } from "../base/icons.slint";
 import { StatItem } from "../base/stat.slint";
-import { Comments, Layout } from "../../state.slint";
+import { Layout, Nav, Detail } from "../../state.slint";
+import { Page } from "../../types.slint";
 
-export component CommentList inherits VerticalLayout {
-    spacing: 4px;
-    property <string> text-font: "Fusion Pixel 10px Prop zh-Hans";
-    property <length> text-size: 10px;
-    property <length> text-height: EmojiFont.rich-layout("", 1px, root.text-font, root.text-size, EmojiFont.revision).height;
-    property <length> card-padding: 4px;
-    property <length> content-gap: 3px;
-    property <length> stats-height: 12px;
+export struct CommentRow {
+    user: string,
+    text: string,
+    time: string,
+    likes: string,
+    y: length,
+    height: length,
+}
+
+export global Comments {
+    in-out property <[CommentRow]> rows;
+    in-out property <int> count;
+    in-out property <length> rows-height;
+    in-out property <bool> finished;
+    in-out property <bool> loading;
+    in-out property <string> error;
+    in-out property <length> scroll;
+    out property <length> viewport-h: Layout.window-height - 44px;
+    out property <length> list-width: Layout.window-width - (Nav.page == Page.detail ? 18px : 16px);
+    out property <string> text-font: "Fusion Pixel 10px Prop zh-Hans";
+    out property <length> text-size: 10px;
+    out property <length> text-height: EmojiFont.rich-layout("", 1px, self.text-font, self.text-size, 0).height;
+    out property <length> card-padding: 4px;
+    out property <length> content-gap: 3px;
+    out property <length> stats-height: 12px;
+    out property <length> spacing: 4px;
+    out property <bool> has-footer: self.loading || self.error != "" || self.finished;
+    out property <length> footer-y: self.rows-height + (self.has-footer && self.count > 0 ? self.spacing : 0px);
+    out property <length> content-h: self.footer-y + (self.has-footer ? self.text-height : 0px) + (self.finished && self.count > 0 ? 1px + self.spacing : 0px);
+    in-out property <length> list-offset;
+    public pure function body-layout(text: string) -> RichLayout {
+        return EmojiFont.rich-layout(text, self.list-width - 2 * self.card-padding, self.text-font, self.text-size, EmojiFont.layout-revision);
+    }
+    public pure function row-height(text: string) -> length {
+        return self.body-layout(text).height + self.text-height + self.stats-height + 2 * (self.card-padding + self.content-gap);
+    }
+}
+
+export component CommentList inherits Rectangle {
+    width: Comments.list-width;
+    height: Comments.content-h;
+    property <length> visible-top: 24px - root.absolute-position.y;
+    property <length> list-offset: -root.visible-top + (Nav.page == Page.detail ? Detail.scroll : Comments.scroll);
+    changed list-offset => { Comments.list-offset = root.list-offset; }
+    init => { Comments.list-offset = root.list-offset; }
+
+    // 只为可见范围及相邻缓冲区创建评论组件
     for comment in Comments.rows: card := Rectangle {
-        property <RichLayout> body-layout: EmojiFont.rich-layout(comment.text, self.width - 2 * root.card-padding, root.text-font, root.text-size, EmojiFont.revision);
-        height: self.body-layout.height + root.text-height + root.stats-height + 2 * (root.card-padding + root.content-gap);
-        // 屏外评论保留行高，进入屏幕时创建内容
+        property <RichLayout> body-layout: Comments.body-layout(comment.text);
+        y: comment.y;
+        width: root.width;
+        height: comment.height;
         if card.absolute-position.y < Layout.window-height && card.absolute-position.y + card.height > 0px: Rectangle {
             width: parent.width; height: parent.height;
             background: #101726;
             VerticalLayout {
-                padding: root.card-padding; spacing: root.content-gap;
+                padding: Comments.card-padding; spacing: Comments.content-gap;
                 Text {
                     text: comment.user; color: #7fb0ff;
-                    font-size: root.text-size; font-family: root.text-font;
-                    height: root.text-height; overflow: elide;
+                    font-size: Comments.text-size; font-family: Comments.text-font;
+                    height: Comments.text-height; overflow: elide;
                 }
                 RichText {
                     layout: card.body-layout; color: #cfd8e6;
-                    font-size: root.text-size; font-family: root.text-font;
+                    font-size: Comments.text-size; font-family: Comments.text-font;
                 }
                 HorizontalLayout {
-                    height: root.stats-height;
+                    height: Comments.stats-height;
                     alignment: start;
                     spacing: 8px;
                     StatItem { icon: Icons.thumbs-up; value: comment.likes; }
                     Text {
                         text: comment.time; color: #8b95a7;
-                        font-size: root.text-size; font-family: root.text-font;
+                        font-size: Comments.text-size; font-family: Comments.text-font;
                         vertical-alignment: center;
                     }
                 }
             }
         }
     }
-    if Comments.finished && Comments.rows.length > 0: Rectangle { height: 1px; background: #3a4a66; }
-    if Comments.loading || Comments.error != "" || Comments.finished: Text {
-        text: Comments.loading ? "评论加载中…" : (Comments.error != "" ? "评论加载失败，按 R 重试" : (Comments.rows.length == 0 ? "暂无评论" : "全部评论已加载完毕"));
-        color: #8b95a7; font-size: 10px; font-family: "Fusion Pixel 10px Prop zh-Hans";
-        wrap: word-wrap; horizontal-alignment: center;
+    footer := VerticalLayout {
+        y: Comments.footer-y;
+        width: root.width;
+        spacing: Comments.spacing;
+        if Comments.finished && Comments.count > 0: Rectangle { height: 1px; background: #3a4a66; }
+        if Comments.has-footer: Text {
+            height: Comments.text-height;
+            text: Comments.loading ? "评论加载中…" : (Comments.error != "" ? "评论加载失败，按 R 重试" : (Comments.count == 0 ? "暂无评论" : "全部评论已加载完毕"));
+            color: #8b95a7; font-size: Comments.text-size; font-family: Comments.text-font;
+            wrap: word-wrap; horizontal-alignment: center;
+        }
     }
 }

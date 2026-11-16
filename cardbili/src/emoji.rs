@@ -25,8 +25,21 @@ const EXTERNAL_BASE: i32 = 0x1_0000;
 #[derive(Default)]
 struct Emotes {
     // 每项保存图像和展示边长
-    images: Vec<(Image, u32)>,
+    images: Vec<EmoteImage>,
     index: HashMap<String, usize>,
+}
+
+struct EmoteImage {
+    image: Image,
+    size: u32,
+    layout_revision: i32,
+}
+
+impl Emotes {
+    fn find(&self, chunk: &str) -> Option<(usize, usize)> {
+        let start = chunk.rfind('[')?;
+        self.index.get(&chunk[start..]).map(|&index| (start, index))
+    }
 }
 
 thread_local! {
@@ -37,7 +50,21 @@ pub(crate) fn has_emote(name: &str) -> bool {
     EMOTES.with(|emotes| emotes.borrow().index.contains_key(name))
 }
 
+pub(crate) fn layout_changed(text: &str, revision: i32) -> bool {
+    EMOTES.with(|emotes| {
+        let emotes = emotes.borrow();
+        text.split_inclusive(']').any(|chunk| {
+            emotes
+                .find(chunk)
+                .is_some_and(|(_, index)| emotes.images[index].layout_revision > revision)
+        })
+    })
+}
+
 pub(crate) fn register_emotes(ui: &AppWindow, images: Vec<(String, u32, crate::cache::Pixels)>) {
+    let global = ui.global::<EmojiFont>();
+    let revision = global.get_layout_revision() + 1;
+    let mut layout_changed = false;
     EMOTES.with(|emotes| {
         let mut emotes = emotes.borrow_mut();
         for (name, size, (w, h, raw)) in images {
@@ -45,15 +72,28 @@ pub(crate) fn register_emotes(ui: &AppWindow, images: Vec<(String, u32, crate::c
                 &raw, w, h,
             ));
             if let Some(&index) = emotes.index.get(&name) {
-                emotes.images[index] = (image, size);
+                let entry = &mut emotes.images[index];
+                entry.image = image;
+                if entry.size != size {
+                    entry.size = size;
+                    entry.layout_revision = revision;
+                    layout_changed = true;
+                }
             } else {
                 let index = emotes.images.len();
-                emotes.images.push((image, size));
+                emotes.images.push(EmoteImage {
+                    image,
+                    size,
+                    layout_revision: revision,
+                });
                 emotes.index.insert(name, index);
+                layout_changed = true;
             }
         }
     });
-    let global = ui.global::<EmojiFont>();
+    if layout_changed {
+        global.set_layout_revision(revision);
+    }
     global.set_revision(global.get_revision() + 1);
 }
 
@@ -117,12 +157,7 @@ fn prepare(text: &str) -> (String, Vec<(usize, i32, i32)>) {
     EMOTES.with(|emotes| {
         let emotes = emotes.borrow();
         for chunk in text.split_inclusive(']') {
-            let matched = chunk.rfind('[').and_then(|start| {
-                emotes
-                    .index
-                    .get(&chunk[start..])
-                    .map(|&index| (start, index))
-            });
+            let matched = emotes.find(chunk);
             let end = matched.map_or(chunk.len(), |(start, _)| start);
             for token in tokens(&chunk[..end]) {
                 match token {
@@ -134,7 +169,7 @@ fn prepare(text: &str) -> (String, Vec<(usize, i32, i32)>) {
                 }
             }
             if let Some((_, index)) = matched {
-                let size = emotes.images[index].1 as i32;
+                let size = emotes.images[index].size as i32;
                 emoji.push((prepared.len(), EXTERNAL_BASE + index as i32, size));
                 prepared.push(PLACEHOLDER);
             }
@@ -310,7 +345,7 @@ pub(crate) fn install(ui: &AppWindow) {
                     .borrow()
                     .images
                     .get((glyph - EXTERNAL_BASE) as usize)
-                    .map(|(image, _)| image.clone())
+                    .map(|entry| entry.image.clone())
                     .unwrap_or_default()
             });
         }

@@ -1,5 +1,5 @@
 import { Text } from "../components/base/text.slint";
-import { CommentList } from "../components/video/comments.slint";
+import { CommentList, Comments } from "../components/video/comments.slint";
 // 详情页：封面、标题、统计与正文统一滚动
 import { Icons } from "../components/base/icons.slint";
 import { StatItem } from "../components/base/stat.slint";
@@ -34,7 +34,7 @@ export component DetailPage inherits Rectangle {
         visible: !Detail.loading && Detail.error == "";
         x: 0px; y: 24px; width: parent.width; height: parent.height - 44px; clip: true;
         body-lay := VerticalLayout {
-            x: 6px; y: -Detail.scroll; width: parent.width - 18px; spacing: 4px;
+            x: 6px; y: -Detail.scroll; width: Comments.list-width; spacing: 4px;
             Rectangle {
                 height: 46px;
                 Rectangle {

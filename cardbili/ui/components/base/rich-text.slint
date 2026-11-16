@@ -6,7 +6,7 @@ export component RichText {
     in property <string> font-family;
     in property <length> font-size: 12px;
     in property <brush> color;
-    in property <RichLayout> layout: EmojiFont.rich-layout(root.text, root.width, root.font-family, root.font-size, EmojiFont.revision);
+    in property <RichLayout> layout: EmojiFont.rich-layout(root.text, root.width, root.font-family, root.font-size, EmojiFont.layout-revision);
     min-width: 0px;
     horizontal-stretch: 1;
     min-height: root.layout.height;
