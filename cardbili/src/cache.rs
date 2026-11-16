@@ -20,6 +20,9 @@ pub type Pixels = (u32, u32, Vec<u8>);
 // 接口和图片共用 1 GiB 缓存空间
 pub const MAX_BYTES: u64 = 1024 * 1024 * 1024;
 
+// 超限后一次清理到 90%，为后续写入预留空间
+const LOW_WATER: u64 = MAX_BYTES * 9 / 10;
+
 static IMAGE_DOWNLOAD_PAUSED: (Mutex<bool>, Condvar) = (Mutex::new(false), Condvar::new());
 
 pub fn pause_images(paused: bool) {
@@ -89,15 +92,12 @@ pub fn init() {
                 ));
             }
         }
-        let result = (|| -> std::io::Result<u64> {
-            let mut total = entries()?.iter().map(|(_, m)| m.len()).sum();
-            enforce_limit(&mut total)?;
-            Ok(total)
-        })();
-        match result {
-            Ok(bytes) => *SIZE.lock().unwrap() = Some(bytes),
-            Err(error) => diagnostics::write(format_args!("[缓存] 初始化容量失败: {error}")),
-        }
+        // 容量统计在后台完成，写入、清理和统计共用容量锁
+        std::thread::spawn(|| {
+            if let Err(error) = usage() {
+                diagnostics::write(format_args!("[缓存] 初始化容量失败: {error}"));
+            }
+        });
         diagnostics::write(format_args!(
             "[缓存] 目录={} 容量上限={MAX_BYTES}",
             base().display()
@@ -225,7 +225,7 @@ fn touch(path: &Path) {
     }
 }
 
-// 容量超过上限时，按修改时间淘汰最旧的缓存文件
+// 容量超过上限时，按修改时间淘汰最旧的缓存文件至低水位
 fn enforce_limit(total: &mut u64) -> std::io::Result<()> {
     if *total <= MAX_BYTES {
         return Ok(());
@@ -233,7 +233,7 @@ fn enforce_limit(total: &mut u64) -> std::io::Result<()> {
     let mut files = entries()?;
     files.sort_by_key(|(_, metadata)| metadata.modified().unwrap_or(UNIX_EPOCH));
     for (path, metadata) in files {
-        if *total <= MAX_BYTES {
+        if *total <= LOW_WATER {
             break;
         }
         fs::remove_file(&path)?;
