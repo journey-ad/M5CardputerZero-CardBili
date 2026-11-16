@@ -2,7 +2,7 @@ use slint::ComponentHandle as _;
 use super::*;
 
 impl App {
-    pub(super) fn scroll_key(&mut self, key: &str, repeat: bool) -> bool {
+    pub(super) fn scroll_key(&mut self, key: &str) -> bool {
         let (direction, full_page) = match key {
             "UP" | "f" | "w" => (-1.0, false),
             "DOWN" | "x" | "s" => (1.0, false),
@@ -15,21 +15,7 @@ impl App {
         } else {
             self.ui.global::<crate::Comments>().get_viewport_h()
         } as f64;
-        let step = direction * 22.0;
-        let delta = if full_page {
-            self.scroll_tap = None;
-            direction * height
-        } else {
-            let double = !repeat
-                && self.scroll_tap.take().is_some_and(|(previous, since)| {
-                    previous == step && since.elapsed() <= Duration::from_millis(300)
-                });
-            if double {
-                direction * (height - 22.0)
-            } else {
-                step
-            }
-        };
+        let delta = direction * if full_page { height } else { 22.0 };
         if self.page == Page::Detail {
             self.detail_scroll = (self.detail_scroll + delta).clamp(0.0, self.detail_maxv);
             self.ui.global::<crate::Detail>().set_scroll(self.detail_scroll as f32);

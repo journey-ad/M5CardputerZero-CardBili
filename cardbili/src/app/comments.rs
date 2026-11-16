@@ -82,8 +82,8 @@ impl App {
         }
     }
 
-    pub(super) fn comments_key(&mut self, key: &str, repeat: bool) {
-        if self.scroll_key(key, repeat) {
+    pub(super) fn comments_key(&mut self, key: &str) {
+        if self.scroll_key(key) {
             return;
         }
         match key {

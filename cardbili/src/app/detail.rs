@@ -110,13 +110,13 @@ impl App {
         self.detail_display = Some(display);
     }
 
-    pub(super) fn detail_key(&mut self, k: &str, repeat: bool) {
+    pub(super) fn detail_key(&mut self, k: &str) {
         if k == "p" {
             self.sections.open = true;
             self.sections.dirty = true;
             return;
         }
-        if self.scroll_key(k, repeat) {
+        if self.scroll_key(k) {
             return;
         }
         match k {

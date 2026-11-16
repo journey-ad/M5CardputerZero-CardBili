@@ -134,7 +134,6 @@ impl App {
         self.seek_pending = None;
         self.seek_deadline = None;
         self.direction_hold = None;
-        self.scroll_tap = None;
         self.ui.global::<crate::Player>().set_has_frame(false);
         self.ui.global::<crate::Player>().set_paused(false);
         self.ui.global::<crate::Player>().set_finished(false);

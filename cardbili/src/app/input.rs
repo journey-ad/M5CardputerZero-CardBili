@@ -3,7 +3,6 @@ use super::*;
 
 pub(super) struct DirectionHold {
     key: &'static str,
-    since: Instant,
     repeat_at: Instant,
     repeat_fired: bool,
 }
@@ -68,13 +67,6 @@ impl App {
                 .is_some_and(|hold| hold.key == released)
             {
                 let hold = self.direction_hold.take().unwrap();
-                if matches!(self.page, Page::Detail | Page::Comments)
-                    && matches!(released, "UP" | "DOWN")
-                    && hold.since.elapsed() <= Duration::from_millis(300)
-                {
-                    let step = if released == "UP" { -22.0 } else { 22.0 };
-                    self.scroll_tap = Some((step, hold.since));
-                }
                 if self.page == Page::Player
                     && !super_chat_open
                     && matches!(released, "LEFT" | "RIGHT")
@@ -105,7 +97,6 @@ impl App {
             let now = Instant::now();
             self.direction_hold = Some(DirectionHold {
                 key,
-                since: now,
                 repeat_at: now + Duration::from_millis(350),
                 repeat_fired: false,
             });
@@ -169,10 +160,10 @@ impl App {
             Page::Home => self.home_key(key),
             Page::Player => self.play_key(key, repeat),
             Page::Login => self.login_key(key),
-            Page::Detail => self.detail_key(key, repeat),
+            Page::Detail => self.detail_key(key),
             Page::About => self.about_key(key),
             Page::Collection => self.collection_key(key),
-            Page::Comments => self.comments_key(key, repeat),
+            Page::Comments => self.comments_key(key),
             Page::Following => self.following_key(key),
             Page::Favorites => self.favorites_key(key),
         }
