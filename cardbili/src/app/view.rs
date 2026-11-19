@@ -90,9 +90,7 @@ impl App {
             .global::<crate::Cdn>()
             .set_current(crate::cdn::index(&self.settings.cdn) as i32);
         preferences.set_cdn_name(
-            crate::cdn::OPTIONS[crate::cdn::index(&self.settings.cdn)]
-                .name
-                .into(),
+            crate::i18n::tr(crate::cdn::OPTIONS[crate::cdn::index(&self.settings.cdn)].name).into(),
         );
         self.ui
             .global::<crate::Meta>()

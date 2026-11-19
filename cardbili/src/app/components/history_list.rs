@@ -41,13 +41,13 @@ pub(in crate::app) fn build_history_rows(items: &[model::Item], row_height: f32)
 
 pub(in crate::app) fn progress_text(item: &model::Item) -> slint::SharedString {
     if item.progress < 0 {
-        return "已看完".into();
+        return crate::i18n::tr("已看完").into();
     }
     if item.progress == 0 {
         return Default::default();
     }
     if item.duration_secs > 0.0 && item.progress as f64 >= item.duration_secs - 1.0 {
-        return "已看完".into();
+        return crate::i18n::tr("已看完").into();
     }
     if item.duration_secs > 0.0 {
         return format!(

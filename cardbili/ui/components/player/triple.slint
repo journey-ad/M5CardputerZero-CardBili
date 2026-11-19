@@ -1,5 +1,5 @@
 import { Icon, Icons } from "../base/icons.slint";
-import { Player } from "../../state.slint";
+import { Player, I18n } from "../../state.slint";
 
 export component TripleAnimation inherits Rectangle {
     width: 144px; height: 68px;
@@ -10,7 +10,7 @@ export component TripleAnimation inherits Rectangle {
 
     Text {
         x: 0px; y: 4px; width: parent.width; height: 14px;
-        text: Player.triple-phase == 1 ? "一键三连" : (Player.triple-phase == 2 ? "提交中…" : "三连成功");
+        text: Player.triple-phase == 1 ? I18n.tr("一键三连") : (Player.triple-phase == 2 ? I18n.tr("提交中…") : I18n.tr("三连成功"));
         color: #e6ebf5; font-size: 12px;
         horizontal-alignment: center; vertical-alignment: center;
     }

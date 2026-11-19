@@ -1,5 +1,5 @@
 import { Text } from "../base/text.slint";
-import { LiveAreas, Layout } from "../../state.slint";
+import { LiveAreas, Layout, I18n } from "../../state.slint";
 
 // 分区弹窗使用三列网格，选中项保持在四行可视区域内
 export component LiveAreaDialog inherits Rectangle {
@@ -45,7 +45,7 @@ export component LiveAreaDialog inherits Rectangle {
             }
             if LiveAreas.loading || LiveAreas.error != "": Text {
                 width: parent.width; height: parent.height;
-                text: LiveAreas.loading ? "加载中…" : LiveAreas.error;
+                text: LiveAreas.loading ? I18n.tr("加载中…") : LiveAreas.error;
                 color: #9aa6ba; font-size: 12px;
                 horizontal-alignment: center; vertical-alignment: center;
             }

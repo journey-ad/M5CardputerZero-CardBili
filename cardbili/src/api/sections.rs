@@ -32,7 +32,7 @@ pub fn chapters(bvid: &str, cid: i64, cookies: Option<&str>) -> Result<Vec<Chapt
         )
     })?;
     if value["code"].as_i64() != Some(0) {
-        return Err(api_err("章节", &value));
+        return Err(api_err(crate::i18n::tr("章节"), &value));
     }
     Ok(value["data"]["view_points"]
         .as_array()
@@ -54,11 +54,11 @@ pub fn watching(bvid: &str, cid: i64, cookies: Option<&str>) -> Result<String, S
         cookies,
     )?;
     if value["code"].as_i64() != Some(0) {
-        return Err(api_err("在看人数", &value));
+        return Err(api_err(crate::i18n::tr("在看人数"), &value));
     }
     Ok(value["data"]["total"]
         .as_str()
         .filter(|text| !text.is_empty())
-        .map(|total| format!("{total}人在看"))
+        .map(|total| crate::i18n::trf("{}人在看", &[&total]))
         .unwrap_or_default())
 }

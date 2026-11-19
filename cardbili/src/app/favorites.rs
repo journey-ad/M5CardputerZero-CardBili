@@ -102,7 +102,7 @@ impl App {
                 .sum();
             self.ui
                 .global::<crate::ListModel>()
-                .set_favorite_count(format!("{total} 条").into());
+                .set_favorite_count(crate::i18n::trf("{} 条", &[&total]).into());
             self.favorites.selection = self
                 .favorites
                 .selection
@@ -117,8 +117,8 @@ impl App {
                     .take(4)
                     .map(|folder| crate::FavoriteRow {
                         title: folder.title.as_str().into(),
-                        count: format!("{} 条", folder.count).into(),
-                        visibility: if folder.private { "私密" } else { "公开" }.into(),
+                        count: crate::i18n::trf("{} 条", &[&folder.count]).into(),
+                        visibility: if folder.private { crate::i18n::tr("私密") } else { crate::i18n::tr("公开") }.into(),
                         cover: self
                             .favorites
                             .covers

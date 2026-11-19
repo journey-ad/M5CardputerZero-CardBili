@@ -316,7 +316,7 @@ pub fn api_json_with(
             path.display()
         ));
         if cached_only_on() {
-            return Err("缓存未命中".to_string());
+            return Err(crate::i18n::tr("缓存未命中").to_string());
         }
     } else {
         diagnostics::write(format_args!(
@@ -326,9 +326,9 @@ pub fn api_json_with(
     }
     let s = fetch()?;
     let v = net::parse_json(cache_key, &s).map_err(|e| {
-        format!(
-            "数据解析失败（{e}）：{}",
-            s.chars().take(200).collect::<String>()
+        crate::i18n::trf(
+            "数据解析失败（{}）：{}",
+            &[&e, &s.chars().take(200).collect::<String>()],
         )
     })?;
     if v["code"].as_i64() == Some(0) {

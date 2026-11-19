@@ -29,16 +29,16 @@ pub fn qr_generate(client: &ureq::Agent) -> Result<(String, String), String> {
     ]);
     let value = net::post_query_with_agent(client, AUTH_CODE, &params)?;
     if value["code"].as_i64() != Some(0) {
-        return Err(format!(
+        return Err(crate::i18n::trf(
             "二维码生成失败\ncode={} {}",
-            value["code"], value["message"]
+            &[&value["code"], &value["message"]],
         ));
     }
     let data = &value["data"];
     let url = data["url"].as_str().unwrap_or_default();
     let key = data["auth_code"].as_str().unwrap_or_default();
     if url.is_empty() || key.is_empty() {
-        return Err("二维码生成失败\n返回为空".into());
+        return Err(crate::i18n::tr("二维码生成失败\n返回为空").into());
     }
     Ok((url.into(), key.into()))
 }
@@ -70,20 +70,20 @@ pub fn qr_poll(key: &str, client: &ureq::Agent) -> Poll {
         86039 => Poll::Pending,
         86090 => Poll::Scanned,
         86038 => Poll::Expired,
-        _ => Poll::Err(format!("登录状态异常\ncode={code} {}", value["message"])),
+        _ => Poll::Err(crate::i18n::trf("登录状态异常\ncode={} {}", &[&code, &value["message"]])),
     }
 }
 
 fn login(data: &Value) -> Result<Login, String> {
     let cookies = data["cookie_info"]["cookies"]
         .as_array()
-        .ok_or("登录信息不完整，请重新扫码")?;
+        .ok_or(crate::i18n::tr("登录信息不完整，请重新扫码"))?;
     let token = |name: &str| -> Result<String, String> {
         data[name]
             .as_str()
             .filter(|value| !value.is_empty())
             .map(str::to_string)
-            .ok_or_else(|| "登录令牌不完整，请重新扫码".into())
+            .ok_or_else(|| crate::i18n::tr("登录令牌不完整，请重新扫码").into())
     };
     let mut credentials = Credentials {
         access_token: Some(token("access_token")?),
@@ -93,10 +93,10 @@ fn login(data: &Value) -> Result<Login, String> {
     for cookie in cookies {
         let name = cookie["name"]
             .as_str()
-            .ok_or("登录 Cookie 格式错误，请重新扫码")?;
+            .ok_or(crate::i18n::tr("登录 Cookie 格式错误，请重新扫码"))?;
         let value = cookie["value"]
             .as_str()
-            .ok_or("登录 Cookie 格式错误，请重新扫码")?;
+            .ok_or(crate::i18n::tr("登录 Cookie 格式错误，请重新扫码"))?;
         credentials.cookies.insert(name.into(), value.into());
     }
     for required in ["SESSDATA", "bili_jct", "DedeUserID"] {
@@ -105,15 +105,15 @@ fn login(data: &Value) -> Result<Login, String> {
             .get(required)
             .is_none_or(|value| value.is_empty())
         {
-            return Err("登录信息不完整，请重新扫码".into());
+            return Err(crate::i18n::tr("登录信息不完整，请重新扫码").into());
         }
     }
     // 登录账号与扫码前的匿名设备各自维护 Cookie
     let client = net::new_agent();
     for (name, value) in &credentials.cookies {
-        session::insert(&client, name, value).map_err(|_| "登录 Cookie 格式错误，请重新扫码")?;
+        session::insert(&client, name, value).map_err(|_| crate::i18n::tr("登录 Cookie 格式错误，请重新扫码"))?;
     }
-    session::ensure_buvid(&client).map_err(|_| "设备信息生成失败，请重试")?;
+    session::ensure_buvid(&client).map_err(|_| crate::i18n::tr("设备信息生成失败，请重试"))?;
     session::initialize(&client);
     Ok(Login {
         credentials,

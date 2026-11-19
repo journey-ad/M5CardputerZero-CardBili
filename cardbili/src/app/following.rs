@@ -97,7 +97,7 @@ impl App {
         if total > 0 {
             self.following.groups.push(FollowingGroup {
                 tagid: api::ALL_FOLLOWING_TAGID,
-                name: "全部关注".into(),
+                name: crate::i18n::tr("全部关注").into(),
                 count: total,
                 page: 0,
             });
@@ -257,7 +257,7 @@ impl App {
                 .map(|entry| match entry {
                     FollowingEntry::Header { name, count } => crate::FollowingRow {
                         user: name.as_str().into(),
-                        text: format!("{count} 位关注").into(),
+                        text: crate::i18n::trf("{} 位关注", &[&count]).into(),
                         header: true,
                         ..Default::default()
                     },

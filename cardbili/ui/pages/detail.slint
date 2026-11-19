@@ -4,7 +4,7 @@ import { CommentList, Comments } from "../components/video/comments.slint";
 import { Icons } from "../components/base/icons.slint";
 import { StatItem } from "../components/base/stat.slint";
 import { Skeleton } from "../components/base/skeleton.slint";
-import { Detail } from "../state.slint";
+import { Detail, I18n } from "../state.slint";
 
 export component DetailPage inherits Rectangle {
     width: 100%;
@@ -28,7 +28,7 @@ export component DetailPage inherits Rectangle {
 
     Rectangle {
         x: 0px; y: 0px; width: parent.width; height: 20px; background: #121a2a;
-        Text { x: 6px; y: 0px; width: parent.width - 12px; height: 20px; text: "视频详情"; color: #7fb0ff; font-size: 12px; vertical-alignment: center; }
+        Text { x: 6px; y: 0px; width: parent.width - 12px; height: 20px; text: I18n.tr("视频详情"); color: #7fb0ff; font-size: 12px; vertical-alignment: center; }
     }
     body-viewport := Rectangle {
         visible: !Detail.loading && Detail.error == "";
@@ -68,10 +68,10 @@ export component DetailPage inherits Rectangle {
             }
             Text { text: Detail.owner; color: #8b95a7; font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px; overflow: elide; }
             Rectangle { height: 1px; background: #1a2436; }
-            Text { text: "简介"; color: #ffcf6e; font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px; }
+            Text { text: I18n.tr("简介"); color: #ffcf6e; font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px; }
             Text { text: Detail.desc; color: #cfd8e6; font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px; wrap: word-wrap; }
             Rectangle { height: 1px; background: #25314a; }
-            Text { text: "评论"; color: #ffcf6e; font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px; }
+            Text { text: I18n.tr("评论"); color: #ffcf6e; font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px; }
             CommentList {}
         }
     }

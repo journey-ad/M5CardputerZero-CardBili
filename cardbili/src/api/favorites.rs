@@ -9,7 +9,7 @@ pub fn folders(mid: &str, cookies: &str) -> Result<Vec<model::FavoriteFolder>, S
         );
         let value = cache::api_json(&url, Some(cookies), cache::TTL_LIST)?;
         if value["code"].as_i64() != Some(0) {
-            return Err(api_err("收藏夹", &value));
+            return Err(api_err(crate::i18n::tr("收藏夹"), &value));
         }
         let items = value["data"]["list"].as_array().into_iter().flatten();
         folders.extend(items.filter_map(|folder| {
@@ -33,7 +33,7 @@ pub fn videos(folder: i64, page: u32, cookies: &str) -> Result<model::VideoPage,
     let url = format!("https://api.bilibili.com/x/v3/fav/resource/list?media_id={folder}&pn={page}&ps=20&order=mtime&type=0&tid=0&platform=web");
     let value = cache::api_json(&url, Some(cookies), cache::TTL_LIST)?;
     if value["code"].as_i64() != Some(0) {
-        return Err(api_err("收藏视频", &value));
+        return Err(api_err(crate::i18n::tr("收藏视频"), &value));
     }
     let items = value["data"]["medias"]
         .as_array()

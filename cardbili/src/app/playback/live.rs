@@ -18,9 +18,9 @@ impl LiveRecovery {
         }
         if let Some(at) = self.retry_at.filter(|at| *at > now) {
             let seconds = at.duration_since(now).as_secs_f64().ceil() as u64;
-            format!("直播已断开，{seconds} 秒后重试")
+            crate::i18n::trf("直播已断开，{} 秒后重试", &[&seconds])
         } else {
-            "直播已断开，正在重连…".into()
+            crate::i18n::tr("直播已断开，正在重连…").into()
         }
     }
 }
@@ -75,7 +75,7 @@ impl App {
             return;
         }
         let Some(info) = &self.live else { return };
-        self.status = "正在重新连接直播…".into();
+        self.status = crate::i18n::tr("正在重新连接直播…").into();
         // 重连只替换媒体流，醒目留言与弹幕连接沿用当前直播间
         tasks::start_live(
             info.room_id,

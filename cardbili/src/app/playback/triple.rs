@@ -35,7 +35,7 @@ impl App {
             },
         };
         if phase == 1 && player.get_triple_phase() != 1 {
-            status.set_bar("长按一键三连".into());
+            status.set_bar(crate::i18n::tr("长按一键三连").into());
             status.set_bar_sticky(true);
         }
         player.set_triple_phase(phase);

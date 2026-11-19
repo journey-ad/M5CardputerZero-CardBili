@@ -102,7 +102,7 @@ pub(crate) fn install_ffmpeg() {
     INSTALL_ATTEMPTED.call_once(|| {
         use std::os::windows::process::CommandExt;
         const CREATE_NEW_CONSOLE: u32 = 0x0000_0010;
-        let script = "winget install --id Gyan.FFmpeg -e --accept-source-agreements --accept-package-agreements; Write-Host 'FFmpeg 安装完成，按回车关闭窗口'; Read-Host | Out-Null";
+        let script = crate::i18n::tr("winget install --id Gyan.FFmpeg -e --accept-source-agreements --accept-package-agreements; Write-Host 'FFmpeg 安装完成，按回车关闭窗口'; Read-Host | Out-Null");
         match Command::new("powershell")
             .args(["-NoProfile", "-Command", script])
             .creation_flags(CREATE_NEW_CONSOLE)
@@ -138,7 +138,7 @@ pub(crate) fn spawn(
     let _ = &audio;
     let mut redactions = Vec::new();
     if !cookies.is_empty() {
-        redactions.push((cookies.to_string(), "<Cookie 已隐藏>".to_string()));
+        redactions.push((cookies.to_string(), crate::i18n::tr("<Cookie 已隐藏>").to_string()));
     }
     for arg in args {
         if arg.starts_with("http://") || arg.starts_with("https://") {

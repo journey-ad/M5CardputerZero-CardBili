@@ -9,6 +9,7 @@ mod cdn;
 mod danmaku;
 mod diagnostics;
 mod fonts;
+mod i18n;
 mod emoji;
 mod menu;
 mod live_danmaku;
@@ -68,6 +69,7 @@ pub enum Msg {
 
 fn main() {
     let mut settings = settings::Settings::load();
+    i18n::set(i18n::Language::from_env().unwrap_or(settings.language));
     let force_log = std::env::var_os("CARDBILI_DEBUG").is_some();
     if let Err(error) = diagnostics::set_enabled(settings.debug_log || force_log) {
         settings.debug_log = false;

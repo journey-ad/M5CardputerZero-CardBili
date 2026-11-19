@@ -2,6 +2,16 @@ import { HomeTab, Page, VideoLayout, MenuPosition } from "types.slint";
 // 页面与组件共用的全局状态
 import { Cmt, DmRow, VideoRow, FavoriteRow, FollowingRow, HistoryHeader, SuperChatRow } from "common.slint";
 
+// 界面语言：lang 为 0 时显示中文原文，否则由 Rust 按 i18n/*.po 查表
+// tr 读取 lang，切换语言时所有文案绑定随之刷新
+export global I18n {
+    in-out property <int> lang: 0;
+    pure callback lookup(string) -> string;
+    public pure function tr(text: string) -> string {
+        return self.lang == 0 ? text : self.lookup(text);
+    }
+}
+
 // 导航与交互态
 export global Nav {
     in-out property <Page> page: Page.home;
@@ -55,7 +65,7 @@ export global LiveAreas {
     in-out property <bool> open: false;
     in-out property <bool> loading: false;
     in-out property <string> error: "";
-    in-out property <string> title: "选择直播分区";
+    in-out property <string> title: I18n.tr("选择直播分区");
     in-out property <[string]> rows: [];
     in-out property <int> selected: 0;
 }
@@ -133,7 +143,7 @@ export global Preferences {
     in-out property <bool> pixel-optimize: false;
     in-out property <string> scale-algorithm-name: "";
     in-out property <string> cdn-name: "";
-    in-out property <string> cache-size: "统计中…";
+    in-out property <string> cache-size: I18n.tr("统计中…");
     in-out property <bool> cache-busy: false;
     in-out property <int> danmaku-opacity: 90;
     in-out property <MenuPosition> menu-position: MenuPosition.top;
@@ -171,7 +181,10 @@ export global Login {
 export global Meta {
     in-out property <string> about-text: "";
     in-out property <length> about-content-h: 0px;
-    in-out property <[string]> tab-names: ["推荐", "热门", "动态", "直播", "我的", "设置"];
+    // 页签每格约 53px（含图标），英文需要专门的短词，因此不走通用译文
+    in-out property <[string]> tab-names: I18n.lang == 0
+        ? ["推荐", "热门", "动态", "直播", "我的", "设置"]
+        : ["Home", "Hot", "Feed", "Live", "Me", "Prefs"];
     in-out property <string> version: "";
     in-out property <length> about-scroll: 0px;
 }

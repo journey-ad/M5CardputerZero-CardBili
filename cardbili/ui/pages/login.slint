@@ -1,12 +1,12 @@
 // 登录页：二维码 + 状态提示 + 底部操作
-import { Login } from "../state.slint";
+import { Login, I18n } from "../state.slint";
 
 export component LoginPage inherits Rectangle {
     width: 100%;
     height: 100%;
     background: #0b0f17;
 
-    Text { x: 0px; y: 6px; width: parent.width; text: "扫码登录 Bilibili"; color: #e6ebf5; font-size: 12px; horizontal-alignment: center; }
+    Text { x: 0px; y: 6px; width: parent.width; text: I18n.tr("扫码登录 Bilibili"); color: #e6ebf5; font-size: 12px; horizontal-alignment: center; }
     if Login.has-qr: Image {
         x: (parent.width - 110px) / 2; y: 24px; width: 110px; height: 110px;
         source: Login.qr; image-fit: contain;

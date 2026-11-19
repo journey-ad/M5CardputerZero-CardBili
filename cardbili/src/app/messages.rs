@@ -36,9 +36,9 @@ impl App {
             Msg::Volume(result) => {
                 if self.page == Page::Player {
                     match result {
-                        Ok(volume) => self.toast(&format!("系统音量 {volume}%")),
+                        Ok(volume) => self.toast(&crate::i18n::trf("系统音量 {}%", &[&volume])),
                         Err(_) => {
-                            self.toast("系统音量调整失败");
+                            self.toast(crate::i18n::tr("系统音量调整失败"));
                         }
                     }
                 }

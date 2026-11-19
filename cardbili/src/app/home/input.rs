@@ -16,7 +16,7 @@ impl App {
             if k == "ESC_DOWN" {
                 let g_status = self.ui.global::<crate::Status>();
                 self.esc_press = Some(Instant::now());
-                g_status.set_bar("长按 2 秒退出".into());
+                g_status.set_bar(crate::i18n::tr("长按 2 秒退出").into());
                 g_status.set_bar_sticky(true);
                 self.bar_until = None;
             } else {
@@ -49,11 +49,11 @@ impl App {
             } else {
                 if self.loaded[self.tab.index()] {
                     self.loading = false;
-                    self.status = format!("{} 条", self.lists[self.tab.index()].len());
+                    self.status = crate::i18n::trf("{} 条", &[&self.lists[self.tab.index()].len()]);
                     self.status_detail.clear();
                 } else {
                     self.loading = true;
-                    self.status = "加载中…".into();
+                    self.status = crate::i18n::tr("加载中…").into();
                     self.status_detail.clear();
                 }
                 self.load_home_list(self.tab.index(), false);
@@ -87,16 +87,16 @@ impl App {
                     let item = self.lists[self.tab.index()].get(self.sel as usize).cloned();
                     if let Some(it) = item {
                         if it.bvid.is_empty() {
-                            self.status = "该条目无视频".into();
+                            self.status = crate::i18n::tr("该条目无视频").into();
                             self.status_detail.clear();
                         } else if self.tab == HomeTab::Live {
                             if let Ok(room_id) = it.bvid.parse::<u64>() {
-                                self.status = "正在进入直播间…".into();
+                                self.status = crate::i18n::tr("正在进入直播间…").into();
                                 self.status_detail.clear();
                                 self.requested_live = Some(room_id);
                             }
                         } else {
-                            self.status = "正在加载视频…".into();
+                            self.status = crate::i18n::tr("正在加载视频…").into();
                             self.status_detail.clear();
                             self.requested_play = Some(it.bvid);
                         }
@@ -112,7 +112,7 @@ impl App {
                 "r" => {
                     self.loaded[self.tab.index()] = false;
                     self.loading = true;
-                    self.status = "刷新中…".into();
+                    self.status = crate::i18n::tr("刷新中…").into();
                     self.status_detail.clear();
                     self.load_home_list(self.tab.index(), true);
                 }

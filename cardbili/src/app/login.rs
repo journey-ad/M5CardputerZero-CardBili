@@ -25,7 +25,7 @@ impl App {
             login.set_qr(img);
             login.set_has_qr(true);
         }
-        login.set_qr_status("请用 B 站 App 扫码".into());
+        login.set_qr_status(crate::i18n::tr("请用 B 站 App 扫码").into());
     }
 
     pub(super) fn qr_status(&mut self, request: u64, s: String) {
@@ -54,7 +54,7 @@ impl App {
         self.loaded[HomeTab::Live.index()] = false;
         self.live_list.request += 1;
         self.account_dirty = true;
-        login.set_qr_status("登录成功".into());
+        login.set_qr_status(crate::i18n::tr("登录成功").into());
         self.acct_loaded = false;
         self.acct = None;
         self.avatar_img = None;
@@ -86,7 +86,7 @@ impl App {
                 self.go_back = true;
             }
             "r" => {
-                self.start_login("正在刷新二维码…");
+                self.start_login(crate::i18n::tr("正在刷新二维码…"));
             }
             _ => {}
         }

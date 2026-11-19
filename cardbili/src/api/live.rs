@@ -28,7 +28,7 @@ fn following(area: &model::LiveArea, cookies: &str) -> Result<Vec<Item>, String>
         );
         let value = cache::api_json(&url, Some(cookies), cache::TTL_LIST)?;
         if value["code"].as_i64() != Some(0) {
-            return Err(api_err("关注直播", &value));
+            return Err(api_err(crate::i18n::tr("关注直播"), &value));
         }
         let data = &value["data"];
         let Some(rooms) = data["rooms"].as_array().filter(|rooms| !rooms.is_empty()) else {
@@ -75,10 +75,10 @@ pub fn areas() -> Result<Vec<model::LiveArea>, String> {
         cache::TTL_LIST,
     )?;
     if value["code"].as_i64() != Some(0) {
-        return Err(api_err("直播分区", &value));
+        return Err(api_err(crate::i18n::tr("直播分区"), &value));
     }
     let mut areas = vec![model::LiveArea {
-        name: "全部".into(),
+        name: crate::i18n::tr("全部").into(),
         ..Default::default()
     }];
     for parent in value["data"].as_array().into_iter().flatten() {
@@ -117,7 +117,7 @@ fn rooms(page: u32, area: &model::LiveArea) -> Result<model::VideoPage, String> 
     };
     let value = cache::api_json(&url, None, cache::TTL_LIST)?;
     if value["code"].as_i64() != Some(0) {
-        return Err(api_err("直播列表", &value));
+        return Err(api_err(crate::i18n::tr("直播列表"), &value));
     }
     let data = &value["data"];
     let list = if filtered { &data["list"] } else { data };
@@ -179,7 +179,7 @@ pub fn audience(room_id: u64, cookies: Option<&str>) -> Result<String, String> {
     );
     let value = net::get_json(&url, cookies)?;
     if value["code"].as_i64() != Some(0) {
-        return Err(api_err("在线观众", &value));
+        return Err(api_err(crate::i18n::tr("在线观众"), &value));
     }
     let rank = &value["data"]["room_rank_info"]["user_rank_entry"]["user_contribution_rank_entry"];
     rank["count_text"]
@@ -187,7 +187,7 @@ pub fn audience(room_id: u64, cookies: Option<&str>) -> Result<String, String> {
         .filter(|text| !text.is_empty())
         .map(str::to_owned)
         .or_else(|| rank["count"].as_i64().map(model::fmt_num))
-        .ok_or_else(|| "直播间未提供在线观众数".into())
+        .ok_or_else(|| crate::i18n::tr("直播间未提供在线观众数").into())
 }
 
 pub fn room(room_id: u64, cookies: Option<&str>) -> Result<model::LiveInfo, RoomError> {
@@ -197,7 +197,7 @@ pub fn room(room_id: u64, cookies: Option<&str>) -> Result<model::LiveInfo, Room
     );
     let v = net::get_json(&info_url, cookies)?;
     if v["code"].as_i64() != Some(0) {
-        return Err(api_err("直播间信息", &v).into());
+        return Err(api_err(crate::i18n::tr("直播间信息"), &v).into());
     }
     let room = &v["data"]["room_info"];
     if room["live_status"].as_i64() != Some(1) {
@@ -213,7 +213,7 @@ pub fn room(room_id: u64, cookies: Option<&str>) -> Result<model::LiveInfo, Room
     );
     let p = net::get_json(&play_url, cookies)?;
     if p["code"].as_i64() != Some(0) {
-        return Err(api_err("直播播放地址", &p).into());
+        return Err(api_err(crate::i18n::tr("直播播放地址"), &p).into());
     }
     let url = stream_url(&p["data"]).ok_or(RoomError::Unsupported)?;
     crate::diagnostics::write(format_args!(
@@ -289,7 +289,7 @@ pub fn super_chat_messages(
     );
     let value = net::get_json(&url, cookies)?;
     if value["code"].as_i64() != Some(0) {
-        return Err(api_err("醒目留言", &value));
+        return Err(api_err(crate::i18n::tr("醒目留言"), &value));
     }
     Ok(value["data"]["list"]
         .as_array()
@@ -318,13 +318,13 @@ pub fn danmaku_info(room_id: u64, cookies: Option<&str>) -> Result<DanmakuInfo, 
     );
     let value = net::get_json(&url, cookies)?;
     if value["code"].as_i64() != Some(0) {
-        return Err(api_err("直播弹幕", &value));
+        return Err(api_err(crate::i18n::tr("直播弹幕"), &value));
     }
     let data = &value["data"];
     let token = data["token"]
         .as_str()
         .filter(|token| !token.is_empty())
-        .ok_or("直播弹幕认证信息为空")?
+        .ok_or(crate::i18n::tr("直播弹幕认证信息为空"))?
         .to_string();
     let servers = data["host_list"]
         .as_array()
@@ -338,7 +338,7 @@ pub fn danmaku_info(room_id: u64, cookies: Option<&str>) -> Result<DanmakuInfo, 
         })
         .collect::<Vec<_>>();
     if servers.is_empty() {
-        return Err("暂无可用的直播弹幕服务器".into());
+        return Err(crate::i18n::tr("暂无可用的直播弹幕服务器").into());
     }
     Ok(DanmakuInfo { token, servers })
 }

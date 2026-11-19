@@ -36,8 +36,8 @@ impl App {
             crate::cdn::OPTIONS
                 .iter()
                 .map(|cdn| Cmt {
-                    user: cdn.name.into(),
-                    text: "等待测速…".into(),
+                    user: crate::i18n::tr(cdn.name).into(),
+                    text: crate::i18n::tr("等待测速…").into(),
                 })
                 .collect::<Vec<_>>(),
         )));
@@ -51,7 +51,7 @@ impl App {
                         .as_array()
                         .and_then(|streams| streams.first())
                         .cloned()
-                        .ok_or_else(|| "未获取到测速视频".into())
+                        .ok_or_else(|| crate::i18n::tr("未获取到测速视频").into())
                 });
             if let Err(error) = &sample {
                 crate::diagnostics::write(format_args!("[CDN] 测速样本获取失败: {error}"));
@@ -60,10 +60,10 @@ impl App {
                 if active.load(Ordering::Relaxed) != request {
                     return;
                 }
-                let _ = tx.send(Msg::CdnSpeed(request, index, "测速中…".into()));
+                let _ = tx.send(Msg::CdnSpeed(request, index, crate::i18n::tr("测速中…").into()));
                 let text = match &sample {
                     Ok(stream) => cdn.measure(stream),
-                    Err(_) => "样本加载失败，按 R 重试".into(),
+                    Err(_) => crate::i18n::tr("样本加载失败，按 R 重试").into(),
                 };
                 if tx.send(Msg::CdnSpeed(request, index, text)).is_err() {
                     return;
@@ -89,7 +89,7 @@ impl App {
             g_cdn.get_rows().set_row_data(
                 index,
                 Cmt {
-                    user: crate::cdn::OPTIONS[index].name.into(),
+                    user: crate::i18n::tr(crate::cdn::OPTIONS[index].name).into(),
                     text: result.into(),
                 },
             );

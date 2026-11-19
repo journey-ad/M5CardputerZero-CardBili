@@ -7,7 +7,7 @@ pub fn liked(bvid: &str, cookies: &str) -> Result<bool, String> {
         Some(cookies),
     )?;
     if value["code"].as_i64() != Some(0) {
-        return Err(api_err("点赞状态", &value));
+        return Err(api_err(crate::i18n::tr("点赞状态"), &value));
     }
     Ok(value["data"].as_i64() == Some(1))
 }
@@ -19,9 +19,9 @@ pub fn react(
     action: VideoAction,
 ) -> Result<ReactionResult, String> {
     let name = match action {
-        VideoAction::Like(true) => "点赞",
-        VideoAction::Like(false) => "取消点赞",
-        VideoAction::Triple => "一键三连",
+        VideoAction::Like(true) => crate::i18n::tr("点赞"),
+        VideoAction::Like(false) => crate::i18n::tr("取消点赞"),
+        VideoAction::Triple => crate::i18n::tr("一键三连"),
     };
     crate::diagnostics::write(format_args!("[互动] {name} bvid={bvid}"));
     let csrf = csrf(cookies)?;
@@ -52,16 +52,16 @@ pub fn react(
         &params,
     )?;
     if value["code"].as_i64() != Some(0) {
-        return Err(api_err("视频互动", &value));
+        return Err(api_err(crate::i18n::tr("视频互动"), &value));
     }
     match action {
         VideoAction::Like(liked) => Ok(ReactionResult {
             triple_complete: false,
             liked,
             message: if liked {
-                "已点赞"
+                crate::i18n::tr("已点赞")
             } else {
-                "已取消点赞"
+                crate::i18n::tr("已取消点赞")
             }
             .into(),
         }),
@@ -71,20 +71,20 @@ pub fn react(
             let coined = data["coin"].as_bool().unwrap_or(false);
             let favored = data["fav"].as_bool().unwrap_or(false);
             let message = if liked && coined && favored {
-                "三连成功".into()
+                crate::i18n::tr("三连成功").into()
             } else {
                 let mut completed = Vec::new();
                 if liked {
-                    completed.push("已点赞");
+                    completed.push(crate::i18n::tr("已点赞"));
                 }
                 if coined {
-                    completed.push("已投币");
+                    completed.push(crate::i18n::tr("已投币"));
                 }
                 if favored {
-                    completed.push("已收藏");
+                    completed.push(crate::i18n::tr("已收藏"));
                 }
                 if completed.is_empty() {
-                    "三连未完成，请稍后重试".into()
+                    crate::i18n::tr("三连未完成，请稍后重试").into()
                 } else {
                     completed.join(" · ")
                 }
@@ -104,7 +104,7 @@ pub fn comments(aid: i64, page: u32, cookies: Option<&str>) -> Result<CommentPag
     );
     let value = cache::api_json(&url, cookies, cache::TTL_REPLY)?;
     if value["code"].as_i64() != Some(0) {
-        return Err(api_err("评论", &value));
+        return Err(api_err(crate::i18n::tr("评论"), &value));
     }
     let items: Vec<Comment> = value["data"]["replies"]
         .as_array()
@@ -152,7 +152,7 @@ pub fn comments(aid: i64, page: u32, cookies: Option<&str>) -> Result<CommentPag
 fn csrf(cookies: &str) -> Result<String, String> {
     net::session::cookie(cookies, "bili_jct")
         .filter(|value| !value.is_empty())
-        .ok_or_else(|| "登录信息已失效，请重新登录".into())
+        .ok_or_else(|| crate::i18n::tr("登录信息已失效，请重新登录").into())
 }
 
 pub fn heartbeat(bvid: &str, cid: i64, progress: i64, cookies: &str) -> Result<(), String> {
@@ -174,7 +174,7 @@ pub fn heartbeat(bvid: &str, cid: i64, progress: i64, cookies: &str) -> Result<(
         4,
     )?;
     if value["code"].as_i64() != Some(0) {
-        return Err(api_err("观看历史", &value));
+        return Err(api_err(crate::i18n::tr("观看历史"), &value));
     }
     cache::invalidate_api(super::HISTORY_URL, cookies);
     Ok(())

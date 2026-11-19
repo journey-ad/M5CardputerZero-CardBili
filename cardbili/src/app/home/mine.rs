@@ -46,11 +46,11 @@ impl App {
                 "ENTER" => {
                     if let Some(it) = self.lists[src].get(self.sel as usize) {
                         if !it.bvid.is_empty() {
-                            self.status = "正在加载视频…".into();
+                            self.status = crate::i18n::tr("正在加载视频…").into();
                             self.status_detail.clear();
                             self.requested_play = Some(it.bvid.clone());
                         } else {
-                            self.status = "该条目无视频".into();
+                            self.status = crate::i18n::tr("该条目无视频").into();
                             self.status_detail.clear();
                         }
                     }
@@ -65,7 +65,7 @@ impl App {
                 "r" => {
                     self.loaded[src] = false;
                     self.loading = true;
-                    self.status = "刷新中…".into();
+                    self.status = crate::i18n::tr("刷新中…").into();
                     self.status_detail.clear();
                     self.load_home_list(src, true);
                 }

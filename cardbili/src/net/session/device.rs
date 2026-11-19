@@ -37,13 +37,13 @@ pub fn prepare_anonymous(client: &ureq::Agent) -> Result<(), String> {
             net::get_with_agent(client, "https://api.bilibili.com/x/frontend/finger/spi", 25)?;
         let value: serde_json::Value = serde_json::from_str(&text)?;
         if value["code"].as_i64() != Some(0) {
-            return Err("设备信息获取失败".into());
+            return Err(crate::i18n::tr("设备信息获取失败").into());
         }
         for (key, name) in [("b_3", "buvid3"), ("b_4", "buvid4")] {
             let value = value["data"][key]
                 .as_str()
                 .filter(|value| !value.is_empty())
-                .ok_or("设备信息不完整")?;
+                .ok_or(crate::i18n::tr("设备信息不完整"))?;
             insert(client, name, value)?;
         }
         insert(client, "b_nut", &net::now_secs().to_string())?;
@@ -52,7 +52,7 @@ pub fn prepare_anonymous(client: &ureq::Agent) -> Result<(), String> {
     if let Err(error) = result {
         diagnostics::write(format_args!("[登录] 获取匿名设备信息失败: {error}"));
     }
-    ensure_buvid(client).map_err(|error| format!("设备信息生成失败\n{error}"))
+    ensure_buvid(client).map_err(|error| crate::i18n::trf("设备信息生成失败\n{}", &[&error]))
 }
 
 pub fn initialize(client: &ureq::Agent) {

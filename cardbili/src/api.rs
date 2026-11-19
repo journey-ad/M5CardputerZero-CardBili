@@ -19,9 +19,9 @@ fn api_err(name: &str, v: &Value) -> String {
     let msg = v["message"].as_str().unwrap_or("");
     crate::diagnostics::write(format_args!("[接口] {name} 失败 code={code} message={msg}"));
     if msg.is_empty() {
-        format!("{}加载失败\ncode={}", name, code)
+        crate::i18n::trf("{}加载失败\ncode={}", &[&name, &code])
     } else {
-        format!("{}加载失败\ncode={} {}", name, code, msg)
+        crate::i18n::trf("{}加载失败\ncode={} {}", &[&name, &code, &msg])
     }
 }
 
@@ -30,7 +30,7 @@ fn count_text(value: &Value) -> Option<String> {
         value
             .as_str()
             .filter(|text| !text.is_empty())
-            .map(str::to_string)
+            .map(|text| model::localize_count(text))
     })
 }
 
@@ -51,7 +51,7 @@ pub fn popular(cookies: Option<&str>, pn: u32) -> Result<Vec<Item>, String> {
     );
     let v = cache::api_json(&url, cookies, cache::TTL_LIST)?;
     if v["code"].as_i64() != Some(0) {
-        return Err(api_err("热门推荐", &v));
+        return Err(api_err(crate::i18n::tr("热门推荐"), &v));
     }
     Ok(video_items(&v["data"]["list"]))
 }
@@ -107,7 +107,7 @@ pub fn rcmd(cookies: Option<&str>, page: u32) -> Result<Vec<Item>, String> {
         net::get(&url, cookies)
     })?;
     if v["code"].as_i64() != Some(0) {
-        return Err(api_err("推荐", &v));
+        return Err(api_err(crate::i18n::tr("推荐"), &v));
     }
     Ok(video_items(&v["data"]["item"]))
 }
@@ -133,7 +133,7 @@ pub fn history(
         .unwrap_or_else(|| HISTORY_URL.into());
     let v = cache::api_json(&url, Some(cookies), cache::TTL_LIST)?;
     if v["code"].as_i64() != Some(0) {
-        return Err(api_err("历史记录", &v));
+        return Err(api_err(crate::i18n::tr("历史记录"), &v));
     }
     let mut out = Vec::new();
     if let Some(list) = v["data"]["list"].as_array() {
@@ -191,7 +191,7 @@ pub fn dynamic(cookies: &str, offset: &str) -> Result<model::DynamicPage, String
     let url = format!("https://api.bilibili.com/x/polymer/web-dynamic/v1/feed/all?type=video&{params}&features=itemOpusStyle,listOnlyfans,opusBigCover,onlyfansVote");
     let v = cache::api_json(&url, Some(cookies), cache::TTL_LIST)?;
     if v["code"].as_i64() != Some(0) {
-        return Err(api_err("动态", &v));
+        return Err(api_err(crate::i18n::tr("动态"), &v));
     }
     let mut out = Vec::new();
     if let Some(items) = v["data"]["items"].as_array() {
@@ -250,13 +250,13 @@ pub fn play_info(
     );
     let v = cache::api_json(&vurl, cookies, cache::TTL_DETAIL)?;
     if v["code"].as_i64() != Some(0) {
-        return Err(api_err("视频信息", &v));
+        return Err(api_err(crate::i18n::tr("视频信息"), &v));
     }
     let d = &v["data"];
     let parts = sections::parts(d);
     let cid = selected_cid
         .or_else(|| d["cid"].as_i64())
-        .ok_or("视频缺少分 P 信息")?;
+        .ok_or(crate::i18n::tr("视频缺少分 P 信息"))?;
     let part = parts.iter().find(|part| part.cid == cid);
     let title = if parts.len() > 1 {
         part.map(|part| part.title.clone()).unwrap_or_default()
@@ -271,13 +271,13 @@ pub fn play_info(
         .flatten()
         .filter(|stream| stream["codecid"].as_i64() == Some(7))
         .min_by_key(|stream| stream["bandwidth"].as_u64().unwrap_or(u64::MAX))
-        .ok_or("无可用 H.264 视频流")?;
+        .ok_or(crate::i18n::tr("无可用 H.264 视频流"))?;
     let audio = dash["audio"]
         .as_array()
         .into_iter()
         .flatten()
         .min_by_key(|stream| stream["bandwidth"].as_u64().unwrap_or(u64::MAX))
-        .ok_or("无可用音频流")?;
+        .ok_or(crate::i18n::tr("无可用音频流"))?;
     let cdn = &crate::cdn::OPTIONS[crate::cdn::index(cdn)];
     let video = cdn.url(video)?;
     let audio = cdn.url(audio)?;
@@ -309,7 +309,7 @@ pub fn play_urls(bvid: &str, cid: i64, cookies: Option<&str>) -> Result<Value, S
     );
     let p = cache::api_json(&purl, cookies, cache::TTL_PLAYURL)?;
     if p["code"].as_i64() != Some(0) {
-        return Err(api_err("播放地址", &p));
+        return Err(api_err(crate::i18n::tr("播放地址"), &p));
     }
     Ok(p)
 }
@@ -413,7 +413,7 @@ pub fn account(cookies: Option<&str>) -> Result<Account, String> {
         cache::TTL_ACCOUNT,
     )?;
     if v["code"].as_i64() != Some(0) {
-        return Err(api_err("账号信息", &v));
+        return Err(api_err(crate::i18n::tr("账号信息"), &v));
     }
     let d = &v["data"];
     Ok(Account {
@@ -422,7 +422,7 @@ pub fn account(cookies: Option<&str>) -> Result<Account, String> {
         mid: d["mid"].as_i64().map(|x| x.to_string()).unwrap_or_default(),
         level: d["level_info"]["current_level"].as_i64().unwrap_or(0),
         vip: if d["vipStatus"].as_i64().unwrap_or(0) > 0 {
-            "大会员".to_string()
+            crate::i18n::tr("大会员").to_string()
         } else {
             String::new()
         },
@@ -437,7 +437,7 @@ pub fn video_detail(bvid: &str, cookies: Option<&str>) -> Result<Detail, String>
     );
     let v = cache::api_json(&vurl, cookies, cache::TTL_DETAIL)?;
     if v["code"].as_i64() != Some(0) {
-        return Err(api_err("视频信息", &v));
+        return Err(api_err(crate::i18n::tr("视频信息"), &v));
     }
     let d = &v["data"];
     let aid = d["aid"].as_i64().unwrap_or(0);
@@ -464,7 +464,7 @@ fn random_base64(length: usize) -> Result<String, String> {
     let mut bytes = vec![0; length];
     std::fs::File::open("/dev/urandom")
         .and_then(|mut file| file.read_exact(&mut bytes))
-        .map_err(|error| format!("请求参数生成失败\n{error}"))?;
+        .map_err(|error| crate::i18n::trf("请求参数生成失败\n{}", &[&error]))?;
     let mut encoded = base64::engine::general_purpose::STANDARD.encode(bytes);
     // PiliPlus 的随机参数保留 Base64 编码除末尾两字符之外的内容
     encoded.truncate(encoded.len() - 2);
@@ -510,7 +510,7 @@ pub fn uploader_videos(
         )
     })?;
     if value["code"].as_i64() != Some(0) {
-        return Err(api_err("用户作品", &value));
+        return Err(api_err(crate::i18n::tr("用户作品"), &value));
     }
     let mut items = Vec::new();
     if let Some(videos) = value["data"]["list"]["vlist"].as_array() {
@@ -548,7 +548,7 @@ pub fn related_videos(bvid: &str, cookies: Option<&str>) -> Result<model::VideoP
     let url = format!("https://api.bilibili.com/x/web-interface/archive/related?{query}");
     let value = cache::api_json(&url, cookies, cache::TTL_LIST)?;
     if value["code"].as_i64() != Some(0) {
-        return Err(api_err("相关推荐", &value));
+        return Err(api_err(crate::i18n::tr("相关推荐"), &value));
     }
     Ok(model::VideoPage {
         items: video_items(&value["data"]),
@@ -562,7 +562,7 @@ pub fn author_profile(mid: &str, cookies: Option<&str>) -> Result<model::AuthorP
     let url = format!("https://api.bilibili.com/x/web-interface/card?{query}");
     let value = cache::api_json(&url, cookies, cache::TTL_DETAIL)?;
     if value["code"].as_i64() != Some(0) {
-        return Err(api_err("作者资料", &value));
+        return Err(api_err(crate::i18n::tr("作者资料"), &value));
     }
     let card = &value["data"]["card"];
     Ok(model::AuthorProfile {
@@ -591,7 +591,7 @@ pub fn following_tags(cookies: &str) -> Result<Vec<FollowingTag>, String> {
         cache::TTL_LIST,
     )?;
     if value["code"].as_i64() != Some(0) {
-        return Err(api_err("关注分组", &value));
+        return Err(api_err(crate::i18n::tr("关注分组"), &value));
     }
     Ok(value["data"]
         .as_array()
@@ -636,7 +636,7 @@ pub fn tag_followings(
         cache::TTL_LIST,
     )?;
     if value["code"].as_i64() != Some(0) {
-        return Err(api_err("关注分组", &value));
+        return Err(api_err(crate::i18n::tr("关注分组"), &value));
     }
     let items = value["data"]
         .as_array()
@@ -662,7 +662,7 @@ pub fn followings(mid: &str, page: u32, cookies: &str) -> Result<model::Followin
         cache::TTL_LIST,
     )?;
     if value["code"].as_i64() != Some(0) {
-        return Err(api_err("我的关注", &value));
+        return Err(api_err(crate::i18n::tr("我的关注"), &value));
     }
     let items = value["data"]["list"]
         .as_array()
@@ -683,7 +683,7 @@ pub const WATCH_LATER_URL: &str = "https://api.bilibili.com/x/v2/history/toview"
 pub fn watch_later(cookies: &str) -> Result<model::VideoPage, String> {
     let v = cache::api_json(WATCH_LATER_URL, Some(cookies), cache::TTL_LIST)?;
     if v["code"].as_i64() != Some(0) {
-        return Err(api_err("稍后再看", &v));
+        return Err(api_err(crate::i18n::tr("稍后再看"), &v));
     }
     let mut items = Vec::new();
     if let Some(list) = v["data"]["list"].as_array() {

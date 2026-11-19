@@ -2,7 +2,7 @@ import { RichText } from "../base/rich-text.slint";
 import { Text, EmojiFont, RichLayout } from "../base/text.slint";
 import { Icons } from "../base/icons.slint";
 import { StatItem } from "../base/stat.slint";
-import { Layout, Nav, Detail } from "../../state.slint";
+import { Layout, Nav, Detail, I18n } from "../../state.slint";
 import { Page } from "../../types.slint";
 
 export struct CommentRow {
@@ -92,7 +92,7 @@ export component CommentList inherits Rectangle {
         if Comments.finished && Comments.count > 0: Rectangle { height: 1px; background: #3a4a66; }
         if Comments.has-footer: Text {
             height: Comments.text-height;
-            text: Comments.loading ? "评论加载中…" : (Comments.error != "" ? "评论加载失败，按 R 重试" : (Comments.count == 0 ? "暂无评论" : "全部评论已加载完毕"));
+            text: Comments.loading ? I18n.tr("评论加载中…") : (Comments.error != "" ? I18n.tr("评论加载失败，按 R 重试") : (Comments.count == 0 ? I18n.tr("暂无评论") : I18n.tr("全部评论已加载完毕")));
             color: #8b95a7; font-size: Comments.text-size; font-family: Comments.text-font;
             wrap: word-wrap; horizontal-alignment: center;
         }

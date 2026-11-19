@@ -1,0 +1,1151 @@
+# CardBili English translation
+# msgid = the Chinese text exactly as written in the source
+#
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: en\n"
+
+#: src/api/auth.rs
+msgid "二维码生成失败\ncode={} {}"
+msgstr "QR code failed\ncode={} {}"
+
+#: src/api/auth.rs
+msgid "二维码生成失败\n返回为空"
+msgstr "QR code failed\nEmpty response"
+
+#: src/api/auth.rs
+msgid "登录状态异常\ncode={} {}"
+msgstr "Login error\ncode={} {}"
+
+#: src/api/auth.rs
+msgid "登录信息不完整，请重新扫码"
+msgstr "Login incomplete, scan again"
+
+#: src/api/auth.rs
+msgid "登录令牌不完整，请重新扫码"
+msgstr "Login token incomplete, scan again"
+
+#: src/api/auth.rs
+msgid "登录 Cookie 格式错误，请重新扫码"
+msgstr "Bad login cookie, scan again"
+
+#: src/api/auth.rs
+msgid "设备信息生成失败，请重试"
+msgstr "Device info failed, try again"
+
+#: src/api/favorites.rs
+msgid "收藏夹"
+msgstr "Favorites"
+
+#: src/api/favorites.rs
+msgid "收藏视频"
+msgstr "Favorite videos"
+
+#: src/api/live.rs
+msgid "关注直播"
+msgstr "Followed live"
+
+#: src/api/live.rs
+msgid "直播分区"
+msgstr "Live areas"
+
+#: src/api/live.rs
+msgid "全部"
+msgstr "All"
+
+#: src/api/live.rs
+msgid "直播列表"
+msgstr "Live list"
+
+#: src/api/live.rs
+msgid "在线观众"
+msgstr "Viewers"
+
+#: src/api/live.rs
+msgid "直播间未提供在线观众数"
+msgstr "No viewer count"
+
+#: src/api/live.rs
+msgid "直播间信息"
+msgstr "Live room info"
+
+#: src/api/live.rs
+msgid "直播播放地址"
+msgstr "Live stream URL"
+
+#: src/api/live.rs
+msgid "醒目留言"
+msgstr "Super Chat"
+
+#: src/api/live.rs
+msgid "直播弹幕"
+msgstr "Live danmaku"
+
+#: src/api/live.rs
+msgid "直播弹幕认证信息为空"
+msgstr "Danmaku auth info is empty"
+
+#: src/api/live.rs
+msgid "暂无可用的直播弹幕服务器"
+msgstr "No danmaku server available"
+
+#: src/api/playback.rs
+msgid "点赞状态"
+msgstr "Like status"
+
+#: src/api/playback.rs
+msgid "点赞"
+msgstr "Like"
+
+#: src/api/playback.rs
+msgid "取消点赞"
+msgstr "Unlike"
+
+#: src/api/playback.rs
+msgid "一键三连"
+msgstr "Triple"
+
+#: src/api/playback.rs
+msgid "视频互动"
+msgstr "Video action"
+
+#: src/api/playback.rs
+msgid "已点赞"
+msgstr "Liked"
+
+#: src/api/playback.rs
+msgid "已取消点赞"
+msgstr "Unliked"
+
+#: src/api/playback.rs
+msgid "三连成功"
+msgstr "Tripled!"
+
+#: src/api/playback.rs
+msgid "已投币"
+msgstr "Coined"
+
+#: src/api/playback.rs
+msgid "已收藏"
+msgstr "Favorited"
+
+#: src/api/playback.rs
+msgid "三连未完成，请稍后重试"
+msgstr "Triple incomplete, try later"
+
+#: src/api/playback.rs
+msgid "评论"
+msgstr "Comments"
+
+#: src/api/playback.rs
+msgid "登录信息已失效，请重新登录"
+msgstr "Login expired, please log in again"
+
+#: src/api/playback.rs
+msgid "观看历史"
+msgstr "Watch history"
+
+#: src/api/sections.rs
+msgid "章节"
+msgstr "Chapters"
+
+#: src/api/sections.rs
+msgid "在看人数"
+msgstr "Watching now"
+
+#: src/api/sections.rs
+msgid "{}人在看"
+msgstr "{} watching"
+
+#: src/api/wbi.rs
+msgid "签名信息不完整\n缺少 img_url"
+msgstr "Signing info incomplete\nmissing img_url"
+
+#: src/api/wbi.rs
+msgid "签名信息不完整\n缺少 sub_url"
+msgstr "Signing info incomplete\nmissing sub_url"
+
+#: src/api.rs
+msgid "{}加载失败\ncode={}"
+msgstr "{} failed to load\ncode={}"
+
+#: src/api.rs
+msgid "{}加载失败\ncode={} {}"
+msgstr "{} failed to load\ncode={} {}"
+
+#: src/api.rs
+msgid "热门推荐"
+msgstr "Popular"
+
+#: src/api.rs
+msgid "推荐"
+msgstr "For you"
+
+#: src/api.rs
+msgid "历史记录"
+msgstr "History"
+
+#: src/api.rs
+msgid "动态"
+msgstr "Feed"
+
+#: src/api.rs
+msgid "视频信息"
+msgstr "Video info"
+
+#: src/api.rs
+msgid "视频缺少分 P 信息"
+msgstr "Video has no parts info"
+
+#: src/api.rs
+msgid "无可用 H.264 视频流"
+msgstr "No H.264 stream available"
+
+#: src/api.rs
+msgid "无可用音频流"
+msgstr "No audio stream available"
+
+#: src/api.rs
+msgid "播放地址"
+msgstr "Stream URL"
+
+#: src/api.rs
+msgid "账号信息"
+msgstr "Account info"
+
+#: src/api.rs
+msgid "大会员"
+msgstr "VIP"
+
+#: src/api.rs
+msgid "请求参数生成失败\n{}"
+msgstr "Request setup failed\n{}"
+
+#: src/api.rs
+msgid "用户作品"
+msgstr "Uploads"
+
+#: src/api.rs
+msgid "相关推荐"
+msgstr "Related"
+
+#: src/api.rs
+msgid "作者资料"
+msgstr "Uploader profile"
+
+#: src/api.rs
+msgid "关注分组"
+msgstr "Follow groups"
+
+#: src/api.rs
+msgid "我的关注"
+msgstr "Following"
+
+#: src/api.rs
+msgid "稍后再看"
+msgstr "Watch later"
+
+#: src/app/cache.rs
+msgid "清理中…"
+msgstr "Clearing…"
+
+#: src/app/cache.rs
+msgid "缓存已清理"
+msgstr "Cache cleared"
+
+#: src/app/cdn.rs
+msgid "等待测速…"
+msgstr "Waiting to test…"
+
+#: src/app/cdn.rs
+msgid "未获取到测速视频"
+msgstr "No video to test with"
+
+#: src/app/cdn.rs
+msgid "测速中…"
+msgstr "Testing…"
+
+#: src/app/cdn.rs
+msgid "样本加载失败，按 R 重试"
+msgstr "Sample failed, R to retry"
+
+#: src/app/collection.rs
+msgid "{} · {} 条"
+msgstr "{} · {} items"
+
+#: src/app/collection.rs
+msgid "暂无收藏视频"
+msgstr "No favorite videos"
+
+#: src/app/collection.rs
+msgid "暂无稍后再看"
+msgstr "Watch later is empty"
+
+#: src/app/collection.rs
+msgid "暂无相关视频"
+msgstr "No related videos"
+
+#: src/app/collection.rs
+msgid "粉丝 {}"
+msgstr "{} followers"
+
+#: src/app/components/history_list.rs
+msgid "已看完"
+msgstr "Watched"
+
+#: src/app/detail.rs
+msgid "未知用户"
+msgstr "Unknown user"
+
+#: src/app/detail.rs
+msgid "（无简介）"
+msgstr "(No description)"
+
+#: src/app/detail.rs
+msgid "正在加载视频…"
+msgstr "Loading video…"
+
+#: src/app/favorites.rs
+msgid "{} 条"
+msgstr "{} items"
+
+#: src/app/favorites.rs
+msgid "私密"
+msgstr "Private"
+
+#: src/app/favorites.rs
+msgid "公开"
+msgstr "Public"
+
+#: src/app/following.rs
+msgid "全部关注"
+msgstr "All following"
+
+#: src/app/following.rs
+msgid "{} 位关注"
+msgstr "{} following"
+
+#: src/app/home/input.rs
+msgid "长按 2 秒退出"
+msgstr "Hold 2 s to quit"
+
+#: src/app/home/input.rs
+msgid "加载中…"
+msgstr "Loading…"
+
+#: src/app/home/input.rs
+msgid "该条目无视频"
+msgstr "No video in this item"
+
+#: src/app/home/input.rs
+msgid "正在进入直播间…"
+msgstr "Entering live room…"
+
+#: src/app/home/input.rs
+msgid "刷新中…"
+msgstr "Refreshing…"
+
+#: src/app/home/live.rs
+msgid "热门直播"
+msgstr "Popular live"
+
+#: src/app/home/live.rs
+msgid "全部直播"
+msgstr "All live"
+
+#: src/app/home/live.rs
+msgid "分区加载失败，按刷新重试"
+msgstr "Areas failed, Refresh to retry"
+
+#: src/app/home/live.rs
+msgid "选择直播分区"
+msgstr "Choose a live area"
+
+#: src/app/home/live.rs
+msgid "选择分区 · {}"
+msgstr "Area · {}"
+
+#: src/app/home/messages.rs
+msgid "暂无直播"
+msgstr "No live streams"
+
+#: src/app/home/messages.rs
+msgid "暂无内容"
+msgstr "Nothing here"
+
+#: src/app/home/messages.rs
+msgid "{} 个直播间"
+msgstr "{} live rooms"
+
+#: src/app/home/messages.rs
+msgid "加载失败"
+msgstr "Failed to load"
+
+#: src/app/home/settings.rs
+msgid "清理缓存"
+msgstr "Clear cache"
+
+#: src/app/home/settings.rs
+msgid "是否确认清理图片和接口缓存？\n登录状态和设置将会保留"
+msgstr "Clear the image and data cache?\nLogin and settings are kept"
+
+#: src/app/home/settings.rs
+msgid "清理"
+msgstr "Clear"
+
+#: src/app/home/settings.rs
+msgid "日志目录 {}"
+msgstr "Log folder {}"
+
+#: src/app/home/settings.rs
+msgid "调试日志设置失败：{}"
+msgstr "Debug log failed: {}"
+
+#: src/app/home/view.rs
+msgid "{}{} 条"
+msgstr "{}{} items"
+
+#: src/app/login.rs
+msgid "请用 B 站 App 扫码"
+msgstr "Scan with the Bilibili app"
+
+#: src/app/login.rs
+msgid "登录成功"
+msgstr "Logged in"
+
+#: src/app/login.rs
+msgid "正在刷新二维码…"
+msgstr "Refreshing QR code…"
+
+#: src/app/messages.rs
+msgid "系统音量 {}%"
+msgstr "Volume {}%"
+
+#: src/app/messages.rs
+msgid "系统音量调整失败"
+msgstr "Volume change failed"
+
+#: src/app/navigation.rs
+msgid "设置保存失败"
+msgstr "Settings not saved"
+
+#: src/app/navigation.rs
+msgid "长按返回首页"
+msgstr "Hold to go home"
+
+#: src/app/navigation.rs
+msgid "正在生成二维码…"
+msgstr "Making QR code…"
+
+#: src/app/playback/live.rs
+msgid "直播已断开，{} 秒后重试"
+msgstr "Live disconnected, retry in {} s"
+
+#: src/app/playback/live.rs
+msgid "直播已断开，正在重连…"
+msgstr "Live disconnected, reconnecting…"
+
+#: src/app/playback/live.rs
+msgid "正在重新连接直播…"
+msgstr "Reconnecting to live…"
+
+#: src/app/playback/messages.rs
+msgid "直播流已断开"
+msgstr "Live stream disconnected"
+
+#: src/app/playback/messages.rs
+msgid "播放失败，按播放键重试"
+msgstr "Playback failed, Play to retry"
+
+#: src/app/playback/messages.rs
+msgid "直播已结束，按 ESC 返回"
+msgstr "Live ended, ESC to go back"
+
+#: src/app/playback/messages.rs
+msgid "播放结束，按 ESC 返回"
+msgstr "Finished, ESC to go back"
+
+#: src/app/playback/super_chat.rs
+msgid "当前暂无醒目留言"
+msgstr "No Super Chats yet"
+
+#: src/app/playback/super_chat.rs
+msgid "醒目留言加载中…"
+msgstr "Loading Super Chats…"
+
+#: src/app/playback/super_chat.rs
+msgid "醒目留言加载失败，请刷新直播间"
+msgstr "Super Chats failed, reload the room"
+
+#: src/app/playback/tick.rs
+msgid "直播画面长时间未更新"
+msgstr "Live video stalled"
+
+#: src/app/playback/tick.rs
+msgid "播放超时，按播放键重试"
+msgstr "Playback timed out, Play to retry"
+
+#: src/app/playback/tick.rs
+msgid "直播弹幕连接失败，正在重连…"
+msgstr "Danmaku lost, reconnecting…"
+
+#: src/app/playback/triple.rs
+msgid "长按一键三连"
+msgstr "Hold to triple"
+
+#: src/app/state.rs
+msgid "作者  Jad\n\n项目地址\ngithub.com/journey-ad/M5CardputerZero-CardBili\n\n字体\nFusion Pixel Font\ngithub.com/TakWolf/fusion-pixel-font\n\nMona Font\ngithub.com/MonadABXY/mona-font\n\n接口参考\nPiliPlus\ngithub.com/bggRGjQaUbCoE/PiliPlus\n\n图标\nPixelarticons\ngithub.com/halfmage/pixelarticons\n\n"
+msgstr "Author  Jad\n\nProject\ngithub.com/journey-ad/M5CardputerZero-CardBili\n\nFonts\nFusion Pixel Font\ngithub.com/TakWolf/fusion-pixel-font\n\nMona Font\ngithub.com/MonadABXY/mona-font\n\nAPI reference\nPiliPlus\ngithub.com/bggRGjQaUbCoE/PiliPlus\n\nIcons\nPixelarticons\ngithub.com/halfmage/pixelarticons\n\n"
+
+#: src/app/state.rs
+msgid "正在加载直播…"
+msgstr "Loading live…"
+
+#: src/app.rs
+msgid "未找到 FFmpeg"
+msgstr "FFmpeg not found"
+
+#: src/app.rs
+msgid "播放需要 FFmpeg，是否通过 winget 自动安装？"
+msgstr "Playback needs FFmpeg. Install it with winget?"
+
+#: src/app.rs
+msgid "安装"
+msgstr "Install"
+
+#: src/app.rs
+msgid "播放需要 FFmpeg，请先执行 brew install ffmpeg"
+msgstr "Playback needs FFmpeg: run brew install ffmpeg"
+
+#: src/app.rs
+msgid "知道了"
+msgstr "OK"
+
+#: src/app.rs
+msgid "播放需要 FFmpeg，请先通过系统包管理器安装"
+msgstr "Playback needs FFmpeg: install it with your package manager"
+
+#: src/cache.rs
+msgid "缓存未命中"
+msgstr "Not in cache"
+
+#: src/cache.rs
+msgid "数据解析失败（{}）：{}"
+msgstr "Bad data ({}): {}"
+
+#: src/cdn.rs
+msgid "基础地址"
+msgstr "Base URL"
+
+#: src/cdn.rs
+msgid "备用地址（默认）"
+msgstr "Backup URL (default)"
+
+#: src/cdn.rs
+msgid "阿里云 ali"
+msgstr "Alibaba Cloud ali"
+
+#: src/cdn.rs
+msgid "阿里云 alib"
+msgstr "Alibaba Cloud alib"
+
+#: src/cdn.rs
+msgid "阿里云 alio1"
+msgstr "Alibaba Cloud alio1"
+
+#: src/cdn.rs
+msgid "腾讯云 cos"
+msgstr "Tencent Cloud cos"
+
+#: src/cdn.rs
+msgid "腾讯云 cosb"
+msgstr "Tencent Cloud cosb"
+
+#: src/cdn.rs
+msgid "腾讯云 coso1"
+msgstr "Tencent Cloud coso1"
+
+#: src/cdn.rs
+msgid "华为云 hw"
+msgstr "Huawei Cloud hw"
+
+#: src/cdn.rs
+msgid "华为云 hwb"
+msgstr "Huawei Cloud hwb"
+
+#: src/cdn.rs
+msgid "华为云 hwo1"
+msgstr "Huawei Cloud hwo1"
+
+#: src/cdn.rs
+msgid "华为云 08c"
+msgstr "Huawei Cloud 08c"
+
+#: src/cdn.rs
+msgid "华为云 08h"
+msgstr "Huawei Cloud 08h"
+
+#: src/cdn.rs
+msgid "华为云 08ct"
+msgstr "Huawei Cloud 08ct"
+
+#: src/cdn.rs
+msgid "华为云 tf_hw"
+msgstr "Huawei Cloud tf_hw"
+
+#: src/cdn.rs
+msgid "腾讯云 tf_tx"
+msgstr "Tencent Cloud tf_tx"
+
+#: src/cdn.rs
+msgid "Akamai 海外"
+msgstr "Akamai overseas"
+
+#: src/cdn.rs
+msgid "阿里云海外 aliov"
+msgstr "Alibaba overseas aliov"
+
+#: src/cdn.rs
+msgid "腾讯云海外 cosov"
+msgstr "Tencent overseas cosov"
+
+#: src/cdn.rs
+msgid "华为云海外 hwov"
+msgstr "Huawei overseas hwov"
+
+#: src/cdn.rs
+msgid "哔哩哔哩香港"
+msgstr "Bilibili Hong Kong"
+
+#: src/cdn.rs
+msgid "无可用播放地址"
+msgstr "No stream URL available"
+
+#: src/cdn.rs
+msgid "该视频暂无 Akamai 线路"
+msgstr "No Akamai route for this video"
+
+#: src/cdn.rs
+msgid "该视频暂无可替换的 CDN 地址"
+msgstr "No other CDN for this video"
+
+#: src/cdn.rs
+msgid "不可用 · HTTP {}"
+msgstr "Unavailable · HTTP {}"
+
+#: src/cdn.rs
+msgid "测速超时"
+msgstr "Test timed out"
+
+#: src/cdn.rs
+msgid "域名解析失败"
+msgstr "DNS lookup failed"
+
+#: src/cdn.rs
+msgid "不支持分段测速"
+msgstr "Range test not supported"
+
+#: src/cdn.rs
+msgid "测速失败"
+msgstr "Test failed"
+
+#: src/cdn.rs
+msgid "未收到视频数据"
+msgstr "No video data received"
+
+#: src/cdn.rs
+msgid "{} MB/s · 首字节 {}ms"
+msgstr "{} MB/s · first byte {}ms"
+
+#: src/live_danmaku.rs
+msgid "弹幕服务器域名解析失败"
+msgstr "Danmaku server DNS failed"
+
+#: src/live_danmaku.rs
+msgid "弹幕连接地址无效"
+msgstr "Bad danmaku server address"
+
+#: src/live_danmaku.rs
+msgid "连接弹幕服务器失败"
+msgstr "Couldn't reach danmaku server"
+
+#: src/live_danmaku.rs
+msgid "弹幕连接类型无效"
+msgstr "Bad danmaku connection type"
+
+#: src/live_danmaku.rs
+msgid "发送弹幕认证失败"
+msgstr "Danmaku auth send failed"
+
+#: src/live_danmaku.rs
+msgid "弹幕服务器响应超时"
+msgstr "Danmaku server timed out"
+
+#: src/live_danmaku.rs
+msgid "发送弹幕心跳失败"
+msgstr "Danmaku heartbeat failed"
+
+#: src/live_danmaku.rs
+msgid "弹幕认证响应无效"
+msgstr "Bad danmaku auth reply"
+
+#: src/live_danmaku.rs
+msgid "弹幕认证失败"
+msgstr "Danmaku auth failed"
+
+#: src/live_danmaku.rs
+msgid "弹幕服务器已断开"
+msgstr "Danmaku server disconnected"
+
+#: src/live_danmaku.rs
+msgid "弹幕连接已断开"
+msgstr "Danmaku disconnected"
+
+#: src/live_danmaku.rs
+msgid "弹幕数据超出容量限制"
+msgstr "Danmaku data too large"
+
+#: src/live_danmaku.rs
+msgid "弹幕包头不完整"
+msgstr "Danmaku header incomplete"
+
+#: src/live_danmaku.rs
+msgid "弹幕包长度无效"
+msgstr "Bad danmaku packet length"
+
+#: src/live_danmaku.rs
+msgid "弹幕解压失败"
+msgstr "Danmaku decompress failed"
+
+#: src/live_danmaku.rs
+msgid "弹幕解压数据超出容量限制"
+msgstr "Danmaku data too large"
+
+#: src/menu.rs
+msgid "选集"
+msgstr "Parts"
+
+#: src/menu.rs
+msgid "选择"
+msgstr "Select"
+
+#: src/menu.rs
+msgid "测速"
+msgstr "Test"
+
+#: src/menu.rs
+msgid "刷新"
+msgstr "Refresh"
+
+#: src/menu.rs
+msgid "登录"
+msgstr "Login"
+
+#: src/menu.rs
+msgid "说明"
+msgstr "Help"
+
+#: src/menu.rs
+msgid "返回"
+msgstr "Back"
+
+#: src/menu.rs
+msgid "作品"
+msgstr "Videos"
+
+#: src/menu.rs
+msgid "打开"
+msgstr "Open"
+
+#: src/menu.rs
+msgid "作者"
+msgstr "Author"
+
+#: src/menu.rs
+msgid "相关"
+msgstr "Related"
+
+#: src/menu.rs
+msgid "播放"
+msgstr "Play"
+
+#: src/menu.rs
+msgid "详情"
+msgstr "Info"
+
+#: src/menu.rs
+msgid "重试"
+msgstr "Retry"
+
+#: src/menu.rs
+msgid "倍速"
+msgstr "Speed"
+
+#: src/menu.rs
+msgid "弹幕"
+msgstr "DM"
+
+#: src/menu.rs
+msgid "分区"
+msgstr "Areas"
+
+#: src/model.rs
+msgid "今天 {}"
+msgstr "Today {}"
+
+#: src/model.rs
+msgid "昨天 {}"
+msgstr "Yesterday {}"
+
+#: src/model.rs
+msgid "今天"
+msgstr "Today"
+
+#: src/model.rs
+msgid "昨天"
+msgstr "Yesterday"
+
+#: src/net/session/device.rs
+msgid "设备信息获取失败"
+msgstr "Couldn't get device info"
+
+#: src/net/session/device.rs
+msgid "设备信息不完整"
+msgstr "Device info incomplete"
+
+#: src/net/session/device.rs
+msgid "设备信息生成失败\n{}"
+msgstr "Device info failed\n{}"
+
+#: src/net/session/storage.rs
+msgid "主密钥文件长度异常"
+msgstr "Master key file has a bad length"
+
+#: src/net.rs
+msgid "网络请求失败\n{}"
+msgstr "Network request failed\n{}"
+
+#: src/net.rs
+msgid "数据解析失败\n{}"
+msgstr "Bad data\n{}"
+
+#: src/net.rs
+msgid "登录状态解析失败\n{}"
+msgstr "Bad login state\n{}"
+
+#: src/player/audio_desktop.rs
+msgid "没有可用的音频输出设备"
+msgstr "No audio output device"
+
+#: src/player/audio_desktop.rs
+msgid "没有 44100Hz 双声道输出配置"
+msgstr "No 44100 Hz stereo output"
+
+#: src/player/volume.rs
+msgid "系统音量读取失败"
+msgstr "Couldn't read volume"
+
+#: src/player.rs
+msgid "音频"
+msgstr "Audio"
+
+#: src/player.rs
+msgid "音视频"
+msgstr "Audio/video"
+
+#: src/player.rs
+msgid "音频输出启动失败，请检查音频服务"
+msgstr "Audio output failed, check the audio service"
+
+#: src/player.rs
+msgid "解码器启动失败，请检查 FFmpeg"
+msgstr "Decoder failed, check FFmpeg"
+
+#: src/player.rs
+msgid "播放器尚未就绪"
+msgstr "Player not ready"
+
+#: src/player.rs
+msgid "倍速切换失败\n{}"
+msgstr "Speed change failed\n{}"
+
+#: src/super_chat.rs
+msgid "【¥{}】{}的醒目留言：{}"
+msgstr "[¥{}] Super Chat from {}: {}"
+
+#: src/tasks.rs
+msgid "未知视频列表"
+msgstr "Unknown video list"
+
+#: src/tasks.rs
+msgid "未登录，请先登录"
+msgstr "Not logged in, please log in"
+
+#: src/tasks.rs
+msgid "二维码已过期，请刷新"
+msgstr "QR code expired, refresh it"
+
+#: src/tasks.rs
+msgid "已扫码，请在手机上确认"
+msgstr "Scanned, confirm on your phone"
+
+#: ui/components/feedback/confirm.slint
+msgid "取消"
+msgstr "Cancel"
+
+#: ui/components/feedback/empty.slint
+msgid "按 R 刷新"
+msgstr "R to refresh"
+
+#: ui/components/feedback/help.slint
+msgid "按键说明"
+msgstr "Keys"
+
+#: ui/components/feedback/help.slint
+msgid "方向键  选择 / 滚动"
+msgstr "Arrows  Select / scroll"
+
+#: ui/components/feedback/help.slint
+msgid "Tab  切换页签"
+msgstr "Tab  Switch tab"
+
+#: ui/components/feedback/help.slint
+msgid "V  视图   B  布局"
+msgstr "V  View   B  Layout"
+
+#: ui/components/feedback/help.slint
+msgid "回车  播放"
+msgstr "Enter  Play"
+
+#: ui/components/feedback/help.slint
+msgid "空格  视频详情"
+msgstr "Space  Video info"
+
+#: ui/components/feedback/help.slint
+msgid "ESC  返回（长按退出）"
+msgstr "ESC  Back (hold to quit)"
+
+#: ui/components/feedback/help.slint
+msgid "底部菜单对应屏幕下方的实体按键"
+msgstr "The bottom menu matches the keys below the screen"
+
+#: ui/components/panels/cdn.slint
+msgid "CDN 设置"
+msgstr "CDN"
+
+#: ui/components/panels/cdn.slint
+msgid "测速中 · "
+msgstr "Testing · "
+
+#: ui/components/panels/cdn.slint
+msgid "已选"
+msgstr "Selected"
+
+#: ui/components/panels/mine.slint
+msgid "历史观看"
+msgstr "History"
+
+#: ui/components/panels/mine.slint
+msgid "我的收藏"
+msgstr "Favorites"
+
+#: ui/components/panels/mine.slint
+msgid "正在获取账号信息…"
+msgstr "Getting account info…"
+
+#: ui/components/panels/mine.slint
+msgid "未登录"
+msgstr "Not logged in"
+
+#: ui/components/panels/mine.slint
+msgid "请稍候"
+msgstr "Please wait"
+
+#: ui/components/panels/mine.slint
+msgid "按 登录 键扫码登录"
+msgstr "Press Login to scan in"
+
+#: ui/components/panels/sections.slint
+msgid "选集与章节"
+msgstr "Parts & chapters"
+
+#: ui/components/panels/sections.slint
+msgid "章节加载中…"
+msgstr "Loading chapters…"
+
+#: ui/components/panels/sections.slint
+msgid "章节加载失败，按 R 重试"
+msgstr "Chapters failed, R to retry"
+
+#: ui/components/panels/sections.slint
+msgid "暂无分 P 或章节"
+msgstr "No parts or chapters"
+
+#: ui/components/panels/settings.slint
+msgid "首页布局"
+msgstr "Home layout"
+
+#: ui/components/panels/settings.slint
+msgid "顶部"
+msgstr "Top"
+
+#: ui/components/panels/settings.slint
+msgid "左侧"
+msgstr "Left"
+
+#: ui/components/panels/settings.slint
+msgid "右侧"
+msgstr "Right"
+
+#: ui/components/panels/settings.slint
+msgid "视频列表风格"
+msgstr "Video list"
+
+#: ui/components/panels/settings.slint
+msgid "列表"
+msgstr "List"
+
+#: ui/components/panels/settings.slint
+msgid "3列"
+msgstr "3 col"
+
+#: ui/components/panels/settings.slint
+msgid "2列"
+msgstr "2 col"
+
+#: ui/components/panels/settings.slint
+msgid "弹幕默认开关"
+msgstr "Danmaku on by default"
+
+#: ui/components/panels/settings.slint
+msgid "弹幕不透明度"
+msgstr "Danmaku opacity"
+
+#: ui/components/panels/settings.slint
+msgid "Emoji样式"
+msgstr "Emoji style"
+
+#: ui/components/panels/settings.slint
+msgid "记录播放历史"
+msgstr "Save watch history"
+
+#: ui/components/panels/settings.slint
+msgid "缓存占用"
+msgstr "Cache"
+
+#: ui/components/panels/settings.slint
+msgid "关于"
+msgstr "About"
+
+#: ui/components/panels/settings.slint
+msgid "调试日志"
+msgstr "Debug log"
+
+#: ui/components/panels/settings.slint
+msgid "像素优化"
+msgstr "Pixel mode"
+
+#: ui/components/panels/settings.slint
+msgid "采样算法"
+msgstr "Scaling"
+
+#: ui/components/panels/settings.slint
+msgid "随像素优化"
+msgstr "Pixel mode"
+
+#: ui/components/panels/settings.slint
+msgid "外观设置"
+msgstr "Appearance"
+
+#: ui/components/panels/settings.slint
+msgid "常规设置"
+msgstr "General"
+
+#: ui/components/panels/settings.slint
+msgid "进阶设置"
+msgstr "Advanced"
+
+#: ui/components/player/controls.slint
+msgid "弹"
+msgstr "DM"
+
+#: ui/components/player/triple.slint
+msgid "提交中…"
+msgstr "Sending…"
+
+#: ui/components/video/comments.slint
+msgid "评论加载中…"
+msgstr "Loading comments…"
+
+#: ui/components/video/comments.slint
+msgid "评论加载失败，按 R 重试"
+msgstr "Comments failed, R to retry"
+
+#: ui/components/video/comments.slint
+msgid "暂无评论"
+msgstr "No comments"
+
+#: ui/components/video/comments.slint
+msgid "全部评论已加载完毕"
+msgstr "That's all the comments"
+
+#: ui/components/video/list.slint
+msgid "添加于 "
+msgstr "Added "
+
+#: ui/pages/about.slint
+msgid "开源组件"
+msgstr "Open source"
+
+#: ui/pages/about.slint
+msgid "原创代码"
+msgstr "Original code"
+
+#: ui/pages/about.slint
+msgid "设备构建"
+msgstr "Device build"
+
+#: ui/pages/collection.slint
+msgid "暂无作品"
+msgstr "No videos"
+
+#: ui/pages/detail.slint
+msgid "视频详情"
+msgstr "Video info"
+
+#: ui/pages/detail.slint
+msgid "简介"
+msgstr "About"
+
+#: ui/pages/favorites.slint
+msgid "暂无收藏夹"
+msgstr "No favorites folders"
+
+#: ui/pages/following.slint
+msgid "暂无关注"
+msgstr "Not following anyone"
+
+#: ui/pages/login.slint
+msgid "扫码登录 Bilibili"
+msgstr "Log in to Bilibili"
+
+#: ui/state.slint
+msgid "统计中…"
+msgstr "Counting…"
+
+#: ui/state.slint
+msgid "热门"
+msgstr "Popular"
+
+#: ui/state.slint
+msgid "直播"
+msgstr "Live"
+
+#: ui/state.slint
+msgid "我的"
+msgstr "Me"
+
+#: ui/state.slint
+msgid "设置"
+msgstr "Settings"

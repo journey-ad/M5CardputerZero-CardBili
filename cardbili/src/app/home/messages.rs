@@ -106,11 +106,11 @@ impl App {
         if self.page == Page::Home && list_source(self.tab, self.mine_detail) == Some(source) {
             self.sel = selection;
             self.status = if len == 0 {
-                if source == crate::HomeTab::Live.index() { "暂无直播".into() } else { "暂无内容".into() }
+                if source == crate::HomeTab::Live.index() { crate::i18n::tr("暂无直播").into() } else { crate::i18n::tr("暂无内容").into() }
             } else if source == crate::HomeTab::Live.index() {
-                format!("{} 个直播间", len)
+                crate::i18n::trf("{} 个直播间", &[&len])
             } else {
-                format!("{} 条", len)
+                crate::i18n::trf("{} 条", &[&len])
             };
             self.status_detail.clear();
             if let Ok(v) = std::env::var("BILI_SEL") {
@@ -155,9 +155,9 @@ impl App {
         tasks::spawn_covers(source, added, self.tx.clone());
         if source == self.tab.index() && self.page == Page::Home {
             self.status = if source == crate::HomeTab::Live.index() {
-                format!("{} 个直播间", self.lists[source].len())
+                crate::i18n::trf("{} 个直播间", &[&self.lists[source].len()])
             } else {
-                format!("{} 条", self.lists[source].len())
+                crate::i18n::trf("{} 条", &[&self.lists[source].len()])
             };
             self.status_detail.clear();
         }
@@ -178,7 +178,7 @@ impl App {
                 self.status = friendly;
                 // 仅有技术细节时视为接口失败，未登录等提示只显示空状态
                 if !tech.is_empty() {
-                    g_status.set_bar("加载失败".into());
+                    g_status.set_bar(crate::i18n::tr("加载失败").into());
                     g_status.set_bar_sticky(false);
                 }
                 self.status_detail = tech;

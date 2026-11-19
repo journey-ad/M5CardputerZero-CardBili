@@ -25,10 +25,10 @@ pub fn fetch_mixin() -> Result<String, String> {
     let wi = &v["data"]["wbi_img"];
     let img = wi["img_url"]
         .as_str()
-        .ok_or("签名信息不完整\n缺少 img_url")?;
+        .ok_or(crate::i18n::tr("签名信息不完整\n缺少 img_url"))?;
     let sub = wi["sub_url"]
         .as_str()
-        .ok_or("签名信息不完整\n缺少 sub_url")?;
+        .ok_or(crate::i18n::tr("签名信息不完整\n缺少 sub_url"))?;
     Ok(mixin_key(img, sub))
 }
 

@@ -26,9 +26,9 @@ impl LiveState {
         let mut tops = Vec::with_capacity(len);
         let mut top = 0.0;
         for (start, end, title) in [
-            (0, following, "我的关注"),
-            (following, popular, "热门直播"),
-            (popular, len, "全部直播"),
+            (0, following, crate::i18n::tr("我的关注")),
+            (following, popular, crate::i18n::tr("热门直播")),
+            (popular, len, crate::i18n::tr("全部直播")),
         ] {
             if start == end {
                 continue;
@@ -161,7 +161,7 @@ impl App {
                 crate::diagnostics::write(format_args!("[直播分区] {error}"));
                 self.ui
                     .global::<crate::LiveAreas>()
-                    .set_error("分区加载失败，按刷新重试".into());
+                    .set_error(crate::i18n::tr("分区加载失败，按刷新重试").into());
             }
         }
     }
@@ -176,8 +176,8 @@ impl App {
                 .find(|area| area.parent_id == parent && area.id == 0)
         });
         panel.set_title(title.map_or_else(
-            || "选择直播分区".into(),
-            |area| format!("选择分区 · {}", area.name).into(),
+            || crate::i18n::tr("选择直播分区").into(),
+            |area| crate::i18n::trf("选择分区 · {}", &[&area.name]).into(),
         ));
         panel.set_selected(
             options
@@ -193,7 +193,7 @@ impl App {
                 .iter()
                 .map(|area| {
                     if self.live_list.parent.is_some() && area.id == 0 {
-                        "全部".into()
+                        crate::i18n::tr("全部").into()
                     } else {
                         area.name.as_str().into()
                     }
@@ -273,7 +273,7 @@ impl App {
         self.grid_scroll = 0.0;
         self.home_dirty = true;
         self.loading = true;
-        self.status = "加载中…".into();
+        self.status = crate::i18n::tr("加载中…").into();
         self.status_detail.clear();
         self.load_home_list(source, false);
     }

@@ -151,7 +151,7 @@ fn request(
                 "[请求] {method} {endpoint} 失败 耗时={}ms: {message}",
                 started.elapsed().as_millis()
             ));
-            Err(format!("网络请求失败\n{message}"))
+            Err(crate::i18n::trf("网络请求失败\n{}", &[&message]))
         }
     }
 }
@@ -195,7 +195,7 @@ pub fn post_form_json_timeout(
         timeout,
     )?;
     parse_json(url, &String::from_utf8_lossy(&body))
-        .map_err(|error| format!("数据解析失败\n{error}"))
+        .map_err(|error| crate::i18n::trf("数据解析失败\n{}", &[&error]))
 }
 
 pub fn get(url: &str, cookies: Option<&str>) -> Result<String, String> {
@@ -226,7 +226,7 @@ pub fn post_query_with_agent(
         25,
     )?;
     parse_json(&url, &String::from_utf8_lossy(&body))
-        .map_err(|error| format!("登录状态解析失败\n{error}"))
+        .map_err(|error| crate::i18n::trf("登录状态解析失败\n{}", &[&error]))
 }
 
 pub fn post_json_with_agent(
@@ -244,12 +244,12 @@ pub fn post_json_with_agent(
         25,
     )?;
     parse_json(url, &String::from_utf8_lossy(&body))
-        .map_err(|error| format!("数据解析失败\n{error}"))
+        .map_err(|error| crate::i18n::trf("数据解析失败\n{}", &[&error]))
 }
 
 pub fn get_json(url: &str, cookies: Option<&str>) -> Result<serde_json::Value, String> {
     let text = get(url, cookies)?;
-    parse_json(url, &text).map_err(|error| format!("数据解析失败\n{error}"))
+    parse_json(url, &text).map_err(|error| crate::i18n::trf("数据解析失败\n{}", &[&error]))
 }
 
 pub fn parse_json(url: &str, body: &str) -> Result<serde_json::Value, serde_json::Error> {

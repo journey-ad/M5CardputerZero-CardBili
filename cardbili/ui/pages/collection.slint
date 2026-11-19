@@ -1,5 +1,5 @@
 import { Text } from "../components/base/text.slint";
-import { Collection, Layout } from "../state.slint";
+import { Collection, Layout, I18n } from "../state.slint";
 import { VideoList } from "../components/video/view.slint";
 import { Icon, Icons } from "../components/base/icons.slint";
 
@@ -45,7 +45,7 @@ export component CollectionPage inherits Rectangle {
     }
     if videos.empty: Text {
         x: 8px; y: header.height; width: parent.width - 16px; height: videos.height;
-        text: Collection.loading ? "加载中…" : (Collection.error != "" ? Collection.error : (Collection.is-author ? "暂无作品" : Collection.empty));
+        text: Collection.loading ? I18n.tr("加载中…") : (Collection.error != "" ? Collection.error : (Collection.is-author ? I18n.tr("暂无作品") : Collection.empty));
         color: #9aa6ba; font-size: 12px; wrap: word-wrap;
         horizontal-alignment: center; vertical-alignment: center;
     }

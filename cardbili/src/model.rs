@@ -151,6 +151,26 @@ pub fn dur_of(v: &serde_json::Value) -> f64 {
 }
 
 pub fn fmt_num(n: i64) -> String {
+    // 英文使用 K / M / B，阈值与中文一致：一万以下显示完整数字
+    if crate::i18n::current() == crate::i18n::Language::En {
+        // 三位整数时不再带小数：12.3K、469K、120M
+        let short = |value: f64, unit: &str| {
+            if value >= 100.0 {
+                format!("{value:.0}{unit}")
+            } else {
+                format!("{value:.1}{unit}")
+            }
+        };
+        return if n >= 1_000_000_000 {
+            short(n as f64 / 1e9, "B")
+        } else if n >= 1_000_000 {
+            short(n as f64 / 1e6, "M")
+        } else if n >= 10_000 {
+            short(n as f64 / 1e3, "K")
+        } else {
+            n.to_string()
+        };
+    }
     if n >= 100_000_000 {
         format!("{:.1}亿", n as f64 / 1e8)
     } else if n >= 10_000 {
@@ -159,6 +179,26 @@ pub fn fmt_num(n: i64) -> String {
         n.to_string()
     }
 }
+
+/// 接口直接返回的计数文本（如 "46.9万"）按当前语言重新格式化；无法识别时原样返回
+pub fn localize_count(text: &str) -> String {
+    if crate::i18n::current() == crate::i18n::Language::Zh {
+        return text.to_string();
+    }
+    let (number, scale) = if let Some(n) = text.strip_suffix('亿') {
+        (n, 1e8)
+    } else if let Some(n) = text.strip_suffix('万') {
+        (n, 1e4)
+    } else {
+        return text.to_string();
+    };
+    match number.trim().parse::<f64>() {
+        Ok(value) => fmt_num((value * scale).round() as i64),
+        Err(_) => text.to_string(),
+    }
+}
+
+const MONTHS_EN: [&str; 12] = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 pub fn watch_time(ts: i64) -> String {
     if ts <= 0 {
@@ -175,8 +215,8 @@ pub fn watch_time(ts: i64) -> String {
     let mm = (sod % 3600) / 60;
     let today = (now + 8 * 3600).div_euclid(86400);
     match today - day {
-        0 => format!("今天 {:02}:{:02}", hh, mm),
-        1 => format!("昨天 {:02}:{:02}", hh, mm),
+        0 => crate::i18n::trf("今天 {}", &[&format!("{:02}:{:02}", hh, mm)]),
+        1 => crate::i18n::trf("昨天 {}", &[&format!("{:02}:{:02}", hh, mm)]),
         _ => {
             let (_, month, date) = civil_from_days(day);
             format!("{:02}-{:02} {:02}:{:02}", month, date, hh, mm)
@@ -203,11 +243,15 @@ pub fn history_day_label(ts: i64) -> String {
         .unwrap_or(0);
     let today = (now + 8 * 3600).div_euclid(86400);
     match today - day {
-        0 => "今天".into(),
-        1 => "昨天".into(),
+        0 => crate::i18n::tr("今天").into(),
+        1 => crate::i18n::tr("昨天").into(),
         _ => {
             let (year, month, date) = civil_from_days(day);
-            format!("{}年{}月{}日", year, month, date)
+            if crate::i18n::current() == crate::i18n::Language::En {
+                format!("{} {}, {}", MONTHS_EN[(month as usize).clamp(1, 12) - 1], date, year)
+            } else {
+                format!("{}年{}月{}日", year, month, date)
+            }
         }
     }
 }
@@ -293,4 +337,22 @@ pub struct VideoPart {
 pub struct Chapter {
     pub title: String,
     pub start: f64,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn server_counts_follow_the_language() {
+        crate::i18n::set(crate::i18n::Language::En);
+        assert_eq!(localize_count("46.9万"), "469K");
+        assert_eq!(localize_count("1.2亿"), "120M");
+        assert_eq!(localize_count("998"), "998");
+        assert_eq!(localize_count("直播中"), "直播中");
+        assert_eq!(fmt_num(12_345), "12.3K");
+        crate::i18n::set(crate::i18n::Language::Zh);
+        assert_eq!(localize_count("46.9万"), "46.9万");
+        assert_eq!(fmt_num(12_345), "1.2万");
+    }
 }
