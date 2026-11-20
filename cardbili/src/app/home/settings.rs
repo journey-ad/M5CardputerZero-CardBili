@@ -59,6 +59,17 @@ impl App {
                 crate::app::set_language(&self.ui, language);
                 // 底栏文案按动作缓存，切换语言后需重新生成
                 self.menu_view = None;
+                self.home_dirty = true;
+                self.collection_dirty = true;
+                self.settings_changed = true;
+            }
+            SettingsItem::TitleTranslate if step != 0 => {
+                self.settings.translate_provider = if self.settings.translate_provider == 1 {
+                    0
+                } else {
+                    1
+                };
+                crate::title_i18n::set_provider(self.settings.translate_provider);
                 self.settings_changed = true;
             }
             SettingsItem::MenuPosition if step != 0 => {

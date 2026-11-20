@@ -206,6 +206,33 @@ pub fn get_bytes(url: &str) -> Result<Vec<u8>, String> {
     request(agent(), url, None, &DEFAULT_HEADERS, None, 25)
 }
 
+// 发送带 Authorization Bearer 的 JSON POST，返回响应文本
+pub fn post_json_bearer(url: &str, bearer: &str, body: &str) -> Result<String, String> {
+    let client = agent();
+    let request = ureq::http::Request::builder()
+        .method("POST")
+        .uri(url)
+        .header("User-Agent", UA)
+        .header("Authorization", format!("Bearer {bearer}"))
+        .header("Content-Type", "application/json")
+        .header("Accept", "application/json, text/plain, */*")
+        .body(())
+        .map_err(|error| error.to_string())?;
+    let request = client
+        .configure_request(request)
+        .timeout_global(Some(Duration::from_secs(20)))
+        .build();
+    let mut response = client
+        .run(request.map(|_| body))
+        .map_err(|error| error.to_string())?;
+    let bytes = response
+        .body_mut()
+        .with_config()
+        .read_to_vec()
+        .map_err(|error| error.to_string())?;
+    Ok(String::from_utf8_lossy(&bytes).into_owned())
+}
+
 pub fn get_with_agent(client: &ureq::Agent, url: &str, timeout: u32) -> Result<String, String> {
     request(client, url, None, &DEFAULT_HEADERS, None, timeout)
         .map(|bytes| String::from_utf8_lossy(&bytes).into_owned())

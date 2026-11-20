@@ -36,7 +36,7 @@ pub(in crate::app) fn visible_rows(video_height: f32, top: f32, row_height: f32)
 
 pub(in crate::app) fn video_row(item: &model::Item) -> VideoRow {
     VideoRow {
-        title: item.title.as_str().into(),
+        title: crate::title_i18n::display(&item.title).into(),
         author: item.meta.as_str().into(),
         duration: item.duration.as_str().into(),
         views: item.views.as_deref().unwrap_or_default().into(),

@@ -6,7 +6,7 @@ import { Text } from "../base/text.slint";
 
 export enum SettingsItem {
     list-style, danmaku, danmaku-opacity, menu-position, record-history,
-    debug-log, cdn, cache, about, emoji-style, pixel-optimize, scale-algorithm, language,
+    debug-log, cdn, cache, about, emoji-style, pixel-optimize, scale-algorithm, language, title-translate,
 }
 
 export enum SettingsKind { choice, toggle, action }
@@ -35,8 +35,8 @@ export global SettingsPage {
         { item: SettingsItem.emoji-style, label: I18n.tr("Emoji样式"), kind: SettingsKind.choice, value: "😀😆😎" },
     ];
     out property <[SettingsRow]> general-items: [
-        // 标签保持中英双语，切换到任一语言后都能找到这一项
-        { item: SettingsItem.language, label: "语言 Language", kind: SettingsKind.choice, value: I18n.lang == 0 ? "简体中文" : "English" },
+        { item: SettingsItem.language, label: "语言 / Language", kind: SettingsKind.choice, value: I18n.lang == 0 ? "简体中文" : "English" },
+        { item: SettingsItem.title-translate, label: I18n.tr("标题翻译"), kind: SettingsKind.choice, value: Preferences.translate-provider-name },
         { item: SettingsItem.record-history, label: I18n.tr("记录播放历史"), kind: SettingsKind.toggle, checked: Preferences.record-history },
         { item: SettingsItem.cache, label: I18n.tr("缓存占用"), kind: SettingsKind.action, value: Preferences.cache-size },
         { item: SettingsItem.about, label: I18n.tr("关于"), kind: SettingsKind.action, value: Meta.version },

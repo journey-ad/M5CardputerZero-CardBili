@@ -18,6 +18,8 @@ pub struct Settings {
     pub scale_algorithm: ScaleAlgorithm,
     /// 界面语言，默认简体中文
     pub language: crate::i18n::Language,
+    /// 标题自动翻译服务，0 Google 1 Bing
+    pub translate_provider: i32,
 }
 
 impl Default for Settings {
@@ -34,6 +36,7 @@ impl Default for Settings {
             pixel_optimize: false,
             scale_algorithm: ScaleAlgorithm::Area,
             language: crate::i18n::Language::Zh,
+            translate_provider: 0,
         }
     }
 }

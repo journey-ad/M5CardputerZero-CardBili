@@ -74,6 +74,7 @@ pub fn run(settings: Settings) {
         i18n.on_lookup(|text: slint::SharedString| crate::i18n::tr(text.as_str()).into());
     }
     set_language(&ui, crate::i18n::current());
+    crate::title_i18n::set_provider(settings.translate_provider);
     ui.show().expect("show");
     connect_ui(&ui, tx.clone(), ktx);
     let mut app = App::new(ui, tx, settings);

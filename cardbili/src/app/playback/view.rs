@@ -52,13 +52,21 @@ impl App {
             g_player.set_reaction_busy(self.controls.busy);
             if let Some(p) = self.player.as_ref() {
                 let display = &mut self.playback_display;
-                if display.generation != Some(p.gen) {
+                let new_generation = display.generation != Some(p.gen);
+                if new_generation {
                     *display = PlaybackDisplay {
                         generation: Some(p.gen),
-                        title_width: util::est_w(&p.title, 10.0),
                         ..Default::default()
                     };
-                    g_player.set_ptitle(p.title.as_str().into());
+                }
+                let title = if self.live.is_some() {
+                    p.title.clone()
+                } else {
+                    crate::title_i18n::display_playback(&p.title)
+                };
+                if new_generation || g_player.get_ptitle() != title {
+                    display.title_width = util::est_w(&title, 10.0);
+                    g_player.set_ptitle(title.into());
                 }
                 g_player.set_paused(p.paused);
                 g_player.set_finished(p.finished);

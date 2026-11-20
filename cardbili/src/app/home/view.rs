@@ -274,7 +274,7 @@ impl App {
         // 列表标题跑马灯
         let title_width = items
             .get(selected)
-            .map(|item| util::est_w(&item.title, 12.0))
+            .map(|item| util::est_w(&crate::title_i18n::display(&item.title), 12.0))
             .unwrap_or(0.0);
         list_model
             .set_title_marquee(layout == VideoLayout::List && title_width > content_width - 16.0);

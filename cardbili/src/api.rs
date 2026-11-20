@@ -4,6 +4,7 @@ pub mod live;
 pub use live::room as live_room;
 pub mod playback;
 pub mod sections;
+pub mod translate;
 mod wbi;
 
 use crate::cache;

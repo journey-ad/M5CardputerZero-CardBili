@@ -11,6 +11,7 @@ mod diagnostics;
 mod fonts;
 mod i18n;
 mod emoji;
+mod title_i18n;
 mod menu;
 mod live_danmaku;
 mod super_chat;

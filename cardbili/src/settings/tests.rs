@@ -21,7 +21,7 @@ fn settings_round_trip_preserves_every_field() {
         "list_view": 0, "danmaku_enabled": false, "danmaku_opacity": 40,
         "menu_position": 2, "record_history": false, "debug_log": true,
         "color_emoji": false, "cdn": "ali", "pixel_optimize": true,
-        "scale_algorithm": 4, "language": "zh"
+        "scale_algorithm": 4, "language": "zh", "translate_provider": 0
     });
     let settings: Settings = serde_json::from_value(value.clone()).unwrap();
     assert_eq!(serde_json::to_value(settings).unwrap(), value);

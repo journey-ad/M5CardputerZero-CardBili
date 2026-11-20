@@ -86,6 +86,11 @@ impl App {
         preferences.set_color_emoji(self.settings.color_emoji);
         preferences.set_pixel_optimize(self.settings.pixel_optimize);
         preferences.set_scale_algorithm_name(self.settings.scale_algorithm.label().into());
+        preferences.set_translate_provider_name(if self.settings.translate_provider == 1 {
+            "Bing".into()
+        } else {
+            "Google".into()
+        });
         self.ui
             .global::<crate::Cdn>()
             .set_current(crate::cdn::index(&self.settings.cdn) as i32);
@@ -97,6 +102,16 @@ impl App {
             .set_about_scroll(self.about_scroll as f32);
         nav.set_help(self.help);
         nav.set_mine_detail(self.mine_detail >= 0);
+        if crate::title_i18n::take_dirty() {
+            self.home_dirty = true;
+            self.home_view = None;
+            self.collection_dirty = true;
+            if self.page == Page::Detail {
+                if let Some(display) = &self.detail_display {
+                    detail.set_title(crate::title_i18n::display(&display.data.title).into());
+                }
+            }
+        }
         self.sync_cache();
         self.sync_home();
         self.sync_account();

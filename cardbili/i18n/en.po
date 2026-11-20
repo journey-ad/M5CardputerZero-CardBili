@@ -1150,6 +1150,9 @@ msgstr "Me"
 msgid "设置"
 msgstr "Settings"
 
+msgid "标题翻译"
+msgstr "Title translation"
+
 msgid "登录信息保存失败，请重试"
 msgstr "Failed to save login info, please try again"
 
@@ -1161,3 +1164,18 @@ msgstr "Failed to compute size"
 
 msgid "缓存清理失败"
 msgstr "Failed to clear cache"
+
+msgid "翻译响应解析失败: {}"
+msgstr "Failed to parse translation response: {}"
+
+msgid "翻译服务无结果"
+msgstr "Translation service returned no result"
+
+msgid "翻译结果为空"
+msgstr "Translation result was empty"
+
+msgid "翻译结果数量不匹配"
+msgstr "Translation result count mismatch"
+
+msgid "翻译解析失败"
+msgstr "Failed to parse translation"

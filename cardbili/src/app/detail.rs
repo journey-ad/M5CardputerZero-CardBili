@@ -27,7 +27,7 @@ pub(in crate::app) fn show_detail(ui: &AppWindow, display: &DetailDisplay) {
     let detail = &display.data;
     g_detail.set_loading(false);
     g_detail.set_error("".into());
-    g_detail.set_title(detail.title.as_str().into());
+    g_detail.set_title(crate::title_i18n::display(&detail.title).into());
     g_detail.set_owner(
         if detail.owner.name.is_empty() {
             crate::i18n::tr("未知用户")
