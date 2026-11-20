@@ -1,6 +1,6 @@
 import { Text } from "../base/text.slint";
 // 选中项到达可视区边缘时滚动列表
-import { Nav, ListModel } from "../../state.slint";
+import { Nav, ListModel, I18n } from "../../state.slint";
 import { Icons } from "../base/icons.slint";
 import { HomeTab, Page } from "../../types.slint";
 import { StatItem } from "../base/stat.slint";
@@ -41,7 +41,7 @@ export component ListView inherits Rectangle {
             if row.views != "": StatItem { icon: root.live ? Icons.hot : Icons.play; value: row.views; }
             if row.likes != "": StatItem { icon: Icons.thumbs-up; value: row.likes; }
             if root.show-danmaku && row.danmaku != "": StatItem { icon: Icons.message-text; value: row.danmaku; }
-            if row.progress != "": StatItem { icon: Icons.play; show-icon: row.progress != "已看完"; value: row.progress; }
+            if row.progress != "": StatItem { icon: Icons.play; show-icon: row.progress != I18n.tr("已看完"); value: row.progress; }
             if row.watched != "": StatItem { icon: Icons.clock; value: row.watched; }
         }
         Text {
@@ -53,7 +53,7 @@ export component ListView inherits Rectangle {
         }
         if row.date != "": Text {
             x: 8px; y: 29px; width: parent.width - 16px; height: 12px;
-            text: "添加于 " + row.date; color: #8b95a7;
+            text: I18n.tr("添加于 ") + row.date; color: #8b95a7;
             font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
             vertical-alignment: center;
         }

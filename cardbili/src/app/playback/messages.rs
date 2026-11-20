@@ -29,7 +29,7 @@ impl App {
                 .as_ref()
                 .is_some_and(|p| p.gen == g && !p.finished)
         {
-            self.recover_live("直播流已断开");
+            self.recover_live(crate::i18n::tr("直播流已断开"));
             return;
         }
         if self.player.as_ref().is_some_and(|p| p.gen == g)
@@ -50,11 +50,11 @@ impl App {
                     self.frames_in_seg
                 ));
                 self.status = if self.frames_in_seg == 0 {
-                    "播放失败，按播放键重试"
+                    crate::i18n::tr("播放失败，按播放键重试")
                 } else if self.live.is_some() {
-                    "直播已结束，按 ESC 返回"
+                    crate::i18n::tr("直播已结束，按 ESC 返回")
                 } else {
-                    "播放结束，按 ESC 返回"
+                    crate::i18n::tr("播放结束，按 ESC 返回")
                 }
                 .into();
                 self.status_detail.clear();
@@ -112,7 +112,7 @@ impl App {
                 );
                 self.current_play = Some(info);
                 self.refresh_liked();
-                self.status = "加载中…".into();
+                self.status = crate::i18n::tr("加载中…").into();
                 self.status_detail.clear();
             }
             Err(error) => {
@@ -163,7 +163,7 @@ impl App {
                         self.cookies.clone(),
                     ));
                 }
-                self.status = "加载中…".into();
+                self.status = crate::i18n::tr("加载中…").into();
                 self.status_detail.clear();
                 self.live = Some(info);
             }

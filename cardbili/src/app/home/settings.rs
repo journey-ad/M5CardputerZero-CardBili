@@ -53,6 +53,17 @@ impl App {
                 self.settings_changed |= opacity != self.settings.danmaku_opacity;
                 self.settings.danmaku_opacity = opacity;
             }
+            SettingsItem::Language => {
+                let language = self.settings.language.cycle(if step == 0 { 1 } else { step });
+                self.settings.language = language;
+                crate::i18n::set(language);
+                self.ui
+                    .global::<crate::I18n>()
+                    .set_lang(if language == crate::i18n::Language::Zh { 0 } else { 1 });
+                // 底栏文案按动作缓存，切换语言后需重新生成
+                self.menu_view = None;
+                self.settings_changed = true;
+            }
             SettingsItem::MenuPosition if step != 0 => {
                 self.settings.menu_position = self.settings.menu_position.cycle(step);
                 self.settings_changed = true;
@@ -77,9 +88,9 @@ impl App {
                 if !preferences.get_cache_busy() {
                     self.confirm(
                         confirmation::Action::ClearCache,
-                        "清理缓存",
-                        "是否确认清理图片和接口缓存？\n登录状态和设置将会保留",
-                        "清理",
+                        crate::i18n::tr("清理缓存"),
+                        crate::i18n::tr("是否确认清理图片和接口缓存？\n登录状态和设置将会保留"),
+                        crate::i18n::tr("清理"),
                     );
                 }
             }
@@ -136,13 +147,13 @@ impl App {
                 self.settings.debug_log = enabled;
                 self.settings_changed = true;
                 if enabled {
-                    self.toast(&format!(
+                    self.toast(&crate::i18n::trf(
                         "日志目录 {}",
-                        crate::diagnostics::path().parent().unwrap().display()
+                        &[&crate::diagnostics::path().parent().unwrap().display()],
                     ));
                 }
             }
-            Err(error) => self.toast(&format!("调试日志设置失败：{error}")),
+            Err(error) => self.toast(&crate::i18n::trf("调试日志设置失败：{}", &[&error])),
         }
     }
 }

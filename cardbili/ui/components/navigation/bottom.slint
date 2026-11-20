@@ -1,5 +1,5 @@
 // 菜单中心与实体 4–8 键对应，侧栏外的槽位由 Rust 分配
-import { Menu } from "../../state.slint";
+import { Menu, I18n } from "../../state.slint";
 
 export component BottomBar inherits Rectangle {
     height: 20px;
@@ -9,7 +9,7 @@ export component BottomBar inherits Rectangle {
     for label[index] in Menu.labels: Text {
         x: root.centers[index] - root.x - 27px; y: 0px;
         width: 54px; height: 20px; text: label;
-        color: label == "返回" ? #ffcf6e : (label == "说明" ? #c9a0ff : #7fb0ff);
+        color: label == I18n.tr("返回") ? #ffcf6e : (label == I18n.tr("说明") ? #c9a0ff : #7fb0ff);
         font-size: 12px; horizontal-alignment: center; vertical-alignment: center;
     }
 }

@@ -195,7 +195,7 @@ impl Player {
             "pipe:1".to_string(),
         ]);
         if let Some(mut child) =
-            diagnostics::spawn("音频", &args, &self.cookies, Stdio::piped(), None)
+            diagnostics::spawn(crate::i18n::tr("音频"), &args, &self.cookies, Stdio::piped(), None)
         {
             if let Some(stdout) = child.stdout.take() {
                 audio_desktop::start(stdout, self.frames.clone());
@@ -213,8 +213,8 @@ impl Player {
             position: ss,
             rate: self.rate,
         }];
-        stop_child(&mut self.child, "音视频");
-        stop_child(&mut self.audio, "音频");
+        stop_child(&mut self.child, crate::i18n::tr("音视频"));
+        stop_child(&mut self.audio, crate::i18n::tr("音频"));
         self.frames.stop();
         self.frames = Arc::new(frames::Frames::new(self.live));
         self.frames.pause(self.paused);
@@ -228,7 +228,7 @@ impl Player {
                 diagnostics::write(format_args!("音频输出启动失败: {error}"));
                 let _ = self.tx.send(Msg::PlaybackFailed(
                     self.gen,
-                    "音频输出启动失败，请检查音频服务".into(),
+                    crate::i18n::tr("音频输出启动失败，请检查音频服务").into(),
                 ));
                 return;
             }
@@ -328,7 +328,7 @@ impl Player {
         }
 
         if let Some(mut ch) =
-            diagnostics::spawn("音视频", &args, &self.cookies, Stdio::piped(), audio_pipe)
+            diagnostics::spawn(crate::i18n::tr("音视频"), &args, &self.cookies, Stdio::piped(), audio_pipe)
         {
             let pid = ch.id();
             if let Some(mut so) = ch.stdout.take() {
@@ -371,10 +371,10 @@ impl Player {
             }
             self.child = Some(ch);
         } else {
-            stop_child(&mut self.audio, "音频");
+            stop_child(&mut self.audio, crate::i18n::tr("音频"));
             let _ = self.tx.send(Msg::PlaybackFailed(
                 self.gen,
-                "解码器启动失败，请检查 FFmpeg".into(),
+                crate::i18n::tr("解码器启动失败，请检查 FFmpeg").into(),
             ));
         }
     }
@@ -413,10 +413,10 @@ impl Player {
             .child
             .as_mut()
             .and_then(|child| child.stdin.as_mut())
-            .ok_or("播放器尚未就绪")?;
+            .ok_or(crate::i18n::tr("播放器尚未就绪"))?;
         input
             .write_all(command.as_bytes())
-            .map_err(|error| format!("倍速切换失败\n{error}"))?;
+            .map_err(|error| crate::i18n::trf("倍速切换失败\n{}", &[&error]))?;
         self.speeds.push(Speed {
             output,
             position,
@@ -484,7 +484,7 @@ impl Player {
     pub fn stop(&mut self) {
         diagnostics::write(format_args!("[播放] 停止 gen={}", self.gen));
         self.frames.stop();
-        stop_child(&mut self.child, "音视频");
-        stop_child(&mut self.audio, "音频");
+        stop_child(&mut self.child, crate::i18n::tr("音视频"));
+        stop_child(&mut self.audio, crate::i18n::tr("音频"));
     }
 }

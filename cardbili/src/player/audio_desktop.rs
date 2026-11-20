@@ -19,7 +19,7 @@ fn run(pcm: &mut impl Read) -> Result<(), Box<dyn std::error::Error>> {
     let host = cpal::default_host();
     let device = host
         .default_output_device()
-        .ok_or("没有可用的音频输出设备")?;
+        .ok_or(crate::i18n::tr("没有可用的音频输出设备"))?;
     let supported = device
         .supported_output_configs()?
         .find(|config| {
@@ -28,7 +28,7 @@ fn run(pcm: &mut impl Read) -> Result<(), Box<dyn std::error::Error>> {
                 && config.max_sample_rate().0 >= 44100
                 && config.sample_format() == cpal::SampleFormat::F32
         })
-        .ok_or("没有 44100Hz 双声道输出配置")?;
+        .ok_or(crate::i18n::tr("没有 44100Hz 双声道输出配置"))?;
     let config = supported
         .with_sample_rate(cpal::SampleRate(44100))
         .config();

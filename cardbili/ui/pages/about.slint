@@ -1,4 +1,4 @@
-import { Meta } from "../state.slint";
+import { Meta, I18n } from "../state.slint";
 
 // 关于页两列表格单元，名称与协议共用字体与颜色
 component AboutCell inherits Text {
@@ -30,7 +30,7 @@ export component AboutPage inherits Rectangle {
                 wrap: word-wrap; horizontal-alignment: center;
             }
             Text {
-                text: "开源组件"; color: #cfd8e6;
+                text: I18n.tr("开源组件"); color: #cfd8e6;
                 font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
                 horizontal-alignment: center;
             }
@@ -66,8 +66,8 @@ export component AboutPage inherits Rectangle {
                 spacing: 8px;
                 VerticalLayout {
                     spacing: 1px;
-                    AboutCell { label: "原创代码"; horizontal-alignment: right; }
-                    AboutCell { label: "设备构建"; horizontal-alignment: right; }
+                    AboutCell { label: I18n.tr("原创代码"); horizontal-alignment: right; }
+                    AboutCell { label: I18n.tr("设备构建"); horizontal-alignment: right; }
                 }
                 VerticalLayout {
                     spacing: 1px;

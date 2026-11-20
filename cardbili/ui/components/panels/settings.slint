@@ -1,12 +1,12 @@
 import { VideoLayout, MenuPosition } from "../../types.slint";
-import { Nav, Preferences, Meta } from "../../state.slint";
+import { Nav, Preferences, Meta, I18n } from "../../state.slint";
 import { Icon, Icons } from "../base/icons.slint";
 import { ToggleSwitch } from "../base/switch.slint";
 import { Text } from "../base/text.slint";
 
 export enum SettingsItem {
     list-style, danmaku, danmaku-opacity, menu-position, record-history,
-    debug-log, cdn, cache, about, emoji-style, pixel-optimize, scale-algorithm,
+    debug-log, cdn, cache, about, emoji-style, pixel-optimize, scale-algorithm, language,
 }
 
 export enum SettingsKind { choice, toggle, action }
@@ -23,29 +23,31 @@ export struct SettingsRow {
 export global SettingsPage {
     out property <[SettingsRow]> appearance-items: [
         {
-            item: SettingsItem.menu-position, label: "首页布局", kind: SettingsKind.choice,
-            value: Preferences.menu-position == MenuPosition.top ? "顶部" : (Preferences.menu-position == MenuPosition.left ? "左侧" : "右侧"),
+            item: SettingsItem.menu-position, label: I18n.tr("首页布局"), kind: SettingsKind.choice,
+            value: Preferences.menu-position == MenuPosition.top ? I18n.tr("顶部") : (Preferences.menu-position == MenuPosition.left ? I18n.tr("左侧") : I18n.tr("右侧")),
         },
         {
-            item: SettingsItem.list-style, label: "视频列表风格", kind: SettingsKind.choice,
-            value: Nav.view == VideoLayout.list ? "列表" : (Nav.view == VideoLayout.three-columns ? "3列" : "2列"),
+            item: SettingsItem.list-style, label: I18n.tr("视频列表风格"), kind: SettingsKind.choice,
+            value: Nav.view == VideoLayout.list ? I18n.tr("列表") : (Nav.view == VideoLayout.three-columns ? I18n.tr("3列") : I18n.tr("2列")),
         },
-        { item: SettingsItem.danmaku, label: "弹幕默认开关", kind: SettingsKind.toggle, checked: Preferences.danmaku-default },
-        { item: SettingsItem.danmaku-opacity, label: "弹幕不透明度", kind: SettingsKind.choice, value: Preferences.danmaku-opacity + "%" },
-        { item: SettingsItem.emoji-style, label: "Emoji样式", kind: SettingsKind.choice, value: "😀😆😎" },
+        { item: SettingsItem.danmaku, label: I18n.tr("弹幕默认开关"), kind: SettingsKind.toggle, checked: Preferences.danmaku-default },
+        { item: SettingsItem.danmaku-opacity, label: I18n.tr("弹幕不透明度"), kind: SettingsKind.choice, value: Preferences.danmaku-opacity + "%" },
+        { item: SettingsItem.emoji-style, label: I18n.tr("Emoji样式"), kind: SettingsKind.choice, value: "😀😆😎" },
     ];
     out property <[SettingsRow]> general-items: [
-        { item: SettingsItem.record-history, label: "记录播放历史", kind: SettingsKind.toggle, checked: Preferences.record-history },
-        { item: SettingsItem.cache, label: "缓存占用", kind: SettingsKind.action, value: Preferences.cache-size },
-        { item: SettingsItem.about, label: "关于", kind: SettingsKind.action, value: Meta.version },
+        // 标签保持中英双语，切换到任一语言后都能找到这一项
+        { item: SettingsItem.language, label: "语言 Language", kind: SettingsKind.choice, value: I18n.lang == 0 ? "简体中文" : "English" },
+        { item: SettingsItem.record-history, label: I18n.tr("记录播放历史"), kind: SettingsKind.toggle, checked: Preferences.record-history },
+        { item: SettingsItem.cache, label: I18n.tr("缓存占用"), kind: SettingsKind.action, value: Preferences.cache-size },
+        { item: SettingsItem.about, label: I18n.tr("关于"), kind: SettingsKind.action, value: Meta.version },
     ];
     out property <[SettingsRow]> advanced-items: [
-        { item: SettingsItem.debug-log, label: "调试日志", kind: SettingsKind.toggle, checked: Preferences.debug-log },
-        { item: SettingsItem.cdn, label: "CDN 设置", kind: SettingsKind.action, value: Preferences.cdn-name },
-        { item: SettingsItem.pixel-optimize, label: "像素优化", kind: SettingsKind.toggle, checked: Preferences.pixel-optimize },
+        { item: SettingsItem.debug-log, label: I18n.tr("调试日志"), kind: SettingsKind.toggle, checked: Preferences.debug-log },
+        { item: SettingsItem.cdn, label: I18n.tr("CDN 设置"), kind: SettingsKind.action, value: Preferences.cdn-name },
+        { item: SettingsItem.pixel-optimize, label: I18n.tr("像素优化"), kind: SettingsKind.toggle, checked: Preferences.pixel-optimize },
         {
-            item: SettingsItem.scale-algorithm, label: "采样算法", kind: SettingsKind.choice,
-            value: Preferences.pixel-optimize ? "随像素优化" : Preferences.scale-algorithm-name,
+            item: SettingsItem.scale-algorithm, label: I18n.tr("采样算法"), kind: SettingsKind.choice,
+            value: Preferences.pixel-optimize ? I18n.tr("随像素优化") : Preferences.scale-algorithm-name,
             disabled: Preferences.pixel-optimize,
         },
     ];
@@ -148,21 +150,21 @@ export component SettingsPanel inherits Rectangle {
 
     // 外观设置标题和选项
     appearance := SettingsGroup {
-        title: "外观设置";
+        title: I18n.tr("外观设置");
         rows: SettingsPage.appearance-items;
         first-index: 0;
         y: 4px - SettingsPage.first-line * 24px;
     }
     // 常规设置标题和选项
     general := SettingsGroup {
-        title: "常规设置";
+        title: I18n.tr("常规设置");
         rows: SettingsPage.general-items;
         first-index: appearance.rows.length;
         y: appearance.y + appearance.height;
     }
     // 进阶设置标题和选项
     SettingsGroup {
-        title: "进阶设置";
+        title: I18n.tr("进阶设置");
         rows: SettingsPage.advanced-items;
         first-index: general.first-index + general.rows.length;
         y: general.y + general.height;

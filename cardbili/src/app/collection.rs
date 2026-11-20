@@ -120,19 +120,19 @@ impl App {
         let model::VideoSource::Author(owner) = &self.collection.source else {
             g_collection.set_is_author(false);
             let title = match &self.collection.source {
-                model::VideoSource::Related(_) => "相关推荐".to_string(),
+                model::VideoSource::Related(_) => crate::i18n::tr("相关推荐").to_string(),
                 model::VideoSource::Favorites(folder) => {
-                    format!("{} · {} 条", folder.title, folder.count)
+                    crate::i18n::trf("{} · {} 条", &[&folder.title, &folder.count])
                 }
-                model::VideoSource::WatchLater => "稍后再看".to_string(),
+                model::VideoSource::WatchLater => crate::i18n::tr("稍后再看").to_string(),
                 model::VideoSource::Author(_) => unreachable!(),
             };
             g_collection.set_title(title.into());
             g_collection.set_empty(
                 match self.collection.source {
-                    model::VideoSource::Favorites(_) => "暂无收藏视频",
-                    model::VideoSource::WatchLater => "暂无稍后再看",
-                    _ => "暂无相关视频",
+                    model::VideoSource::Favorites(_) => crate::i18n::tr("暂无收藏视频"),
+                    model::VideoSource::WatchLater => crate::i18n::tr("暂无稍后再看"),
+                    _ => crate::i18n::tr("暂无相关视频"),
                 }
                 .into(),
             );
@@ -155,7 +155,7 @@ impl App {
         );
         g_collection.set_followers(
             profile
-                .map(|profile| format!("粉丝 {}", model::fmt_num(profile.followers)))
+                .map(|profile| crate::i18n::trf("粉丝 {}", &[&model::fmt_num(profile.followers)]))
                 .unwrap_or_default()
                 .into(),
         );

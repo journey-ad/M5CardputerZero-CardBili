@@ -61,6 +61,14 @@ macOS 首次运行如被 Gatekeeper 拦截，执行 `xattr -dr com.apple.quarant
 | Esc | 返回，视频列表中长按 2 秒退出 |
 | 屏幕下方 4–8 号键 | 执行对应的底栏操作 |
 
+### 界面语言 / Language
+
+「设置 → 常规设置 → 语言 Language」可切换简体中文与英文，即时生效并保存
+
+Settings → General → 语言 Language switches the interface between Simplified Chinese and English. It applies at once and is saved. Video titles, comments and danmaku come from Bilibili and stay as uploaded
+
+`CARDBILI_LANG=en`（或 `zh`）可临时覆盖设置
+
 ## 界面
 
 | 首页 | 热门 | 动态 |
@@ -115,6 +123,10 @@ python3 scripts/check-release.py --deb dist/cardbili_*_arm64.deb
 也可参考项目中的 [官方开发 skill](.agents/skills/cardputer-zero-application/SKILL.md)
 
 [音视频性能报告](docs/performance/2026-11-15-playback.md) 包含真机基准评测，复测脚本保存在 `scripts/benchmarks/`
+
+## 翻译
+
+源码中的中文原文即翻译键，英文译文位于 `cardbili/i18n/en.po`（gettext 格式）。Rust 侧使用 `i18n::tr` / `i18n::trf`，Slint 侧使用 `I18n.tr`。未翻译的条目回退为中文，新增文案不必同时修改译文；带参数的文案用 `{}` 占位，译文须保留相同数量的占位符（`cargo test` 会检查）
 
 ## 贡献
 

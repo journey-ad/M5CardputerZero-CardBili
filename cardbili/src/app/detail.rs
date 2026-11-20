@@ -30,7 +30,7 @@ pub(in crate::app) fn show_detail(ui: &AppWindow, display: &DetailDisplay) {
     g_detail.set_title(detail.title.as_str().into());
     g_detail.set_owner(
         if detail.owner.name.is_empty() {
-            "未知用户"
+            crate::i18n::tr("未知用户")
         } else {
             &detail.owner.name
         }
@@ -38,7 +38,7 @@ pub(in crate::app) fn show_detail(ui: &AppWindow, display: &DetailDisplay) {
     );
     g_detail.set_desc(
         if detail.desc.trim().is_empty() {
-            "（无简介）"
+            crate::i18n::tr("（无简介）")
         } else {
             detail.desc.trim()
         }
@@ -122,7 +122,7 @@ impl App {
         match k {
             "ENTER" | "SPACE" => {
                 if !self.detail_bvid.is_empty() {
-                    self.status = "正在加载视频…".into();
+                    self.status = crate::i18n::tr("正在加载视频…").into();
                     self.status_detail.clear();
                     self.requested_play = Some(self.detail_bvid.clone());
                 }

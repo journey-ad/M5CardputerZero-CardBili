@@ -6,9 +6,9 @@ impl App {
         self.tick_super_chat();
         if let Some(player) = self.player.as_ref().filter(|player| player.stalled()) {
             if self.live.is_some() {
-                self.recover_live("直播画面长时间未更新");
+                self.recover_live(crate::i18n::tr("直播画面长时间未更新"));
             } else {
-                self.playback_failed(player.gen, "播放超时，按播放键重试".into());
+                self.playback_failed(player.gen, crate::i18n::tr("播放超时，按播放键重试").into());
             }
         }
         self.tick_live_recovery();
@@ -33,7 +33,7 @@ impl App {
                         }
                     }
                     crate::live_danmaku::Event::Unavailable => {
-                        self.toast("直播弹幕连接失败，正在重连…")
+                        self.toast(crate::i18n::tr("直播弹幕连接失败，正在重连…"))
                     }
                 }
             }
@@ -56,7 +56,7 @@ impl App {
                         self.danmaku_view
                             .update(engine, pp.position(self.frames_in_seg));
                     }
-                    self.status = "加载中…".into();
+                    self.status = crate::i18n::tr("加载中…").into();
                     self.ui.global::<crate::Player>().set_has_frame(false);
                 }
             }

@@ -93,10 +93,9 @@ impl App {
                 self.home_dirty = false;
                 self.home_view = None;
                 list_model.set_history_count(if self.loaded[3] {
-                    format!(
+                    crate::i18n::trf(
                         "{}{} 条",
-                        self.lists[3].len(),
-                        if self.has_more[3] { "+" } else { "" }
+                        &[&self.lists[3].len(), &if self.has_more[3] { "+" } else { "" }],
                     )
                     .into()
                 } else {

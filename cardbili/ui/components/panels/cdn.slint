@@ -1,4 +1,4 @@
-import { Cdn } from "../../state.slint";
+import { Cdn, I18n } from "../../state.slint";
 import { Cmt } from "../../common.slint";
 
 export component CdnPanel inherits Rectangle {
@@ -7,11 +7,11 @@ export component CdnPanel inherits Rectangle {
         x: 0px; y: 0px; width: parent.width; height: 24px; background: #121a2a;
         Text {
             x: 8px; height: parent.height;
-            text: "CDN 设置"; color: #7fb0ff; font-size: 12px; vertical-alignment: center;
+            text: I18n.tr("CDN 设置"); color: #7fb0ff; font-size: 12px; vertical-alignment: center;
         }
         Text {
             x: 100px; width: parent.width - 108px; height: parent.height;
-            text: (Cdn.testing ? "测速中 · " : "") + (Cdn.selected + 1) + "/" + Cdn.rows.length;
+            text: (Cdn.testing ? I18n.tr("测速中 · ") : "") + (Cdn.selected + 1) + "/" + Cdn.rows.length;
             color: #9aa6ba; font-size: 10px; font-family: "Fusion Pixel 10px Prop zh-Hans";
             horizontal-alignment: right; vertical-alignment: center;
         }
@@ -27,7 +27,7 @@ export component CdnPanel inherits Rectangle {
             }
             Text {
                 x: parent.width - 48px; y: 3px; width: 40px; height: 16px;
-                text: index == Cdn.current ? "已选" : ""; color: #7fb0ff; font-size: 12px;
+                text: index == Cdn.current ? I18n.tr("已选") : ""; color: #7fb0ff; font-size: 12px;
                 horizontal-alignment: right;
             }
             Text {

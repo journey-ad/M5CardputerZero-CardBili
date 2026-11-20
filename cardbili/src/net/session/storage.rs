@@ -39,7 +39,7 @@ fn write_private(path: &std::path::Path, bytes: &[u8]) -> std::io::Result<()> {
 fn read_key() -> std::io::Result<[u8; MASTER_KEY_LEN]> {
     std::fs::read(master_key_path())?
         .try_into()
-        .map_err(|_| std::io::Error::new(std::io::ErrorKind::InvalidData, "主密钥文件长度异常"))
+        .map_err(|_| std::io::Error::new(std::io::ErrorKind::InvalidData, crate::i18n::tr("主密钥文件长度异常")))
 }
 
 // 首次保存时生成 32 字节随机主密钥并单独保存

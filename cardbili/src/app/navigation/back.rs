@@ -126,7 +126,7 @@ impl App {
                 if let Some(source) = list_source(previous_tab, mine_detail) {
                     if !self.loaded[source] {
                         self.loading = true;
-                        self.status = "加载中…".into();
+                        self.status = crate::i18n::tr("加载中…").into();
                         self.load_home_list(source, false);
                     }
                 }
@@ -290,7 +290,7 @@ impl App {
                 }
                 self.current_play = Some(info);
                 self.refresh_liked();
-                self.status = "加载中…".into();
+                self.status = crate::i18n::tr("加载中…").into();
             }
             None => self.page = Page::Home,
         }

@@ -16,6 +16,8 @@ pub struct Settings {
     pub cdn: String,
     pub pixel_optimize: bool,
     pub scale_algorithm: ScaleAlgorithm,
+    /// 界面语言，默认简体中文
+    pub language: crate::i18n::Language,
 }
 
 impl Default for Settings {
@@ -31,6 +33,7 @@ impl Default for Settings {
             cdn: "backup".into(),
             pixel_optimize: false,
             scale_algorithm: ScaleAlgorithm::Area,
+            language: crate::i18n::Language::Zh,
         }
     }
 }

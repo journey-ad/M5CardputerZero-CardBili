@@ -11,7 +11,7 @@ impl App {
             if self.settings.save().is_err() {
                 self.ui
                     .global::<crate::Status>()
-                    .set_bar("设置保存失败".into());
+                    .set_bar(crate::i18n::tr("设置保存失败").into());
                 self.ui.global::<crate::Status>().set_bar_sticky(false);
             }
         }
@@ -88,7 +88,7 @@ impl App {
         if self.back_hint {
             self.ui
                 .global::<crate::Status>()
-                .set_bar("长按返回首页".into());
+                .set_bar(crate::i18n::tr("长按返回首页").into());
             self.ui.global::<crate::Status>().set_bar_sticky(true);
         }
     }
@@ -150,7 +150,7 @@ impl App {
             self.loading = !self.loaded[source];
             self.home_dirty = true;
             if self.loading {
-                self.status = "加载中…".into();
+                self.status = crate::i18n::tr("加载中…").into();
             }
             self.load_home_list(source, false);
         }
@@ -181,7 +181,7 @@ impl App {
         if self.requested_login {
             self.requested_login = false;
             self.page = Page::Login;
-            self.start_login("正在生成二维码…");
+            self.start_login(crate::i18n::tr("正在生成二维码…"));
         }
         if let Some(room_id) = self.requested_live.take() {
             self.live = Some(model::LiveInfo {
@@ -197,7 +197,7 @@ impl App {
             self.ui
                 .global::<crate::Player>()
                 .set_time_text("--:--".into());
-            self.status = "加载中…".into();
+            self.status = crate::i18n::tr("加载中…").into();
             self.status_detail.clear();
             tasks::start_live(
                 room_id,
@@ -223,7 +223,7 @@ impl App {
             self.ui
                 .global::<crate::Player>()
                 .set_time_text("0:00 / 0:00".into());
-            self.status = "加载中…".into();
+            self.status = crate::i18n::tr("加载中…").into();
             self.status_detail.clear();
             tasks::start_play(
                 bvid,

@@ -1,5 +1,5 @@
 import { Text } from "../components/base/text.slint";
-import { Favorite } from "../state.slint";
+import { Favorite, I18n } from "../state.slint";
 import { Icon, Icons } from "../components/base/icons.slint";
 
 export component FavoritesPage inherits Rectangle {
@@ -7,7 +7,7 @@ export component FavoritesPage inherits Rectangle {
     Rectangle {
         x: 0px; y: 0px;
         width: parent.width; height: 24px; background: #121a2a;
-        Text { x: 8px; height: parent.height; text: "我的收藏"; color: #7fb0ff; font-size: 12px; vertical-alignment: center; }
+        Text { x: 8px; height: parent.height; text: I18n.tr("我的收藏"); color: #7fb0ff; font-size: 12px; vertical-alignment: center; }
     }
     for folder[index] in Favorite.folders: Rectangle {
         x: 6px; y: 26px + index * 30px; width: parent.width - 12px; height: 28px;
@@ -24,7 +24,7 @@ export component FavoritesPage inherits Rectangle {
     }
     if Favorite.folders.length == 0 || Favorite.error != "": Text {
         x: 8px; y: Favorite.folders.length == 0 ? 60px : 112px; width: parent.width - 16px; height: 36px;
-        text: Favorite.error != "" ? Favorite.error : (Favorite.loading ? "加载中…" : "暂无收藏夹");
+        text: Favorite.error != "" ? Favorite.error : (Favorite.loading ? I18n.tr("加载中…") : I18n.tr("暂无收藏夹"));
         color: #9aa6ba; font-size: 12px; wrap: word-wrap;
         horizontal-alignment: center; vertical-alignment: center;
     }

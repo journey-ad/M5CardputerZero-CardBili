@@ -140,7 +140,7 @@ impl Cdn {
             )
             .filter(|url| !url.is_empty())
             .collect();
-        let first = *urls.first().ok_or("无可用播放地址")?;
+        let first = *urls.first().ok_or(crate::i18n::tr("无可用播放地址"))?;
         if self.id == "base" {
             return Ok(first.into());
         }
@@ -151,7 +151,7 @@ impl Cdn {
         }
         // Akamai 使用接口提供的独立签名地址
         if self.id == "akamai" {
-            return Err("该视频暂无 Akamai 线路".into());
+            return Err(crate::i18n::tr("该视频暂无 Akamai 线路").into());
         }
         let mirror = urls.iter().find(|url| {
             host(url).ends_with(".bilivideo.com")
@@ -161,7 +161,7 @@ impl Cdn {
         if self.id == "backup" {
             return Ok(mirror.copied().unwrap_or(first).into());
         }
-        let source = mirror.ok_or("该视频暂无可替换的 CDN 地址")?;
+        let source = mirror.ok_or(crate::i18n::tr("该视频暂无可替换的 CDN 地址"))?;
         let (_, path) = source.split_once("://").unwrap().1.split_once('/').unwrap();
         Ok(format!("https://{}/{path}", self.host))
     }
@@ -208,19 +208,21 @@ impl Cdn {
                 Ok((bytes, first_byte))
             })()
             .map_err(|error| match error {
-                ureq::Error::StatusCode(status) => format!("不可用 · HTTP {status}"),
-                ureq::Error::Timeout(_) => "测速超时".into(),
-                ureq::Error::HostNotFound => "域名解析失败".into(),
-                ureq::Error::BodyExceedsLimit(_) => "不支持分段测速".into(),
-                _ => "测速失败".into(),
+                ureq::Error::StatusCode(status) => crate::i18n::trf("不可用 · HTTP {}", &[&status]),
+                ureq::Error::Timeout(_) => crate::i18n::tr("测速超时").into(),
+                ureq::Error::HostNotFound => crate::i18n::tr("域名解析失败").into(),
+                ureq::Error::BodyExceedsLimit(_) => crate::i18n::tr("不支持分段测速").into(),
+                _ => crate::i18n::tr("测速失败").into(),
             })?;
             if measured.0 == 0 {
-                return Err("未收到视频数据".into());
+                return Err(crate::i18n::tr("未收到视频数据").into());
             }
-            Ok(format!(
-                "{:.2} MB/s · 首字节 {:.0}ms",
-                measured.0 as f64 / started.elapsed().as_secs_f64() / 1_000_000.0,
-                measured.1.as_secs_f64() * 1000.0
+            Ok(crate::i18n::trf(
+                "{} MB/s · 首字节 {}ms",
+                &[
+                    &format!("{:.2}", measured.0 as f64 / started.elapsed().as_secs_f64() / 1_000_000.0),
+                    &format!("{:.0}", measured.1.as_secs_f64() * 1000.0),
+                ],
             ))
         });
         let text = result.unwrap_or_else(|error| error);

@@ -129,7 +129,7 @@ impl App {
         let mid = cookies.as_deref().map(util::parse_mid).unwrap_or_default();
 
         meta.set_version(format!("v{}", env!("CARGO_PKG_VERSION")).into());
-        meta.set_about_text("作者  Jad\n\n项目地址\ngithub.com/journey-ad/M5CardputerZero-CardBili\n\n字体\nFusion Pixel Font\ngithub.com/TakWolf/fusion-pixel-font\n\nMona Font\ngithub.com/MonadABXY/mona-font\n\n接口参考\nPiliPlus\ngithub.com/bggRGjQaUbCoE/PiliPlus\n\n图标\nPixelarticons\ngithub.com/halfmage/pixelarticons\n\n".into());
+        meta.set_about_text(crate::i18n::tr("作者  Jad\n\n项目地址\ngithub.com/journey-ad/M5CardputerZero-CardBili\n\n字体\nFusion Pixel Font\ngithub.com/TakWolf/fusion-pixel-font\n\nMona Font\ngithub.com/MonadABXY/mona-font\n\n接口参考\nPiliPlus\ngithub.com/bggRGjQaUbCoE/PiliPlus\n\n图标\nPixelarticons\ngithub.com/halfmage/pixelarticons\n\n").into());
 
         let ph = util::make_placeholder();
         let mut page = Page::Home;
@@ -149,7 +149,7 @@ impl App {
             .and_then(|s| s.parse::<i32>().ok())
             .unwrap_or(0);
         let danmaku_view = DanmakuView::new(&ui, settings.color_emoji);
-        let mut status = String::from("加载中…");
+        let mut status = String::from(crate::i18n::tr("加载中…"));
         let loading = tab.is_video();
 
         // 详情页
@@ -176,7 +176,7 @@ impl App {
 
         if let Ok(b) = std::env::var("BILI_AUTOPLAY") {
             if !b.is_empty() {
-                status = "正在加载视频…".into();
+                status = crate::i18n::tr("正在加载视频…").into();
                 requested_play = Some(b);
             }
         }
@@ -184,7 +184,7 @@ impl App {
         if let Ok(v) = std::env::var("BILI_LIVE") {
             requested_live = v.parse::<u64>().ok();
             if requested_live.is_some() {
-                status = "正在加载直播…".into();
+                status = crate::i18n::tr("正在加载直播…").into();
             }
         }
         if let Ok(b) = std::env::var("BILI_DETAIL") {
@@ -199,7 +199,7 @@ impl App {
             page = Page::Login;
             view = VideoLayout::List;
             login.set_has_qr(false);
-            login.set_qr_status("正在生成二维码…".into());
+            login.set_qr_status(crate::i18n::tr("正在生成二维码…").into());
             login_request += 1;
             tasks::start_login(login_request, tx.clone());
         }

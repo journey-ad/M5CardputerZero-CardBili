@@ -18,7 +18,7 @@ fn adjust(step: i32) -> Result<i32, String> {
     let volume = output
         .split_whitespace()
         .find_map(|word| word.strip_suffix('%')?.parse::<i32>().ok())
-        .ok_or("系统音量读取失败")?;
+        .ok_or(crate::i18n::tr("系统音量读取失败"))?;
     let volume = (volume + step).clamp(0, 100);
     pactl(&["set-sink-volume", "@DEFAULT_SINK@", &format!("{volume}%")])?;
     if step > 0 {

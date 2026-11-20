@@ -122,7 +122,7 @@ fn receive(
         }
         let addresses = (server.host.as_str(), server.port)
             .to_socket_addrs()
-            .map_err(|_| "弹幕服务器域名解析失败")?;
+            .map_err(|_| crate::i18n::tr("弹幕服务器域名解析失败"))?;
         for address in addresses {
             let Ok(stream) = TcpStream::connect_timeout(&address, Duration::from_secs(5)) else {
                 continue;
@@ -135,7 +135,7 @@ fn receive(
                 .map_err(|e| e.to_string())?;
             let mut request = format!("wss://{}:{}/sub", server.host, server.port)
                 .into_client_request()
-                .map_err(|_| "弹幕连接地址无效")?;
+                .map_err(|_| crate::i18n::tr("弹幕连接地址无效"))?;
             request
                 .headers_mut()
                 .insert("Origin", "https://live.bilibili.com".parse().unwrap());
@@ -156,7 +156,7 @@ fn receive(
             break;
         }
     }
-    let mut socket = socket.ok_or("连接弹幕服务器失败")?;
+    let mut socket = socket.ok_or(crate::i18n::tr("连接弹幕服务器失败"))?;
     if cancelled.try_recv().is_ok() {
         return Ok(());
     }
@@ -167,12 +167,12 @@ fn receive(
         tungstenite::stream::MaybeTlsStream::Plain(stream) => {
             stream.set_read_timeout(Some(Duration::from_millis(500)))
         }
-        _ => return Err("弹幕连接类型无效".into()),
+        _ => return Err(crate::i18n::tr("弹幕连接类型无效").into()),
     }
     .map_err(|e| e.to_string())?;
     socket
         .send(Message::binary(packet(7, auth.to_string().as_bytes())))
-        .map_err(|_| "发送弹幕认证失败")?;
+        .map_err(|_| crate::i18n::tr("发送弹幕认证失败"))?;
     let mut authenticated = false;
     let mut received = false;
     let mut last_reply = Instant::now();
@@ -189,12 +189,12 @@ fn receive(
                 Duration::from_secs(10)
             }
         {
-            return Err("弹幕服务器响应超时".into());
+            return Err(crate::i18n::tr("弹幕服务器响应超时").into());
         }
         if authenticated && Instant::now() >= next_heartbeat {
             socket
                 .send(Message::binary(packet(2, &[])))
-                .map_err(|_| "发送弹幕心跳失败")?;
+                .map_err(|_| crate::i18n::tr("发送弹幕心跳失败"))?;
             next_heartbeat = Instant::now() + HEARTBEAT;
         }
         match socket.read() {
@@ -205,9 +205,9 @@ fn receive(
                         last_reply = Instant::now();
                     } else if operation == 8 {
                         let reply: Value =
-                            serde_json::from_slice(body).map_err(|_| "弹幕认证响应无效")?;
+                            serde_json::from_slice(body).map_err(|_| crate::i18n::tr("弹幕认证响应无效"))?;
                         if reply["code"].as_i64() != Some(0) {
-                            return Err("弹幕认证失败".into());
+                            return Err(crate::i18n::tr("弹幕认证失败").into());
                         }
                         authenticated = true;
                         last_reply = Instant::now();
@@ -236,9 +236,9 @@ fn receive(
                     Ok(())
                 })?;
             }
-            Ok(Message::Close(_)) => return Err("弹幕服务器已断开".into()),
+            Ok(Message::Close(_)) => return Err(crate::i18n::tr("弹幕服务器已断开").into()),
             Ok(Message::Ping(_)) => {
-                socket.flush().map_err(|_| "弹幕连接已断开")?;
+                socket.flush().map_err(|_| crate::i18n::tr("弹幕连接已断开"))?;
             }
             Ok(_) => {}
             Err(Error::Io(error))
@@ -246,7 +246,7 @@ fn receive(
                     error.kind(),
                     io::ErrorKind::WouldBlock | io::ErrorKind::TimedOut
                 ) => {}
-            Err(_) => return Err("弹幕连接已断开".into()),
+            Err(_) => return Err(crate::i18n::tr("弹幕连接已断开").into()),
         }
     }
 }
@@ -259,18 +259,18 @@ fn decode(
     emit: &mut impl FnMut(u32, &[u8]) -> Result<(), String>,
 ) -> Result<(), String> {
     if depth > 2 || bytes.len() > MAX_PACKET {
-        return Err("弹幕数据超出容量限制".into());
+        return Err(crate::i18n::tr("弹幕数据超出容量限制").into());
     }
     while !bytes.is_empty() {
         if bytes.len() < 16 {
-            return Err("弹幕包头不完整".into());
+            return Err(crate::i18n::tr("弹幕包头不完整").into());
         }
         let size = u32::from_be_bytes(bytes[..4].try_into().unwrap()) as usize;
         let header = u16::from_be_bytes(bytes[4..6].try_into().unwrap()) as usize;
         let version = u16::from_be_bytes(bytes[6..8].try_into().unwrap());
         let operation = u32::from_be_bytes(bytes[8..12].try_into().unwrap());
         if header < 16 || size < header || size > bytes.len() {
-            return Err("弹幕包长度无效".into());
+            return Err(crate::i18n::tr("弹幕包长度无效").into());
         }
         let body = &bytes[header..size];
         match version {
@@ -285,10 +285,10 @@ fn decode(
                 reader
                     .take(*budget as u64 + 1)
                     .read_to_end(&mut decoded)
-                    .map_err(|_| "弹幕解压失败")?;
+                    .map_err(|_| crate::i18n::tr("弹幕解压失败"))?;
                 *budget = budget
                     .checked_sub(decoded.len())
-                    .ok_or("弹幕解压数据超出容量限制")?;
+                    .ok_or(crate::i18n::tr("弹幕解压数据超出容量限制"))?;
                 decode(&decoded, depth + 1, budget, emit)?;
             }
             _ => {}

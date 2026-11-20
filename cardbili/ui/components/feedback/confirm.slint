@@ -1,5 +1,5 @@
 import { Text } from "../base/text.slint";
-import { Confirm } from "../../state.slint";
+import { Confirm, I18n } from "../../state.slint";
 
 export component ConfirmDialog inherits Rectangle {
     width: 100%; height: 100%; background: #000000a8;
@@ -17,7 +17,7 @@ export component ConfirmDialog inherits Rectangle {
             text: Confirm.message; color: #a8b4c9; wrap: word-wrap;
             font-size: 10px; font-family: "Fusion Pixel 10px Prop zh-Hans";
         }
-        for label[index] in ["取消", Confirm.label]: Rectangle {
+        for label[index] in [I18n.tr("取消"), Confirm.label]: Rectangle {
             x: 14px + index * (parent.width / 2 - 7px); y: 76px;
             width: parent.width / 2 - 21px; height: 26px;
             background: Confirm.selected == (index == 1) ? #284673 : #1b273b;

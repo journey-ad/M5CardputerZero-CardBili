@@ -40,7 +40,7 @@ pub fn load_list(tab: usize, cookies: Option<String>, tx: Sender<Msg>, force: bo
             || match tab {
                 0 => api::rcmd(cookies.as_deref(), 1),
                 1 => api::popular(cookies.as_deref(), 1),
-                _ => Err("未知视频列表".into()),
+                _ => Err(crate::i18n::tr("未知视频列表").into()),
             },
             |result| {
                 let message = match result {
@@ -173,11 +173,11 @@ pub fn load_collection(
                 }
                 crate::model::VideoSource::Favorites(folder) => cookies
                     .as_deref()
-                    .ok_or_else(|| "未登录，请先登录".to_string())
+                    .ok_or_else(|| crate::i18n::tr("未登录，请先登录").to_string())
                     .and_then(|cookies| api::favorites::videos(folder.id, page, cookies)),
                 crate::model::VideoSource::WatchLater => cookies
                     .as_deref()
-                    .ok_or_else(|| "未登录，请先登录".to_string())
+                    .ok_or_else(|| crate::i18n::tr("未登录，请先登录").to_string())
                     .and_then(api::watch_later),
                 crate::model::VideoSource::Related(bvid) => {
                     api::related_videos(bvid, cookies.as_deref())
@@ -261,7 +261,7 @@ pub fn start_login(request: u64, tx: Sender<Msg>) {
         let expires = std::time::Instant::now() + Duration::from_secs(180);
         loop {
             if std::time::Instant::now() >= expires {
-                let _ = tx.send(Msg::QrStatus(request, "二维码已过期，请刷新".into()));
+                let _ = tx.send(Msg::QrStatus(request, crate::i18n::tr("二维码已过期，请刷新").into()));
                 break;
             }
             match api::auth::qr_poll(&key, &client) {
@@ -270,11 +270,11 @@ pub fn start_login(request: u64, tx: Sender<Msg>) {
                     break;
                 }
                 api::auth::Poll::Scanned => {
-                    let _ = tx.send(Msg::QrStatus(request, "已扫码，请在手机上确认".into()));
+                    let _ = tx.send(Msg::QrStatus(request, crate::i18n::tr("已扫码，请在手机上确认").into()));
                 }
                 api::auth::Poll::Pending => {}
                 api::auth::Poll::Expired => {
-                    let _ = tx.send(Msg::QrStatus(request, "二维码已过期，请刷新".into()));
+                    let _ = tx.send(Msg::QrStatus(request, crate::i18n::tr("二维码已过期，请刷新").into()));
                     break;
                 }
                 api::auth::Poll::Err(e) => {
@@ -300,7 +300,7 @@ pub fn load_dynamic(
             || {
                 cookies
                     .as_deref()
-                    .ok_or_else(|| "未登录，请先登录".to_string())
+                    .ok_or_else(|| crate::i18n::tr("未登录，请先登录").to_string())
                     .and_then(|cookies| api::dynamic(cookies, &offset))
             },
             |result| {
@@ -398,7 +398,7 @@ pub fn load_history(
             || {
                 cookies
                     .as_deref()
-                    .ok_or_else(|| "未登录，请先登录".to_string())
+                    .ok_or_else(|| crate::i18n::tr("未登录，请先登录").to_string())
                     .and_then(|cookies| api::history(cookies, cursor.as_ref()))
             },
             |result| {

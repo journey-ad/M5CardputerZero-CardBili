@@ -45,7 +45,7 @@ impl App {
             return;
         }
         preferences.set_cache_busy(true);
-        preferences.set_cache_size("清理中…".into());
+        preferences.set_cache_size(crate::i18n::tr("清理中…").into());
         let tx = self.tx.clone();
         thread::spawn(move || {
             let result = crate::cache::clear().map_err(|error| error.to_string());
@@ -60,7 +60,7 @@ impl App {
         match result {
             Ok(()) => {
                 preferences.set_cache_size("0.0 MB / 1 GB".into());
-                self.toast("缓存已清理");
+                self.toast(crate::i18n::tr("缓存已清理"));
             }
             Err(error) => {
                 crate::diagnostics::write(format_args!("[缓存] 清理失败: {error}"));

@@ -50,7 +50,7 @@ impl Message {
             t: 0.0,
             mode: 1,
             color: self.accent,
-            text: format!("【¥{}】{}的醒目留言：{}", self.price, self.user, self.text),
+            text: crate::i18n::trf("【¥{}】{}的醒目留言：{}", &[&self.price, &self.user, &self.text]),
         }
     }
 }

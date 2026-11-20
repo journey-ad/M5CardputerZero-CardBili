@@ -33,7 +33,7 @@ impl App {
             self.sync_super_chat();
             if self.ui.global::<crate::SuperChat>().get_rows().row_count() == 0 {
                 self.close_super_chat();
-                self.toast("当前暂无醒目留言");
+                self.toast(crate::i18n::tr("当前暂无醒目留言"));
             }
         }
         let panel = self.ui.global::<crate::SuperChat>();
@@ -70,11 +70,11 @@ impl App {
             .any(|item| item.visible(now))
         {
             self.toast(if !self.super_chat.loaded {
-                "醒目留言加载中…"
+                crate::i18n::tr("醒目留言加载中…")
             } else if self.super_chat.failed {
-                "醒目留言加载失败，请刷新直播间"
+                crate::i18n::tr("醒目留言加载失败，请刷新直播间")
             } else {
-                "当前暂无醒目留言"
+                crate::i18n::tr("当前暂无醒目留言")
             });
             return;
         }
