@@ -169,7 +169,7 @@ impl App {
             }
             Err(crate::api::live::RoomError::Request(error)) => {
                 crate::diagnostics::write(format_args!("[直播] 获取播放地址失败: {error}"));
-                self.recover_live("直播连接失败");
+                self.recover_live(crate::i18n::tr("直播连接失败"));
             }
             Err(error) => {
                 self.live_recovery = super::LiveRecovery::default();

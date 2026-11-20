@@ -33,7 +33,7 @@ impl App {
             Ok(bytes) => format!("{:.1} MB / 1 GB", bytes as f64 / 1024.0 / 1024.0),
             Err(error) => {
                 crate::diagnostics::write(format_args!("[缓存] 统计失败: {error}"));
-                "统计失败".into()
+                crate::i18n::tr("统计失败").into()
             }
         };
         preferences.set_cache_size(text.into());
@@ -64,7 +64,7 @@ impl App {
             }
             Err(error) => {
                 crate::diagnostics::write(format_args!("[缓存] 清理失败: {error}"));
-                self.toast("缓存清理失败");
+                self.toast(crate::i18n::tr("缓存清理失败"));
             }
         }
     }

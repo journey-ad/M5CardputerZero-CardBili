@@ -128,7 +128,7 @@ pub fn accept(mut login: Login) -> Result<String, String> {
     let mut current = CURRENT.lock().unwrap();
     storage::save(&login.credentials).map_err(|error| {
         diagnostics::write(format_args!("[登录] 保存登录态失败: {error}"));
-        "登录信息保存失败，请重试".to_string()
+        crate::i18n::tr("登录信息保存失败，请重试").to_string()
     })?;
     *current = Some(Session {
         key: key.clone(),

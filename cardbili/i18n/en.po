@@ -1149,3 +1149,15 @@ msgstr "Me"
 #: ui/state.slint
 msgid "设置"
 msgstr "Settings"
+
+msgid "登录信息保存失败，请重试"
+msgstr "Failed to save login info, please try again"
+
+msgid "直播连接失败"
+msgstr "Live connection failed"
+
+msgid "统计失败"
+msgstr "Failed to compute size"
+
+msgid "缓存清理失败"
+msgstr "Failed to clear cache"
