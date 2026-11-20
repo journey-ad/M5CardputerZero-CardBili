@@ -127,6 +127,18 @@ fn bitrate_text(value: f64) -> String {
 }
 
 fn date_text() -> String {
+    #[cfg(unix)]
+    use libc::strftime;
+    #[cfg(windows)]
+    unsafe extern "C" {
+        fn strftime(
+            buffer: *mut libc::c_char,
+            size: libc::size_t,
+            format: *const libc::c_char,
+            time: *const libc::tm,
+        ) -> libc::size_t;
+    }
+
     unsafe {
         let now = libc::time(std::ptr::null_mut());
         let mut tm: libc::tm = std::mem::zeroed();
@@ -135,7 +147,7 @@ fn date_text() -> String {
         #[cfg(windows)]
         libc::localtime_s(&mut tm, &now);
         let mut buffer = [0 as libc::c_char; 128];
-        libc::strftime(
+        strftime(
             buffer.as_mut_ptr(),
             buffer.len(),
             b"%a %b %d %Y %H:%M:%S GMT%z (%Z)\0".as_ptr() as *const libc::c_char,
