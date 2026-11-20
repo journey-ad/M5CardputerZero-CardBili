@@ -1,4 +1,5 @@
 use super::super::*;
+use slint::ComponentHandle as _;
 
 pub(in crate::app) enum BackTarget {
     Home {
@@ -31,6 +32,9 @@ pub(in crate::app) enum BackTarget {
         engine: Option<danmaku::Engine>,
         danmaku_enabled: bool,
         sections: sections::Sections,
+        media: playback::Media,
+        subtitle_selected: i32,
+        audio_selected: i32,
     },
 }
 
@@ -87,6 +91,9 @@ impl App {
                     engine: self.danmaku.take(),
                     danmaku_enabled: self.controls.danmaku_enabled,
                     sections: self.sections.clone(),
+                    media: std::mem::take(&mut self.media),
+                    subtitle_selected: self.ui.global::<crate::Player>().get_subtitle_selected(),
+                    audio_selected: self.ui.global::<crate::Player>().get_audio_selected(),
                 })
             }
             _ => None,
@@ -256,6 +263,9 @@ impl App {
                 engine,
                 danmaku_enabled,
                 sections,
+                media,
+                subtitle_selected,
+                audio_selected,
             }) => {
                 self.page = Page::Player;
                 self.controls.danmaku_enabled = danmaku_enabled;
@@ -289,6 +299,8 @@ impl App {
                     tasks::start_danmaku(info.cid, self.cookies.clone(), self.gen, self.tx.clone());
                 }
                 self.current_play = Some(info);
+                self.media = media;
+                self.restore_media(subtitle_selected, audio_selected);
                 self.refresh_liked();
                 self.status = crate::i18n::tr("加载中…").into();
             }

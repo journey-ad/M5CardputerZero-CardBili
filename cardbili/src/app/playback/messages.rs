@@ -1,4 +1,5 @@
 use super::super::*;
+use slint::ComponentHandle as _;
 
 impl App {
     pub(in crate::app) fn frame_ready(&mut self, g: u64) {
@@ -110,6 +111,7 @@ impl App {
                     self.play_request,
                     self.tx.clone(),
                 );
+                self.load_media(&info);
                 self.current_play = Some(info);
                 self.refresh_liked();
                 self.status = crate::i18n::tr("加载中…").into();

@@ -4,7 +4,43 @@ import { TripleAnimation } from "../components/player/triple.slint";
 import { PlaybackBar } from "../components/player/controls.slint";
 import { SuperChatDialog } from "../components/live/superchat.slint";
 import { Icon, Icons } from "../components/base/icons.slint";
-import { Player, Status, Danmaku, Preferences, SuperChat } from "../state.slint";
+import { Player, Status, Danmaku, Preferences, SuperChat, I18n, TrackMenu } from "../state.slint";
+// 更多菜单里的单行按钮
+component MenuEntry inherits Rectangle {
+    in property <image> icon;
+    in property <string> text: "";
+    in property <string> state: "";
+    in property <bool> selected: false;
+    in property <bool> dropdown: false;
+    in property <bool> cursor: false;
+    callback clicked;
+    height: 18px;
+    background: cursor ? #33507a : (selected ? #24324a : (touch.has-hover ? #222d40 : transparent));
+    Image {
+        x: 6px; y: (parent.height - 12px) / 2; width: 12px; height: 12px;
+        source: root.icon;
+        colorize: (root.selected || root.cursor) ? #ffffff : #aab8cc;
+        image-fit: contain; image-rendering: pixelated;
+    }
+    Text {
+        x: 26px; y: 0px; width: parent.width - (root.dropdown ? 114px : 46px); height: parent.height;
+        text: root.text; color: root.selected ? #cfe0ff : #d7e0ee;
+        font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
+        vertical-alignment: center; overflow: elide;
+    }
+    if root.state != "": Text {
+        x: parent.width - (root.dropdown ? 104px : 34px); y: 0px;
+        width: root.dropdown ? 90px : 28px; height: parent.height;
+        text: root.state; color: #8fa0b8;
+        font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
+        horizontal-alignment: right; vertical-alignment: center; overflow: elide;
+    }
+    if root.dropdown: Image {
+        x: parent.width - 16px; y: (parent.height - 10px) / 2; width: 10px; height: 10px;
+        source: Icons.right; colorize: #7d8ea8; image-fit: contain; image-rendering: pixelated;
+    }
+    touch := TouchArea { clicked => { root.clicked(); } }
+}
 
 export component PlayPage inherits Rectangle {
     width: 100%;
@@ -21,7 +57,7 @@ export component PlayPage inherits Rectangle {
         width: row.img.width * 1px; height: row.img.height * 1px;
         source: row.img;
         image-rendering: pixelated;
-        visible: Danmaku.enabled;
+        visible: Danmaku.enabled && !Player.stats-on;
         opacity: Preferences.danmaku-opacity / 100;
     }
     if !Player.has-frame: Rectangle {
@@ -108,6 +144,138 @@ export component PlayPage inherits Rectangle {
             text: Player.reconnect-text; color: #cdd4e0;
             font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
             horizontal-alignment: center; vertical-alignment: center;
+        }
+    }
+    // 字幕层：位于画面底部、控制条上方
+    if Player.subtitle-selected > 0 && Player.subtitle-text != "": Rectangle {
+        x: (parent.width - self.width) / 2;
+        y: parent.height - self.height - (Player.controls-visible ? 30px : 8px);
+        width: min(parent.width * 0.95, subtitle-line.preferred-width + 12px);
+        height: min(parent.height - 52px, subtitle-line.preferred-height + 6px);
+        background: #000000cc; border-radius: 3px;
+        subtitle-line := Text {
+            x: 6px; y: 3px; width: parent.width - 12px; height: parent.height - 6px;
+            text: Player.subtitle-text; color: #ffffff; wrap: word-wrap;
+            horizontal-alignment: center; vertical-alignment: center;
+            font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
+        }
+    }
+    // 技术统计半透明蒙层
+    if Player.stats-on: Rectangle {
+        x: 0px; y: 0px; width: parent.width; height: parent.height;
+        background: #00000099;
+        // 视频与播放器信息
+        for line[i] in Player.stat-lines : Rectangle {
+            x: 2px; y: 2px + i * 14px; width: parent.width - 4px; height: 14px;
+            Text {
+                x: 0px; y: 0px; width: 56px; height: 14px; text: line.label; color: #ffffff;
+                font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
+                horizontal-alignment: right; vertical-alignment: center;
+            }
+            Text {
+                x: 60px; y: 0px; width: parent.width - 64px; height: 14px; text: line.value; color: #ffffff;
+                font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
+                horizontal-alignment: left; vertical-alignment: center; overflow: elide;
+            }
+        }
+        // 系统接收速度图表
+        Rectangle {
+            x: 2px; y: 2px + Player.stat-lines.length * 14px; width: parent.width - 4px; height: 14px;
+            Text {
+                x: 0px; y: 0px; width: 56px; height: 14px; text: "System RX"; color: #ffffff;
+                font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
+                horizontal-alignment: right; vertical-alignment: center;
+            }
+            for meter[i] in Player.connection-samples : Rectangle {
+                x: 60px + i * 1.28px; y: 0px; width: 1.3px; height: 12px; background: meter.base;
+                if meter.fill > 0px : Rectangle {
+                    x: 0px; y: 12px - meter.fill; width: 1px; height: meter.fill; background: meter.top;
+                }
+            }
+            Text {
+                x: parent.width - 66px; y: 0px; width: 64px; height: 14px; text: Player.connection-value; color: #ffffff;
+                font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
+                horizontal-alignment: right; vertical-alignment: center; overflow: elide;
+            }
+        }
+    }
+    // 更多菜单浮层
+    if Player.menu-open: Rectangle {
+        x: 0px; y: 0px; width: parent.width; height: parent.height;
+        background: #00000066;
+        TouchArea { clicked => { Player.key("menu:close"); } }
+        Rectangle {
+            x: (parent.width - self.width) / 2; y: (parent.height - self.height) / 2;
+            width: 220px; height: (Player.track-menu != TrackMenu.closed ? Player.track-labels.length * 18px : 72px) + 38px;
+            background: #1c2434; border-radius: 4px; border-width: 1px; border-color: #47566e;
+            if Player.track-menu == TrackMenu.closed: VerticalLayout {
+                padding: 4px; spacing: 0px;
+                Rectangle {
+                    height: 16px;
+                    Text {
+                        x: 6px; y: 0px; width: parent.width - 12px; height: parent.height;
+                        text: I18n.tr("更多功能"); color: #7d8ea8;
+                        font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
+                        vertical-alignment: center;
+                    }
+                }
+                MenuEntry { icon: Icons.comment-text; text: I18n.tr("查看评论"); cursor: Player.menu-index == 0; clicked => { Player.key("menu:comments"); } }
+                MenuEntry {
+                    icon: Icons.captions;
+                    text: I18n.tr("字幕");
+                    state: Player.subtitle-selected > 0 ? Player.subtitle-labels[Player.subtitle-selected] : I18n.tr("关闭");
+                    dropdown: true;
+                    cursor: Player.menu-index == 1;
+                    clicked => { Player.key("menu:subtitle"); }
+                }
+                MenuEntry {
+                    icon: Icons.music;
+                    text: I18n.tr("音轨");
+                    state: Player.audio-labels.length > 0 && Player.audio-selected >= 0 ? Player.audio-labels[Player.audio-selected] : "";
+                    dropdown: true;
+                    cursor: Player.menu-index == 2;
+                    clicked => { Player.key("menu:audio"); }
+                }
+                MenuEntry { icon: Icons.chart; text: I18n.tr("统计信息"); cursor: Player.menu-index == 3; clicked => { Player.key("menu:stats"); } }
+                Rectangle {
+                    height: 14px;
+                    Text {
+                        x: 6px; y: 0px; width: parent.width - 12px; height: parent.height;
+                        text: I18n.tr("↑↓ 选择  Enter 展开  Esc 关闭"); color: #66788f;
+                        font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
+                        vertical-alignment: center;
+                    }
+                }
+            }
+            if Player.track-menu != TrackMenu.closed: VerticalLayout {
+                padding: 4px; spacing: 0px;
+                Rectangle {
+                    height: 16px;
+                    Text {
+                        x: 6px; y: 0px; width: parent.width - 12px; height: parent.height;
+                        text: Player.track-menu == TrackMenu.subtitle ? I18n.tr("字幕") : I18n.tr("音轨");
+                        color: #7d8ea8;
+                        font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
+                        vertical-alignment: center;
+                    }
+                }
+                for label[index] in Player.track-labels: MenuEntry {
+                    icon: Player.track-menu == TrackMenu.subtitle ? Icons.captions : Icons.music;
+                    text: label;
+                    selected: (Player.track-menu == TrackMenu.subtitle ? Player.subtitle-selected : Player.audio-selected) == index;
+                    cursor: Player.menu-sub-index == index;
+                    clicked => { Player.key((Player.track-menu == TrackMenu.subtitle ? "sub:" : "audio:") + index); }
+                }
+                Rectangle {
+                    height: 14px;
+                    Text {
+                        x: 6px; y: 0px; width: parent.width - 12px; height: parent.height;
+                        text: I18n.tr("↑↓ 选择  Enter 确认  Esc 返回"); color: #66788f;
+                        font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
+                        vertical-alignment: center;
+                    }
+                }
+            }
         }
     }
     if Player.triple-phase > 0: TripleAnimation {

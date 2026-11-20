@@ -46,13 +46,17 @@ impl App {
                 self.super_chat_key(&key);
                 return;
             }
-            if self.page == Page::Player && !self.sections.open && !self.ui.global::<crate::Player>().get_controls_visible() {
-                self.last_input = Instant::now();
-                return;
-            }
             let Some(action) = self.menu_actions()[number - 4] else {
                 return;
             };
+            if action != menu::Action::More
+                && self.page == Page::Player
+                && !self.sections.open
+                && !self.ui.global::<crate::Player>().get_controls_visible()
+            {
+                self.last_input = Instant::now();
+                return;
+            }
             if action == menu::Action::Back {
                 self.direction_hold = None;
                 self.return_hold = Some((number, Instant::now()));

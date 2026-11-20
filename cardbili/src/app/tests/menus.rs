@@ -61,15 +61,18 @@ fn live_player_menu_tracks_super_chat_availability_and_popup() {
 
 #[test]
 fn sections_menu_routes_play_and_return_to_the_panel() {
-    let mut h = Harness::new();
-    h.app.page = Page::Detail;
-    h.app.sections.open = true;
-    h.sync();
-    assert_eq!(h.labels(), ["", "播放", "", "", "返回"]);
-    h.key("8");
-    h.key("8_UP");
-    assert!(!h.app.sections.open);
-    assert!(!h.app.go_back);
+    for page in [Page::Detail, Page::Player] {
+        let mut h = Harness::new();
+        h.app.page = page;
+        h.app.sections.open = true;
+        h.sync();
+        assert_eq!(h.labels(), ["", "播放", "", "", "返回"]);
+        h.key("8");
+        h.key("8_UP");
+        assert!(!h.app.sections.open);
+        assert!(!h.app.ui.global::<crate::Player>().get_menu_open());
+        assert!(!h.app.go_back);
+    }
 }
 
 #[test]

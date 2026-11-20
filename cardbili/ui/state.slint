@@ -91,6 +91,21 @@ export global Account {
     in-out property <bool> has-avatar: false;
 }
 
+// 技术统计图表的一列采样
+export struct MeterSample {
+    base: color,
+    top: color,
+    fill: length,
+}
+
+// 技术统计的一行文本
+export struct StatLine {
+    label: string,
+    value: string,
+}
+
+export enum TrackMenu { closed, subtitle, audio }
+
 // 播放
 export global Player {
     callback key(string);
@@ -115,6 +130,22 @@ export global Player {
     in-out property <bool> finished: false;
     in-out property <bool> controls-visible: true;
     in-out property <bool> live: false;
+    // 更多菜单与技术统计
+    in-out property <bool> menu-open: false;
+    in-out property <bool> stats-on: false;
+    in-out property <string> subtitle-text: "";
+    in-out property <[string]> subtitle-labels: [];
+    in-out property <int> subtitle-selected: 0;
+    in-out property <[string]> audio-labels: [];
+    in-out property <int> audio-selected: 0;
+    in-out property <int> menu-index: 0;
+    in-out property <int> menu-sub-index: 0;
+    in-out property <TrackMenu> track-menu: closed;
+    out property <[string]> track-labels: track-menu == TrackMenu.subtitle ? subtitle-labels : audio-labels;
+    // 技术统计的文本行与图表
+    in-out property <[StatLine]> stat-lines: [];
+    in-out property <[MeterSample]> connection-samples: [];
+    in-out property <string> connection-value: "";
 }
 
 // 弹幕：Rust 每帧写入当前可见弹幕

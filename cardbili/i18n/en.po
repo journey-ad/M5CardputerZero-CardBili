@@ -1150,8 +1150,38 @@ msgstr "Me"
 msgid "设置"
 msgstr "Settings"
 
+msgid "查看评论"
+msgstr "Comments"
+
 msgid "标题翻译"
 msgstr "Title translation"
+
+msgid "更多功能"
+msgstr "More"
+
+msgid "自动"
+msgstr "Auto"
+
+msgid "字幕"
+msgstr "Subtitles"
+
+msgid "音轨"
+msgstr "Audio track"
+
+msgid "关闭"
+msgstr "Off"
+
+msgid "↑↓ 选择  Enter 展开  Esc 关闭"
+msgstr "↑↓ Select  Enter Open  Esc Close"
+
+msgid "↑↓ 选择  Enter 确认  Esc 返回"
+msgstr "↑↓ Select  Enter OK  Esc Back"
+
+msgid "统计信息"
+msgstr "Stats"
+
+msgid "字幕解析失败"
+msgstr "Failed to parse subtitles"
 
 msgid "登录信息保存失败，请重试"
 msgstr "Failed to save login info, please try again"

@@ -2,8 +2,10 @@ pub mod auth;
 pub mod favorites;
 pub mod live;
 pub use live::room as live_room;
+pub mod audio;
 pub mod playback;
 pub mod sections;
+pub mod subtitle;
 pub mod translate;
 mod wbi;
 
@@ -24,6 +26,68 @@ fn api_err(name: &str, v: &Value) -> String {
     } else {
         crate::i18n::trf("{}加载失败\ncode={} {}", &[&name, &code, &msg])
     }
+}
+
+pub struct Streams {
+    pub video_url: String,
+    pub audio_url: String,
+    pub duration: f64,
+    pub tech: crate::model::TechStats,
+}
+
+// 选最低码率 H.264 视频流与音频流，生成技术统计
+pub(crate) fn pick_streams(p: &Value, cdn: &str) -> Result<Streams, String> {
+    let dash = &p["data"]["dash"];
+    let video = dash["video"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|stream| stream["codecid"].as_i64() == Some(7))
+        .min_by_key(|stream| stream["bandwidth"].as_u64().unwrap_or(u64::MAX))
+        .ok_or(crate::i18n::tr("无可用 H.264 视频流"))?;
+    let audio = dash["audio"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .min_by_key(|stream| stream["bandwidth"].as_u64().unwrap_or(u64::MAX))
+        .ok_or(crate::i18n::tr("无可用音频流"))?;
+    let option = &crate::cdn::OPTIONS[crate::cdn::index(cdn)];
+    let video_url = option.url(video)?;
+    let audio_url = option.url(audio)?;
+    crate::diagnostics::write(format_args!(
+        "[CDN] 播放选路 线路={} 视频={} 音频={}",
+        option.id,
+        crate::cdn::host(&video_url),
+        crate::cdn::host(&audio_url)
+    ));
+    let fps = video["frame_rate"]
+        .as_f64()
+        .or_else(|| {
+            video["frame_rate"]
+                .as_str()
+                .and_then(|value| value.parse().ok())
+        })
+        .map(|value| format!("{value:.2}"))
+        .unwrap_or_else(|| "-".to_string());
+    Ok(Streams {
+        duration: model::dur_of(&p["data"]["timelength"]) / 1000.0,
+        tech: crate::model::TechStats {
+            quality: format!(
+                "{}×{}",
+                video["width"].as_u64().unwrap_or(0),
+                video["height"].as_u64().unwrap_or(0)
+            ),
+            vcodec: video["codecs"].as_str().unwrap_or("").to_string(),
+            acodec: audio["codecs"].as_str().unwrap_or("").to_string(),
+            vbandwidth: video["bandwidth"].as_u64().unwrap_or(0),
+            abandwidth: audio["bandwidth"].as_u64().unwrap_or(0),
+            fps,
+            vhost: crate::cdn::host(&video_url).to_string(),
+            ahost: crate::cdn::host(&audio_url).to_string(),
+        },
+        video_url,
+        audio_url,
+    })
 }
 
 fn count_text(value: &Value) -> Option<String> {
@@ -265,41 +329,24 @@ pub fn play_info(
         d["title"].as_str().unwrap_or_default().into()
     };
     let p = play_urls(bvid, cid, cookies)?;
-    let dash = &p["data"]["dash"];
-    let video = dash["video"]
-        .as_array()
-        .into_iter()
-        .flatten()
-        .filter(|stream| stream["codecid"].as_i64() == Some(7))
-        .min_by_key(|stream| stream["bandwidth"].as_u64().unwrap_or(u64::MAX))
-        .ok_or(crate::i18n::tr("无可用 H.264 视频流"))?;
-    let audio = dash["audio"]
-        .as_array()
-        .into_iter()
-        .flatten()
-        .min_by_key(|stream| stream["bandwidth"].as_u64().unwrap_or(u64::MAX))
-        .ok_or(crate::i18n::tr("无可用音频流"))?;
-    let cdn = &crate::cdn::OPTIONS[crate::cdn::index(cdn)];
-    let video = cdn.url(video)?;
-    let audio = cdn.url(audio)?;
-    crate::diagnostics::write(format_args!(
-        "[CDN] 播放选路 线路={} 视频={} 音频={}",
-        cdn.id,
-        crate::cdn::host(&video),
-        crate::cdn::host(&audio)
-    ));
-    let duration = model::dur_of(&p["data"]["timelength"]) / 1000.0;
+    let Streams {
+        video_url,
+        audio_url,
+        duration,
+        tech,
+    } = pick_streams(&p, cdn)?;
     Ok(PlayInfo {
         aid: d["aid"].as_i64().unwrap_or(0),
         bvid: bvid.to_string(),
         owner: owner(&d["owner"]),
         title,
-        video_url: video.into(),
-        audio_url: audio.into(),
+        video_url,
+        audio_url,
         duration,
         cid,
         parts,
         live: false,
+        tech,
     })
 }
 

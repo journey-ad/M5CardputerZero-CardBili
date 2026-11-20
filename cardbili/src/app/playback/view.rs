@@ -44,6 +44,8 @@ impl App {
         }
 
         if self.page == Page::Player {
+            self.sync_subtitle(position);
+            self.update_net_stats();
             self.sync_triple();
             let g_player = self.ui.global::<crate::Player>();
             g_player.set_reconnect_text(self.live_recovery.notice(Instant::now()).into());

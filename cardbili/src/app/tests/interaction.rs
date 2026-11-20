@@ -159,8 +159,24 @@ fn player_callback_uses_the_same_comment_action_as_physical_key() {
     h.dispatch_callbacks();
     assert_eq!(h.app.requested_comments, Some(42));
     h.app.requested_comments = None;
+    // 数字 8 打开更多菜单，查看评论走同一动作
     h.key("8");
+    assert!(h.app.ui.global::<crate::Player>().get_menu_open());
+    h.app
+        .ui
+        .global::<crate::Player>()
+        .invoke_key("menu:comments".into());
+    h.dispatch_callbacks();
     assert_eq!(h.app.requested_comments, Some(42));
+    assert_eq!(h.app.page, Page::Player);
+    assert!(h.app.current_play.is_some());
+    h.app.navigate();
+    assert_eq!(h.app.page, Page::Comments);
+    assert_eq!(h.app.comment_page.aid, 42);
+    assert!(matches!(
+        h.app.back_stack.last(),
+        Some(BackTarget::Play { .. })
+    ));
 }
 
 #[test]

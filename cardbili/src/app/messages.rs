@@ -49,6 +49,14 @@ impl App {
             Msg::ListLoaded(t, items) => self.list_loaded(t, items),
             Msg::ListMore(t, items) => self.list_more(t, items),
             Msg::Err(t, msg) => self.list_error(t, msg),
+            Msg::SubtitleTracks(gen, result) => self.subtitles_loaded(gen, result),
+            Msg::AudioTracks(gen, result) => self.audio_loaded(gen, result),
+            Msg::SubtitleCues(request, index, result) => {
+                self.subtitle_cues_loaded(request, index, result)
+            }
+            Msg::AudioSwitched(request, index, result) => {
+                self.audio_switched(request, index, result)
+            }
             Msg::PlayReady(request, result) => self.play_ready(request, result),
             Msg::LiveReady(request, result) => self.live_ready(request, result),
             Msg::LiveAreas(result) => self.live_areas_loaded(result),

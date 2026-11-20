@@ -64,6 +64,45 @@ pub struct PlayInfo {
     pub cid: i64,
     pub parts: Vec<VideoPart>,
     pub live: bool,
+    pub tech: TechStats,
+}
+
+// 播放器技术统计
+#[derive(Clone, Default)]
+pub struct TechStats {
+    pub quality: String,
+    pub vcodec: String,
+    pub acodec: String,
+    pub vbandwidth: u64,
+    pub abandwidth: u64,
+    pub fps: String,
+    pub vhost: String,
+    pub ahost: String,
+}
+
+// 音轨条目
+#[derive(Clone, Default)]
+pub struct AudioTrack {
+    pub lang: String,
+    pub title: String,
+    pub production_type: i32,
+}
+
+// 字幕条目
+#[derive(Clone, Default)]
+pub struct SubtitleCue {
+    pub from: f64,
+    pub to: f64,
+    pub content: String,
+}
+
+// 字幕轨条目
+#[derive(Clone, Default)]
+pub struct SubtitleTrack {
+    pub lan: String,
+    pub lan_doc: String,
+    pub is_ai: bool,
+    pub url: String,
 }
 
 // 一级分区的 id 为 0，parent_id 与 id 同为 0 表示全部直播

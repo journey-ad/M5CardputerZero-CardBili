@@ -102,7 +102,12 @@ impl App {
         self.comments_request += 1;
         self.controls.like_hold = None;
         self.controls.triple = None;
-        self.ui.global::<crate::Player>().set_triple_phase(0);
+        let player = self.ui.global::<crate::Player>();
+        player.set_triple_phase(0);
+        player.set_menu_open(false);
+        player.set_track_menu(crate::TrackMenu::Closed);
+        player.set_stats_on(false);
+        player.set_subtitle_text("".into());
         if !self.back_hint {
             self.ui.global::<crate::Status>().set_bar("".into());
             self.ui.global::<crate::Status>().set_bar_sticky(false);

@@ -112,6 +112,8 @@ pub(super) struct App {
     pub(super) latest: Option<(u64, player::VideoFrame)>,
     pub(super) settings_changed: bool,
     pub(super) go_back: bool,
+    pub(super) media: playback::Media,
+    pub(super) stats: playback::stats::StatsState,
 }
 
 impl App {
@@ -254,6 +256,8 @@ impl App {
             page: Page::Home,
             tab: HomeTab::Recommended,
             settings,
+            media: playback::Media::default(),
+            stats: playback::stats::StatsState::default(),
             cache_checked: None,
             confirmation: None,
             cdn_request: std::sync::Arc::new(std::sync::atomic::AtomicU64::new(0)),

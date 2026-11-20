@@ -22,7 +22,7 @@ pub enum Action {
     Danmaku,
     SuperChat,
     LiveArea,
-    Comments,
+    More,
 }
 
 impl Action {
@@ -48,7 +48,7 @@ impl Action {
             Self::Danmaku => crate::i18n::tr("弹幕"),
             Self::SuperChat => crate::i18n::tr("醒目留言"),
             Self::LiveArea => crate::i18n::tr("分区"),
-            Self::Comments => crate::i18n::tr("评论"),
+            Self::More => crate::i18n::tr("更多功能"),
         }
     }
 
@@ -71,7 +71,7 @@ impl Action {
             Self::Danmaku => "d",
             Self::SuperChat => "SUPER_CHAT",
             Self::LiveArea => "LIVE_AREA",
-            Self::Comments => "r",
+            Self::More => "m",
         }
     }
 }
@@ -122,7 +122,7 @@ pub fn actions(
                 Some(Like),
                 Some(Speed),
                 Some(Danmaku),
-                Some(Comments),
+                Some(More),
             ]
         }
         Page::Detail => return [None, Some(Play), Some(Author), Some(Related), Some(Back)],
