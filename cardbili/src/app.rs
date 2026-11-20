@@ -33,12 +33,35 @@ use components::*;
 use detail::DetailDisplay;
 use detail::{show_detail, show_detail_loading, sync_thumb};
 use navigation::BackTarget;
-use slint::{ComponentHandle, ModelRc, VecModel};
+use slint::{ComponentHandle, Model, ModelRc, VecModel};
 use state::App;
 use std::collections::{HashMap, HashSet};
 use std::sync::mpsc;
 use std::thread;
 use std::time::{Duration, Instant};
+
+// 取当前语言最长标签宽度，写入页签统一宽度
+fn refresh_tab_label_max_width(ui: &crate::AppWindow) {
+    let meta = ui.global::<crate::Meta>();
+    let max = meta
+        .get_tab_names()
+        .iter()
+        .map(|name| {
+            crate::fonts::LayoutFont::new(crate::fonts::UI_FONT_FAMILY, crate::fonts::UI_FONT_SIZE)
+                .advance(name.as_str())
+        })
+        .max()
+        .unwrap_or(0);
+    meta.set_tab_label_max_width(max as f32);
+}
+
+// 切换界面语言并刷新页签标签宽度
+pub(crate) fn set_language(ui: &crate::AppWindow, language: crate::i18n::Language) {
+    crate::i18n::set(language);
+    ui.global::<crate::I18n>()
+        .set_lang(if language == crate::i18n::Language::Zh { 0 } else { 1 });
+    refresh_tab_label_max_width(ui);
+}
 
 pub fn run(settings: Settings) {
     crate::cache::init();
@@ -49,8 +72,8 @@ pub fn run(settings: Settings) {
     {
         let i18n = ui.global::<crate::I18n>();
         i18n.on_lookup(|text: slint::SharedString| crate::i18n::tr(text.as_str()).into());
-        i18n.set_lang(if crate::i18n::current() == crate::i18n::Language::Zh { 0 } else { 1 });
     }
+    set_language(&ui, crate::i18n::current());
     ui.show().expect("show");
     let area_keys = ktx.clone();
     ui.global::<crate::LiveAreas>().on_key(move |key| {

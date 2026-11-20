@@ -56,10 +56,7 @@ impl App {
             SettingsItem::Language => {
                 let language = self.settings.language.cycle(if step == 0 { 1 } else { step });
                 self.settings.language = language;
-                crate::i18n::set(language);
-                self.ui
-                    .global::<crate::I18n>()
-                    .set_lang(if language == crate::i18n::Language::Zh { 0 } else { 1 });
+                crate::app::set_language(&self.ui, language);
                 // 底栏文案按动作缓存，切换语言后需重新生成
                 self.menu_view = None;
                 self.settings_changed = true;

@@ -185,6 +185,8 @@ export global Meta {
     in-out property <[string]> tab-names: I18n.lang == 0
         ? ["推荐", "热门", "动态", "直播", "我的", "设置"]
         : ["Home", "Hot", "Feed", "Live", "Me", "Prefs"];
+    // 页签统一标签宽度
+    in-out property <length> tab-label-max-width: 0px;
     in-out property <string> version: "";
     in-out property <length> about-scroll: 0px;
 }

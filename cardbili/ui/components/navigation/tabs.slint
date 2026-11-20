@@ -8,21 +8,30 @@ export component TabBar inherits Rectangle {
     property <bool> vertical: Preferences.menu-position != MenuPosition.top;
     property <[image]> icons: [Icons.home, Icons.fire, Icons.rss, Icons.broadcast, Icons.user, Icons.settings-cog];
     property <[HomeTab]> tabs: [HomeTab.recommended, HomeTab.popular, HomeTab.dynamic, HomeTab.live, HomeTab.mine, HomeTab.settings];
+    // 图标 12px，标签统一宽度、整组居中
+    property <length> icon-cell: 12px;
+    property <length> icon-gap: 3px;
+    property <length> max-label-width: Meta.tab-label-max-width;
     for name[index] in Meta.tab-names: Rectangle {
         x: root.vertical ? 0px : index * root.width / 6;
         y: root.vertical ? index * root.height / 6 : 0px;
         width: root.vertical ? root.width : root.width / 6;
         height: root.vertical ? root.height / 6 : root.height;
         background: root.tabs[index] == Nav.tab ? #1d3a6b : transparent;
-        // 图标与文字作为一组居中，组宽随文字变化（中文两字恰为原先的 40px）
-        property <length> label-width: min(label.preferred-width, self.width - 18px);
-        property <length> group-x: (self.width - 16px - label-width) / 2;
+        // 侧栏整组居中，顶部横排各自居中
+        property <length> label-width: root.vertical
+            ? root.max-label-width
+            : min(label.preferred-width, self.width - 18px);
+        property <length> group-w: root.icon-cell + root.icon-gap + root.max-label-width;
+        property <length> group-x: root.vertical
+            ? (self.width - group-w) / 2
+            : (self.width - 16px - label-width) / 2;
         Icon {
             x: parent.group-x; y: (parent.height - self.height) / 2;
             source: root.icons[index]; colorize: root.tabs[index] == Nav.tab ? #7fb0ff : #7d8798;
         }
         label := Text {
-            x: parent.group-x + 16px; y: 0px;
+            x: parent.group-x + root.icon-cell + root.icon-gap; y: 0px;
             width: parent.label-width; height: parent.height;
             text: name; color: root.tabs[index] == Nav.tab ? #7fb0ff : #7d8798;
             font-size: 12px; vertical-alignment: center;

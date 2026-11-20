@@ -2,6 +2,7 @@
 use slint::private_unstable_api::re_exports::{
     BitmapFont, BitmapGlyph, BitmapGlyphs, CharacterMapEntry, Slice,
 };
+use i_slint_core::textlayout::TextShaper;
 
 static PIXELS: [u8; include_bytes!(concat!(env!("OUT_DIR"), "/ui_fonts.bin")).len()] =
     *include_bytes!(concat!(env!("OUT_DIR"), "/ui_fonts.bin"));
@@ -40,7 +41,22 @@ impl LayoutFont {
             glyphs: &font.glyphs[index],
         }
     }
+
+    // 累计文本的像素宽度
+    pub(crate) fn advance(&self, text: &str) -> i16 {
+        text.chars()
+            .map(|character| {
+                self.glyph_for_char(character)
+                    .map(|glyph| glyph.advance)
+                    .unwrap_or(self.glyphs.pixel_size)
+            })
+            .sum()
+    }
 }
+
+// 界面默认位图字体与页签字号
+pub(crate) const UI_FONT_FAMILY: &str = "Fusion Pixel 12px Prop zh-Hans";
+pub(crate) const UI_FONT_SIZE: f32 = 12.0;
 
 impl i_slint_core::textlayout::FontMetrics<i16> for LayoutFont {
     fn ascent(&self) -> i16 {
