@@ -2,7 +2,7 @@ use super::*;
 use slint::ComponentHandle as _;
 
 pub(super) struct App {
-    pub(super) volume_queue: mpsc::SyncSender<i32>,
+    pub(super) volume_queue: mpsc::SyncSender<player::volume::Change>,
     pub(super) history: history::History,
     pub(super) controls: playback::Controls,
     pub(super) comment_page: comments::Comments,
@@ -223,7 +223,7 @@ impl App {
         tx: mpsc::Sender<Msg>,
         settings: Settings,
         cookies: Option<String>,
-        volume_queue: mpsc::SyncSender<i32>,
+        volume_queue: mpsc::SyncSender<player::volume::Change>,
     ) -> Self {
         crate::emoji::install(&ui);
         ui.global::<crate::Preferences>()

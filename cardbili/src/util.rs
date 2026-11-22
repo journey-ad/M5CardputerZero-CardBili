@@ -16,7 +16,10 @@ pub fn key_release(name: &str) -> Option<&'static str> {
         "8" => Some("8_UP"),
         "LEFT" | "z" => Some("LEFT_UP"),
         "RIGHT" | "c" => Some("RIGHT_UP"),
-        "UP" | "f" | "w" => Some("UP_UP"),
+        "UP" | "f" => Some("UP_UP"),
+        "w" => Some("W_UP"),
+        "e" => Some("E_UP"),
+        "d" => Some("D_UP"),
         "DOWN" | "x" | "s" => Some("DOWN_UP"),
         _ => None,
     }

@@ -13,7 +13,7 @@ impl App {
             self.requested_live = self.live.as_ref().map(|info| info.room_id);
             return;
         }
-        if k == "d" {
+        if k == "DANMAKU" {
             self.toggle_danmaku();
             return;
         }
@@ -26,11 +26,14 @@ impl App {
                         p.pause_toggle();
                     }
                 }
-                "UP" | "f" | "w" => {
-                    let _ = self.volume_queue.try_send(10);
+                "UP" | "f" => {
+                    let _ = self.volume_queue.try_send(player::volume::Change::Step(10));
                 }
                 "DOWN" | "x" | "s" => {
-                    let _ = self.volume_queue.try_send(-10);
+                    let _ = self.volume_queue.try_send(player::volume::Change::Step(-10));
+                }
+                "MUTE" => {
+                    let _ = self.volume_queue.try_send(player::volume::Change::ToggleMute);
                 }
                 "ESC" | "BACKSPACE" => self.go_back = true,
                 _ => {}
@@ -102,7 +105,7 @@ impl App {
                 self.change_speed();
                 return;
             }
-            "d" => {
+            "DANMAKU" => {
                 self.toggle_danmaku();
                 return;
             }
@@ -151,11 +154,14 @@ impl App {
                     self.seek_pending = Some(position);
                     self.seek_deadline = Some(Instant::now() + Duration::from_millis(300));
                 }
-                "UP" | "f" | "w" => {
-                    let _ = self.volume_queue.try_send(10);
+                "UP" | "f" => {
+                    let _ = self.volume_queue.try_send(player::volume::Change::Step(10));
                 }
                 "DOWN" | "x" | "s" => {
-                    let _ = self.volume_queue.try_send(-10);
+                    let _ = self.volume_queue.try_send(player::volume::Change::Step(-10));
+                }
+                "MUTE" => {
+                    let _ = self.volume_queue.try_send(player::volume::Change::ToggleMute);
                 }
                 "u" => {
                     self.requested_uploader = self

@@ -68,7 +68,7 @@ impl Action {
             Self::Detail | Self::TogglePlay => "SPACE",
             Self::Like => "l",
             Self::Speed => "b",
-            Self::Danmaku => "d",
+            Self::Danmaku => "DANMAKU",
             Self::SuperChat => "SUPER_CHAT",
             Self::LiveArea => "LIVE_AREA",
             Self::More => "m",

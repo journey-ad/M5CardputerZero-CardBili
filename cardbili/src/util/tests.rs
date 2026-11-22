@@ -16,7 +16,11 @@ fn key_release_normalizes_direction_and_hold_aliases() {
     for (keys, expected) in [
         (&["LEFT", "z"][..], "LEFT_UP"),
         (&["RIGHT", "c"][..], "RIGHT_UP"),
-        (&["UP", "f", "w"][..], "UP_UP"),
+        (&["UP", "f"][..], "UP_UP"),
+        // W / E 在播放页是快退 / 快进，松开名由界面层按页面换算
+        (&["w"][..], "W_UP"),
+        (&["e"][..], "E_UP"),
+        (&["d"][..], "D_UP"),
         (&["DOWN", "x", "s"][..], "DOWN_UP"),
         (&["l", "5"][..], "LIKE_UP"),
         (&["7"][..], "7_UP"),

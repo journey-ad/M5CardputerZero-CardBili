@@ -65,12 +65,14 @@ component SettingsRowItem inherits Rectangle {
 
     Text {
         x: 10px;
-        width: parent.width - 144px;
+        // 开关只占右侧约 50px，其余行需为选择器留出 130px；仍放不下时省略号截断
+        width: parent.width - (is-toggle ? 64px : 144px);
         height: parent.height;
         text: entry.label;
         color: selected ? #e6ebf5 : #9aa6ba;
         font-size: 12px;
         vertical-alignment: center;
+        overflow: elide;
     }
     if is-toggle: ToggleSwitch {
         x: parent.width - self.width - 12px;

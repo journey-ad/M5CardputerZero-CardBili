@@ -31,7 +31,7 @@ struct Harness {
     window: Rc<MinimalSoftwareWindow>,
     messages: mpsc::Receiver<Msg>,
     keys: mpsc::Receiver<String>,
-    _volume: mpsc::Receiver<i32>,
+    _volume: mpsc::Receiver<crate::player::volume::Change>,
 }
 
 impl Harness {

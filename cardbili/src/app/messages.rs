@@ -36,7 +36,10 @@ impl App {
             Msg::Volume(result) => {
                 if self.page == Page::Player {
                     match result {
-                        Ok(volume) => self.toast(&crate::i18n::trf("系统音量 {}%", &[&volume])),
+                        Ok(level) if level.muted => self.toast(crate::i18n::tr("已静音")),
+                        Ok(level) => {
+                            self.toast(&crate::i18n::trf("系统音量 {}%", &[&level.percent]))
+                        }
                         Err(_) => {
                             self.toast(crate::i18n::tr("系统音量调整失败"));
                         }

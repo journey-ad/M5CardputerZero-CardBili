@@ -193,7 +193,7 @@ fn every_menu_action_has_the_expected_dispatch_key() {
         (Action::TogglePlay, "SPACE"),
         (Action::Like, "l"),
         (Action::Speed, "b"),
-        (Action::Danmaku, "d"),
+        (Action::Danmaku, "DANMAKU"),
         (Action::SuperChat, "SUPER_CHAT"),
         (Action::LiveArea, "LIVE_AREA"),
         (Action::More, "m"),

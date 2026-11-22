@@ -423,6 +423,10 @@ msgid "系统音量 {}%"
 msgstr "Volume {}%"
 
 #: src/app/messages.rs
+msgid "已静音"
+msgstr "Muted"
+
+#: src/app/messages.rs
 msgid "系统音量调整失败"
 msgstr "Volume change failed"
 

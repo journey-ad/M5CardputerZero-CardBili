@@ -8,12 +8,57 @@ pub(super) struct DirectionHold {
 }
 
 impl App {
+    // 播放页按键帽上印的媒体图标处理：Q 暂停、W/E 快退/快进、A 静音、S/D 音量减/加
+    // 其他页面 W 仍为上；返回 None 表示丢弃该按键
+    pub(super) fn keycap_key<'a>(&self, key: &'a str, super_chat_open: bool) -> Option<&'a str> {
+        let player = self.ui.global::<crate::Player>();
+        let media = self.page == Page::Player
+            && !super_chat_open
+            && !self.sections.open
+            && !player.get_menu_open();
+        if !media {
+            return match key {
+                "W_UP" => Some("UP_UP"),
+                "E_UP" | "D_UP" => None,
+                _ => Some(key),
+            };
+        }
+        let live = player.get_live();
+        Some(match key {
+            "q" => "SPACE",
+            "a" => "MUTE",
+            "d" => "UP",
+            "D_UP" => "UP_UP",
+            "w" | "e" | "W_UP" | "E_UP" if live => return None,
+            "w" => "LEFT",
+            "e" => "RIGHT",
+            "W_UP" => "LEFT_UP",
+            "E_UP" => "RIGHT_UP",
+            _ => key,
+        })
+    }
+
     pub(super) fn handle_key(&mut self, mut key: String) {
         if self.confirmation.is_some() {
             self.confirmation_key(&key);
             return;
         }
+        // Esc 按满 2 秒只发送 ESC_HOLD：首页视频页签用于退出；其他页面与长按底栏返回一致，回到首页
+        if key == "ESC_HOLD" {
+            if self.page != Page::Home {
+                self.direction_hold = None;
+                self.return_home = true;
+                return;
+            }
+            if !self.tab.is_video() || self.help {
+                key = "ESC".into();
+            }
+        }
         let super_chat_open = self.ui.global::<crate::SuperChat>().get_open();
+        let Some(mapped) = self.keycap_key(&key, super_chat_open) else {
+            return;
+        };
+        key = mapped.to_string();
         if let Some(button) = key
             .strip_suffix("_UP")
             .and_then(|s| s.parse::<usize>().ok())

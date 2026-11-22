@@ -36,7 +36,7 @@ pub enum Msg {
     Comments(u64, u32, Result<model::CommentPage, String>),
     CommentEmotes(Vec<(String, u32, cache::Pixels)>),
     Frame(u64),
-    Volume(Result<i32, String>),
+    Volume(Result<player::volume::Level, String>),
     PlaybackEnded(u64),
     PlaybackFailed(u64, String),
     ListLoaded(usize, Vec<model::Item>),

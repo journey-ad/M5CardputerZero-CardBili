@@ -54,6 +54,8 @@ fn desktop_key(k: minifb::Key) -> Option<&'static str> {
         Key::X => "x",
         Key::S => "s",
         Key::Q => "q",
+        Key::E => "e",
+        Key::A => "a",
         Key::V => "v",
         Key::B => "b",
         Key::D => "d",

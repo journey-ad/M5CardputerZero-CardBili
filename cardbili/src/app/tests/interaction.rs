@@ -574,3 +574,111 @@ fn super_chat_scrolling_clamps_to_panel_bounds() {
     assert_eq!(h.app.ui.global::<crate::SuperChat>().get_scroll(), 200.0);
     assert!(h.app.seek_pending.is_none());
 }
+
+#[test]
+fn player_letter_keys_follow_keycap_media_legends() {
+    let mut h = Harness::new();
+    h.app.page = Page::Player;
+    let player = h.app.ui.global::<crate::Player>();
+    player.set_live(false);
+    for (key, expected) in [
+        ("q", Some("SPACE")),
+        ("w", Some("LEFT")),
+        ("W_UP", Some("LEFT_UP")),
+        ("e", Some("RIGHT")),
+        ("E_UP", Some("RIGHT_UP")),
+        ("a", Some("MUTE")),
+        ("s", Some("s")),
+        ("d", Some("UP")),
+        ("D_UP", Some("UP_UP")),
+    ] {
+        assert_eq!(h.app.keycap_key(key, false), expected, "key={key}");
+    }
+    // 直播不能跳转，W/E 不做任何事
+    player.set_live(true);
+    for key in ["w", "e", "W_UP", "E_UP"] {
+        assert_eq!(h.app.keycap_key(key, false), None, "key={key}");
+    }
+    assert_eq!(h.app.keycap_key("d", false), Some("UP"));
+    // 菜单或醒目留言打开时保持原有导航键
+    player.set_live(false);
+    assert_eq!(h.app.keycap_key("w", true), Some("w"));
+    player.set_menu_open(true);
+    assert_eq!(h.app.keycap_key("d", false), Some("d"));
+    player.set_menu_open(false);
+    // D 调整音量，底栏按键切换弹幕
+    player.set_controls_visible(true);
+    let enabled = h.app.controls.danmaku_enabled;
+    h.key("d");
+    assert_eq!(h.app.controls.danmaku_enabled, enabled);
+    assert!(h.app.direction_hold.is_some());
+    h.key(util::key_release("d").unwrap());
+    assert!(h.app.direction_hold.is_none());
+    // 其他页面 W 仍是上方向
+    h.app.page = Page::Home;
+    assert_eq!(h.app.keycap_key("W_UP", false), Some("UP_UP"));
+    assert_eq!(h.app.keycap_key("q", false), Some("q"));
+    assert_eq!(h.app.keycap_key("D_UP", false), None);
+}
+
+#[test]
+fn long_escape_returns_home_from_inner_pages_and_quits_only_from_video_tabs() {
+    // 内页长按 Esc 关闭选集面板并回到首页
+    for page in [Page::Detail, Page::Player] {
+        for sections_open in [false, true] {
+            let mut h = Harness::new();
+            h.app.page = page;
+            h.app.sections.open = sections_open;
+            h.key("ESC_HOLD");
+            assert!(h.app.return_home);
+            assert!(!h.app.quit);
+            h.app.navigate();
+            h.sync();
+            assert_eq!(h.app.page, Page::Home);
+            assert!(!h.app.sections.open);
+            assert!(!h.app.ui.global::<crate::Sections>().get_open());
+            h.key("TAB");
+            assert_eq!(h.app.tab, HomeTab::Popular);
+        }
+    }
+    // 首页非视频页签长按等同短按 Esc，不退出
+    let mut h = Harness::new();
+    h.app.page = Page::Home;
+    h.app.tab = HomeTab::Settings;
+    h.key("ESC_HOLD");
+    assert!(!h.app.quit);
+    assert!(!h.app.return_home);
+    // 首页视频页签长按仍然退出
+    let mut h = Harness::new();
+    h.app.page = Page::Home;
+    h.app.tab = HomeTab::Recommended;
+    h.key("ESC_HOLD");
+    assert!(h.app.quit);
+}
+
+#[test]
+fn clicking_player_danmaku_button_toggles_danmaku() {
+    use slint::platform::{PointerEventButton, WindowEvent};
+
+    for live in [false, true] {
+        let mut h = Harness::new();
+        h.app.page = Page::Player;
+        h.app.ui.global::<crate::Player>().set_live(live);
+        h.sync();
+        h.render();
+        let enabled = h.app.controls.danmaku_enabled;
+        let position = slint::LogicalPosition::new(217.0, 158.0);
+        h.window.dispatch_event(WindowEvent::PointerMoved { position });
+        h.window.dispatch_event(WindowEvent::PointerPressed {
+            position,
+            button: PointerEventButton::Left,
+        });
+        h.window.dispatch_event(WindowEvent::PointerReleased {
+            position,
+            button: PointerEventButton::Left,
+        });
+        h.dispatch_callbacks();
+        assert_eq!(h.app.controls.danmaku_enabled, !enabled);
+        assert!(h._volume.try_recv().is_err());
+    }
+}
