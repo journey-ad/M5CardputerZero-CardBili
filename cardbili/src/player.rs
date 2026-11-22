@@ -265,6 +265,8 @@ impl Player {
             if self.live {
                 // 输入线程缓存压缩包，解码帧队列维持 500ms
                 args.extend(["-thread_queue_size".into(), "128".into()]);
+                // 直播源为 720p，缩到 320×170 后去块滤波的差异低于 RGB565 量化噪声，跳过可省约 15% 解码 CPU
+                args.extend(["-skip_loop_filter".into(), "all".into()]);
             }
             args.extend([
                 "-threads".into(),
