@@ -121,6 +121,7 @@ pub struct LiveInfo {
     pub online: String,
     pub play_url: String,
     pub started_at: i64,
+    pub tech: TechStats,
 }
 
 #[derive(Clone, Default)]

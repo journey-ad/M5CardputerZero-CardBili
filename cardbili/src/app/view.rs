@@ -155,7 +155,7 @@ impl App {
                     .get_available()
                     .then_some(menu::Action::SuperChat),
                 Some(menu::Action::Danmaku),
-                None,
+                Some(menu::Action::More),
             ];
         }
         if self.sections.open {

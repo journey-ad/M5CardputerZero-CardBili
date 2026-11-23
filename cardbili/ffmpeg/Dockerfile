@@ -7,6 +7,8 @@ WORKDIR /build
 RUN tar -xf /tmp/ffmpeg.tar.xz --strip-components=1
 COPY args.c fftools/cardbili_args.c
 COPY CHANGES.md CARDBILI-CHANGES.md
+COPY stats.patch /tmp/cardbili-stats.patch
+RUN patch -p1 < /tmp/cardbili-stats.patch
 RUN sed -i 's/^int main(int argc, char \*\*argv)/int ffmpeg_main(int argc, char **argv);\nint ffmpeg_main(int argc, char **argv)/' fftools/ffmpeg.c \
     && sed -i '/^OBJS-ffmpeg +=/i OBJS-ffmpeg += fftools/cardbili_args.o' fftools/Makefile \
     && tar -cJf /tmp/ffmpeg-source.tar.xz -C /build .

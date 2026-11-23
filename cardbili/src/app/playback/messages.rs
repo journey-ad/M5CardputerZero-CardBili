@@ -19,7 +19,12 @@ impl App {
             }
             player.frame_ready();
             self.frames_in_seg = index;
+            if self.latest.as_ref().is_some_and(|(generation, _)| *generation == g) {
+                player.discard_frame();
+            }
             self.latest = Some((g, pixels));
+        } else {
+            player.discard_frame();
         }
     }
 

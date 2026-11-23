@@ -3,6 +3,7 @@ mod audio;
 #[cfg(all(feature = "desktop", windows))]
 mod audio_desktop;
 mod frames;
+pub(crate) mod telemetry;
 pub mod volume;
 
 use crate::diagnostics;
@@ -71,6 +72,11 @@ struct Speed {
     rate: f64,
 }
 
+pub(crate) struct Statistics {
+    pub frames: frames::Snapshot,
+    pub decoder: telemetry::DecoderSnapshot,
+}
+
 pub struct Player {
     pub gen: u64,
     pub title: String,
@@ -91,6 +97,9 @@ pub struct Player {
     scale_filter: String,
     tx: Sender<Msg>,
     frames: Arc<frames::Frames>,
+    decoder_stats: Arc<telemetry::DecoderStats>,
+    #[cfg(all(feature = "desktop", windows))]
+    audio_stats: Arc<telemetry::DecoderStats>,
 }
 
 impl Player {
@@ -138,6 +147,9 @@ impl Player {
             scale_filter,
             tx,
             frames: Arc::new(frames::Frames::new(info.live)),
+            decoder_stats: Arc::new(telemetry::DecoderStats::default()),
+            #[cfg(all(feature = "desktop", windows))]
+            audio_stats: Arc::new(telemetry::DecoderStats::default()),
         };
         p.base = state.position.clamp(0.0, p.duration);
         p.spawn(p.base);
@@ -150,8 +162,12 @@ impl Player {
         let mut args: Vec<String> = [
             "-hide_banner",
             "-loglevel",
-            "error",
+            "level+error",
             "-nostats",
+            "-progress",
+            "pipe:2",
+            "-stats_period",
+            "1",
             "-threads",
             "4",
             "-probesize",
@@ -194,9 +210,14 @@ impl Player {
             "s16le".to_string(),
             "pipe:1".to_string(),
         ]);
-        if let Some(mut child) =
-            diagnostics::spawn(crate::i18n::tr("音频"), &args, &self.cookies, Stdio::piped(), None)
-        {
+        if let Some(mut child) = diagnostics::spawn(
+            crate::i18n::tr("音频"),
+            &args,
+            &self.cookies,
+            Stdio::piped(),
+            None,
+            self.audio_stats.clone(),
+        ) {
             if let Some(stdout) = child.stdout.take() {
                 audio_desktop::start(stdout, self.frames.clone());
             }
@@ -217,6 +238,11 @@ impl Player {
         stop_child(&mut self.audio, crate::i18n::tr("音频"));
         self.frames.stop();
         self.frames = Arc::new(frames::Frames::new(self.live));
+        self.decoder_stats = Arc::new(telemetry::DecoderStats::default());
+        #[cfg(all(feature = "desktop", windows))]
+        {
+            self.audio_stats = Arc::new(telemetry::DecoderStats::default());
+        }
         self.frames.pause(self.paused);
         #[cfg(target_os = "linux")]
         let audio_pipe = match audio::start(self.frames.clone()) {
@@ -251,8 +277,12 @@ impl Player {
         let mut args: Vec<String> = vec![
             "-hide_banner".into(),
             "-loglevel".into(),
-            "error".into(),
+            "level+error".into(),
             "-nostats".into(),
+            "-progress".into(),
+            "pipe:2".into(),
+            "-stats_period".into(),
+            "1".into(),
             "-filter_threads".into(),
             "2".into(),
         ];
@@ -329,9 +359,14 @@ impl Player {
             }
         }
 
-        if let Some(mut ch) =
-            diagnostics::spawn(crate::i18n::tr("音视频"), &args, &self.cookies, Stdio::piped(), audio_pipe)
-        {
+        if let Some(mut ch) = diagnostics::spawn(
+            crate::i18n::tr("音视频"),
+            &args,
+            &self.cookies,
+            Stdio::piped(),
+            audio_pipe,
+            self.decoder_stats.clone(),
+        ) {
             let pid = ch.id();
             if let Some(mut so) = ch.stdout.take() {
                 let gen = self.gen;
@@ -473,6 +508,34 @@ impl Player {
 
     pub fn take_frame(&self) -> Option<(u64, VideoFrame)> {
         self.frames.take()
+    }
+
+    pub fn discard_frame(&self) {
+        self.frames.discard();
+    }
+
+    pub(crate) fn statistics(&self) -> Statistics {
+        let decoder = self.decoder_stats.snapshot();
+        #[cfg(all(feature = "desktop", windows))]
+        let decoder = {
+            let audio = self.audio_stats.snapshot();
+            telemetry::DecoderSnapshot {
+                received_bytes: decoder
+                    .received_bytes
+                    .zip(audio.received_bytes)
+                    .map(|(video, audio)| video + audio),
+                errors: decoder.errors + audio.errors,
+                source_bitrate: decoder
+                    .source_bitrate
+                    .zip(audio.source_bitrate)
+                    .map(|(video, audio)| video + audio),
+                ..decoder
+            }
+        };
+        Statistics {
+            frames: self.frames.snapshot(),
+            decoder,
+        }
     }
 
     pub fn seek(&mut self, target: f64) -> f64 {

@@ -45,6 +45,6 @@ export component PlaybackBar inherits Rectangle {
         }
     }
     TouchArea { x: 190px; y: 8px; width: 54px; height: 20px; clicked => { Player.key("DANMAKU"); } }
-    if !Player.live: Icon { x: 269px; y: 11px; source: Icons.more-vertical; }
-    if !Player.live: TouchArea { x: 248px; y: 8px; width: 54px; height: 20px; clicked => { Player.key("m"); } }
+    Icon { x: 269px; y: 11px; source: Icons.more-vertical; }
+    TouchArea { x: 248px; y: 8px; width: 54px; height: 20px; clicked => { Player.key("m"); } }
 }

@@ -46,6 +46,7 @@ export component PlayPage inherits Rectangle {
     width: 100%;
     height: 100%;
     background: #000000;
+    property <bool> show-controls: Player.controls-visible && !Player.stats-on;
 
     if Player.has-frame: Image {
         x: 0px; y: 0px; width: parent.width; height: parent.height;
@@ -88,7 +89,7 @@ export component PlayPage inherits Rectangle {
     }
 
     Rectangle {
-        visible: Player.controls-visible;
+        visible: root.show-controls;
         x: 0px; y: 0px; width: parent.width; height: 20px; background: #000000cc;
         Rectangle {
             x: 0px; y: 0px; width: Player.live ? parent.width - online.preferred-width - 26px - root.audience-width : parent.width - 6px; height: 20px; clip: true;
@@ -112,9 +113,9 @@ export component PlayPage inherits Rectangle {
         text: Player.watching; color: #9aa6ba;
         font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
         vertical-alignment: center;
-        visible: Player.controls-visible && (Player.live || title-measure.preferred-width + self.preferred-width + 18px <= root.width);
+        visible: root.show-controls && (Player.live || title-measure.preferred-width + self.preferred-width + 18px <= root.width);
     }
-    if Player.live && Player.controls-visible && Player.watching != "": Icon {
+    if Player.live && root.show-controls && Player.watching != "": Icon {
         x: online.x - 15px; y: 4px;
         source: Icons.hot; colorize: #9aa6ba;
     }
@@ -123,16 +124,16 @@ export component PlayPage inherits Rectangle {
         text: Player.live-audience; color: #9aa6ba;
         font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
         vertical-alignment: center;
-        visible: Player.live && Player.controls-visible && Player.live-audience != "";
+        visible: Player.live && root.show-controls && Player.live-audience != "";
     }
-    if Player.live && Player.controls-visible && Player.live-audience != "": Icon {
+    if Player.live && root.show-controls && Player.live-audience != "": Icon {
         x: audience.x - 15px; y: 4px;
         source: Icons.eye-minimal; colorize: #9aa6ba;
     }
-    TouchArea { x: 0px; y: 0px; width: parent.width; height: 20px; enabled: Player.controls-visible; clicked => { Player.key(Player.live ? "SPACE" : "p"); } }
+    TouchArea { x: 0px; y: 0px; width: parent.width; height: 20px; enabled: root.show-controls; clicked => { Player.key(Player.live ? "SPACE" : "p"); } }
 
     PlaybackBar {
-        visible: Player.controls-visible;
+        visible: root.show-controls;
         x: 0px; y: parent.height - self.height; width: parent.width;
     }
     if Player.reconnect-text != "": Rectangle {
@@ -149,7 +150,7 @@ export component PlayPage inherits Rectangle {
     // 字幕层：位于画面底部、控制条上方
     if Player.subtitle-selected > 0 && Player.subtitle-text != "": Rectangle {
         x: (parent.width - self.width) / 2;
-        y: parent.height - self.height - (Player.controls-visible ? 30px : 8px);
+        y: parent.height - self.height - (root.show-controls ? 30px : 8px);
         width: min(parent.width * 0.95, subtitle-line.preferred-width + 12px);
         height: min(parent.height - 52px, subtitle-line.preferred-height + 6px);
         background: #000000cc; border-radius: 3px;
@@ -164,8 +165,8 @@ export component PlayPage inherits Rectangle {
     if Player.stats-on: Rectangle {
         x: 0px; y: 0px; width: parent.width; height: parent.height;
         background: #00000099;
-        // 视频与播放器信息
-        for line[i] in Player.stat-lines : Rectangle {
+        // 头部指标
+        for line[i] in Player.stat-head : Rectangle {
             x: 2px; y: 2px + i * 14px; width: parent.width - 4px; height: 14px;
             Text {
                 x: 0px; y: 0px; width: 56px; height: 14px; text: line.label; color: #ffffff;
@@ -178,11 +179,11 @@ export component PlayPage inherits Rectangle {
                 horizontal-alignment: left; vertical-alignment: center; overflow: elide;
             }
         }
-        // 系统接收速度图表
+        // 连接速度图表
         Rectangle {
-            x: 2px; y: 2px + Player.stat-lines.length * 14px; width: parent.width - 4px; height: 14px;
+            x: 2px; y: 2px + Player.stat-head.length * 14px; width: parent.width - 4px; height: 14px;
             Text {
-                x: 0px; y: 0px; width: 56px; height: 14px; text: "System RX"; color: #ffffff;
+                x: 0px; y: 0px; width: 56px; height: 14px; text: "Speed"; color: #ffffff;
                 font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
                 horizontal-alignment: right; vertical-alignment: center;
             }
@@ -198,6 +199,54 @@ export component PlayPage inherits Rectangle {
                 horizontal-alignment: right; vertical-alignment: center; overflow: elide;
             }
         }
+        // 待播放视频帧时长图表
+        Rectangle {
+            x: 2px; y: 2px + Player.stat-head.length * 14px + 14px; width: parent.width - 4px; height: 14px;
+            Text {
+                x: 0px; y: 0px; width: 56px; height: 14px; text: "Buffer"; color: #ffffff;
+                font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
+                horizontal-alignment: right; vertical-alignment: center;
+            }
+            for meter[i] in Player.buffer-samples : Rectangle {
+                x: 60px + i * 1.28px; y: 0px; width: 1.3px; height: 12px; background: meter.base;
+                if meter.fill > 0px : Rectangle {
+                    x: 0px; y: 12px - meter.fill; width: 1px; height: meter.fill; background: meter.top;
+                }
+            }
+            Text {
+                x: parent.width - 66px; y: 0px; width: 64px; height: 14px; text: Player.buffer-value; color: #ffffff;
+                font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
+                horizontal-alignment: right; vertical-alignment: center; overflow: elide;
+            }
+        }
+        // 调试明细
+        Rectangle {
+            x: 2px; y: 2px + Player.stat-head.length * 14px + 28px; width: parent.width - 4px; height: 28px;
+            Text {
+                x: 0px; y: 0px; width: 56px; height: 28px; text: Player.stat-mystery.label; color: #ffffff;
+                font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
+                horizontal-alignment: right; vertical-alignment: top;
+            }
+            Text {
+                x: 60px; y: 0px; width: parent.width - 64px; height: 28px; text: Player.stat-mystery.value; color: #ffffff;
+                font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
+                horizontal-alignment: left; vertical-alignment: top; wrap: word-wrap;
+            }
+        }
+        // 尾部指标
+        for line[i] in Player.stat-tail : Rectangle {
+            x: 2px; y: 2px + Player.stat-head.length * 14px + 56px + i * 14px; width: parent.width - 4px; height: 14px;
+            Text {
+                x: 0px; y: 0px; width: 56px; height: 14px; text: line.label; color: #ffffff;
+                font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
+                horizontal-alignment: right; vertical-alignment: center;
+            }
+            Text {
+                x: 60px; y: 0px; width: parent.width - 64px; height: 14px; text: line.value; color: #ffffff;
+                font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
+                horizontal-alignment: left; vertical-alignment: center; overflow: elide;
+            }
+        }
     }
     // 更多菜单浮层
     if Player.menu-open: Rectangle {
@@ -206,7 +255,8 @@ export component PlayPage inherits Rectangle {
         TouchArea { clicked => { Player.key("menu:close"); } }
         Rectangle {
             x: (parent.width - self.width) / 2; y: (parent.height - self.height) / 2;
-            width: 220px; height: (Player.track-menu != TrackMenu.closed ? Player.track-labels.length * 18px : 72px) + 38px;
+            width: 220px;
+            height: (Player.track-menu != TrackMenu.closed ? Player.track-labels.length * 18px : (Player.live ? 18px : 72px)) + 38px;
             background: #1c2434; border-radius: 4px; border-width: 1px; border-color: #47566e;
             if Player.track-menu == TrackMenu.closed: VerticalLayout {
                 padding: 4px; spacing: 0px;
@@ -219,8 +269,8 @@ export component PlayPage inherits Rectangle {
                         vertical-alignment: center;
                     }
                 }
-                MenuEntry { icon: Icons.comment-text; text: I18n.tr("查看评论"); cursor: Player.menu-index == 0; clicked => { Player.key("menu:comments"); } }
-                MenuEntry {
+                if !Player.live: MenuEntry { icon: Icons.comment-text; text: I18n.tr("查看评论"); cursor: Player.menu-index == 0; clicked => { Player.key("menu:comments"); } }
+                if !Player.live: MenuEntry {
                     icon: Icons.captions;
                     text: I18n.tr("字幕");
                     state: Player.subtitle-selected > 0 ? Player.subtitle-labels[Player.subtitle-selected] : I18n.tr("关闭");
@@ -228,7 +278,7 @@ export component PlayPage inherits Rectangle {
                     cursor: Player.menu-index == 1;
                     clicked => { Player.key("menu:subtitle"); }
                 }
-                MenuEntry {
+                if !Player.live: MenuEntry {
                     icon: Icons.music;
                     text: I18n.tr("音轨");
                     state: Player.audio-labels.length > 0 && Player.audio-selected >= 0 ? Player.audio-labels[Player.audio-selected] : "";
@@ -236,7 +286,7 @@ export component PlayPage inherits Rectangle {
                     cursor: Player.menu-index == 2;
                     clicked => { Player.key("menu:audio"); }
                 }
-                MenuEntry { icon: Icons.chart; text: I18n.tr("统计信息"); cursor: Player.menu-index == 3; clicked => { Player.key("menu:stats"); } }
+                MenuEntry { icon: Icons.chart; text: I18n.tr("统计信息"); cursor: Player.menu-index == (Player.live ? 0 : 3); clicked => { Player.key("menu:stats"); } }
                 Rectangle {
                     height: 14px;
                     Text {

@@ -12,7 +12,7 @@ use std::os::unix::net::UnixStream;
 #[cfg(unix)]
 use std::os::unix::process::CommandExt;
 use std::process::{Child, Command, Stdio};
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -133,6 +133,7 @@ pub(crate) fn spawn(
     cookies: &str,
     stdout: Stdio,
     audio: Option<AudioPipe>,
+    stats: Arc<crate::player::telemetry::DecoderStats>,
 ) -> Option<Child> {
     #[cfg(not(unix))]
     let _ = &audio;
@@ -242,6 +243,9 @@ pub(crate) fn spawn(
                     for line in BufReader::new(stderr).lines() {
                         match line {
                             Ok(line) => {
+                                if stats.observe(&line) {
+                                    continue;
+                                }
                                 let line = redact(&line);
                                 write(format_args!("[{kind} pid={pid}] {line}"));
                             }
