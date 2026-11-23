@@ -189,6 +189,7 @@ impl App {
             self.start_login(crate::i18n::tr("正在生成二维码…"));
         }
         if let Some(room_id) = self.requested_live.take() {
+            self.stats = playback::stats::StatsState::default();
             self.live = Some(model::LiveInfo {
                 room_id,
                 ..Default::default()

@@ -143,7 +143,10 @@ export global Player {
     in-out property <TrackMenu> track-menu: closed;
     out property <[string]> track-labels: track-menu == TrackMenu.subtitle ? subtitle-labels : audio-labels;
     // 技术统计的文本行与图表
-    in-out property <[StatLine]> stat-lines: [];
+    in-out property <[StatLine]> stat-head: [];
+    in-out property <[StatLine]> stat-tail: [];
+    in-out property <[MeterSample]> buffer-samples: [];
+    in-out property <string> buffer-value: "";
     in-out property <[MeterSample]> connection-samples: [];
     in-out property <string> connection-value: "";
 }

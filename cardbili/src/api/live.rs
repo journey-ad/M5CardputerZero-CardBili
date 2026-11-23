@@ -215,7 +215,7 @@ pub fn room(room_id: u64, cookies: Option<&str>) -> Result<model::LiveInfo, Room
     if p["code"].as_i64() != Some(0) {
         return Err(api_err(crate::i18n::tr("直播播放地址"), &p).into());
     }
-    let url = stream_url(&p["data"]).ok_or(RoomError::Unsupported)?;
+    let (url, tech) = pick_stream(&p["data"]).ok_or(RoomError::Unsupported)?;
     crate::diagnostics::write(format_args!(
         "[直播] 房间={} 流={}",
         room_id,
@@ -231,17 +231,15 @@ pub fn room(room_id: u64, cookies: Option<&str>) -> Result<model::LiveInfo, Room
         online: model::fmt_num(room["online"].as_i64().unwrap_or(0)),
         play_url: url,
         started_at: room["live_start_time"].as_i64().unwrap_or(0),
+        tech,
     })
 }
 
 // 先选较低画质，再选连续传输的 FLV，设备解码器支持 AVC
-fn stream_url(data: &Value) -> Option<String> {
+fn pick_stream(data: &Value) -> Option<(String, model::TechStats)> {
+    let playurl = &data["playurl_info"]["playurl"];
     let mut best = None;
-    for stream in data["playurl_info"]["playurl"]["stream"]
-        .as_array()
-        .into_iter()
-        .flatten()
-    {
+    for stream in playurl["stream"].as_array().into_iter().flatten() {
         for format in stream["format"].as_array().into_iter().flatten() {
             let priority = match (
                 stream["protocol_name"].as_str(),
@@ -265,14 +263,36 @@ fn stream_url(data: &Value) -> Option<String> {
                         continue;
                     }
                     let rank = (quality, priority);
-                    if best.as_ref().map_or(true, |(previous, _)| rank < *previous) {
-                        best = Some((rank, format!("{host}{base}{extra}")));
+                    if best.as_ref().map_or(true, |(previous, _, _)| rank < *previous) {
+                        best = Some((rank, format!("{host}{base}{extra}"), codec));
                     }
                 }
             }
         }
     }
-    best.map(|(_, url)| url)
+    let ((qn, _), url, codec) = best?;
+    let media = &codec["media_info"];
+    let quality = match (media["width"].as_u64(), media["height"].as_u64()) {
+        (Some(width), Some(height)) if width > 0 && height > 0 => format!("{width}×{height}"),
+        _ => playurl["g_qn_desc"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .find(|item| item["qn"].as_u64() == Some(qn))
+            .and_then(|item| item["desc"].as_str())
+            .unwrap_or_default()
+            .to_owned(),
+    };
+    let host = crate::cdn::host(&url).to_string();
+    let tech = model::TechStats {
+        quality,
+        vcodec: codec["video_codecs"]["base"].as_str().unwrap_or("avc").into(),
+        acodec: codec["audio_codecs"]["base"].as_str().unwrap_or_default().into(),
+        vhost: host.clone(),
+        ahost: host,
+        ..Default::default()
+    };
+    Some((url, tech))
 }
 
 pub struct DanmakuServer {

@@ -85,6 +85,64 @@ fn stop_releases_publisher_waiting_on_full_queue() {
     assert!(!result);
 }
 
+#[test]
+fn statistics_count_decoded_frames_and_actual_queued_duration() {
+    let frames = Frames::new(false);
+    frames.pause(true);
+    for index in 1..=3 {
+        assert!(frames.publish(index, pixels()));
+    }
+    let stats = frames.snapshot();
+    assert_eq!(stats.received, 3);
+    assert_eq!(stats.queued, 3);
+    assert_eq!(stats.buffer_seconds(), 0.1);
+    assert_eq!(stats.dropped, 0);
+    assert!(!stats.waiting);
+    assert_eq!(frames.present(), Some(true));
+    assert_eq!(frames.snapshot().queued, 2);
+    assert_eq!(frames.take().unwrap().0, 1);
+}
+
+#[test]
+fn unread_presentation_frames_and_ui_replacements_are_counted_as_drops() {
+    let frames = Frames::new(false);
+    frames.state.lock().unwrap().audio_sample = Some((10.0, Instant::now()));
+    assert!(frames.publish(1, pixels()));
+    assert_eq!(frames.present(), Some(true));
+    assert!(frames.publish(2, pixels()));
+    assert_eq!(frames.present(), Some(false));
+    assert_eq!(frames.snapshot().dropped, 1);
+    assert_eq!(frames.take().unwrap().0, 2);
+    frames.discard();
+    assert_eq!(frames.snapshot().dropped, 2);
+    assert_eq!(frames.snapshot().received, 2);
+}
+
+#[test]
+fn live_queue_counts_the_frame_released_for_a_stalled_audio_clock() {
+    let frames = Frames::new(true);
+    for index in 1..=CAPACITY + 1 {
+        assert!(frames.publish(index as u64, pixels()));
+    }
+    let stats = frames.snapshot();
+    assert_eq!(stats.queued, CAPACITY);
+    assert_eq!(stats.received, (CAPACITY + 1) as u64);
+    assert_eq!(stats.dropped, 1);
+    assert_eq!(stats.buffer_seconds(), 0.5);
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn frames_skipped_to_catch_up_with_audio_are_counted() {
+    let frames = Frames::new(false);
+    frames.update_audio_clock(1.0);
+    frames.publish(1, pixels());
+    frames.publish(2, pixels());
+    assert_eq!(frames.present(), Some(true));
+    assert_eq!(frames.snapshot().dropped, 1);
+    assert_eq!(frames.take().unwrap().0, 2);
+}
+
 #[cfg(target_os = "linux")]
 #[test]
 fn active_audio_clock_caps_interpolation_until_audio_finishes() {

@@ -35,11 +35,23 @@ const BANDWIDTH_COLORS: [[u8; 3]; 11] = [
     [18, 69, 136],
     [255, 255, 255],
 ];
-// 系统接收速度的历史采样
+// 视频队列容量为 500ms
+const BUFFER_THRESHOLDS: [f64; 6] = [0.0, 0.05, 0.1, 0.2, 0.35, 0.5];
+const BUFFER_COLORS: [[u8; 3]; 6] = [
+    [0, 0, 0],
+    [253, 174, 97],
+    [230, 245, 152],
+    [102, 194, 165],
+    [50, 136, 189],
+    [255, 255, 255],
+];
+
+// 媒体连接速度与待播放视频帧时长的历史采样
 pub(in crate::app) struct StatsState {
     connection: Vec<Option<f64>>,
+    buffer: Vec<Option<f64>>,
     cursor: usize,
-    last_sample: Option<(Instant, u64)>,
+    last_sample: Option<(u64, Instant, u64)>,
     last_update: Option<Instant>,
 }
 
@@ -47,6 +59,7 @@ impl Default for StatsState {
     fn default() -> Self {
         Self {
             connection: vec![None; SLOTS],
+            buffer: vec![None; SLOTS],
             cursor: 0,
             last_sample: None,
             last_update: None,
@@ -54,32 +67,35 @@ impl Default for StatsState {
     }
 }
 
-// 系统网卡的累计接收字节
-#[cfg(target_os = "linux")]
-fn network_bytes() -> Option<u64> {
-    let text = std::fs::read_to_string("/proc/net/dev").ok()?;
-    let mut total = 0;
-    for line in text.lines().skip(2) {
-        let (interface, counters) = line.split_once(':')?;
-        if interface.trim() != "lo" {
-            total += counters.split_whitespace().next()?.parse::<u64>().ok()?;
+impl StatsState {
+    fn record(
+        &mut self,
+        now: Instant,
+        input: Option<(u64, u64)>,
+        buffer_seconds: Option<f64>,
+    ) -> Option<f64> {
+        let speed = input.and_then(|(generation, bytes)| {
+            let (previous_generation, at, previous) = self.last_sample?;
+            let elapsed = now.duration_since(at).as_secs_f64();
+            (generation == previous_generation && bytes >= previous && elapsed > 0.0)
+                .then(|| (bytes - previous) as f64 / elapsed)
+        });
+        self.last_sample = input.map(|(generation, bytes)| (generation, now, bytes));
+        for offset in 0..2 {
+            let index = (self.cursor + offset) % SLOTS;
+            self.connection[index] = speed;
+            self.buffer[index] = buffer_seconds;
         }
+        self.cursor = (self.cursor + 2) % SLOTS;
+        speed
     }
-    Some(total)
-}
-
-#[cfg(not(target_os = "linux"))]
-fn network_bytes() -> Option<u64> {
-    None
 }
 
 fn color(rgb: [u8; 3]) -> Color {
     Color::from_rgb_u8(rgb[0], rgb[1], rgb[2])
 }
 
-fn sample(value: f64) -> MeterSample {
-    let thresholds = BANDWIDTH_THRESHOLDS;
-    let colors = BANDWIDTH_COLORS;
+fn sample(value: f64, thresholds: &[f64], colors: &[[u8; 3]]) -> MeterSample {
     let last = thresholds.len() - 1;
     if value >= thresholds[last] {
         return MeterSample {
@@ -104,11 +120,16 @@ fn sample(value: f64) -> MeterSample {
     }
 }
 
-fn build(history: &[Option<f64>], cursor: usize) -> ModelRc<MeterSample> {
+fn build(
+    history: &[Option<f64>],
+    cursor: usize,
+    thresholds: &[f64],
+    colors: &[[u8; 3]],
+) -> ModelRc<MeterSample> {
     let mut items: Vec<MeterSample> = Vec::with_capacity(SLOTS);
     for index in 0..SLOTS {
         match history[index] {
-            Some(value) if index != cursor => items.push(sample(value)),
+            Some(value) if index != cursor => items.push(sample(value, thresholds, colors)),
             _ => items.push(MeterSample::default()),
         }
     }
@@ -174,7 +195,12 @@ impl App {
             self.stats.last_update = None;
             return;
         }
-        let Some(info) = self.current_play.as_ref() else {
+        let (id, tech, live) = if let Some(info) = &self.live {
+            (line("Room ID", info.room_id.to_string()), &info.tech, true)
+        } else if let Some(info) = &self.current_play {
+            let id = format!("{}:{}", info.bvid, info.cid);
+            (line("Video Info", id), &info.tech, false)
+        } else {
             return;
         };
         let now = Instant::now();
@@ -186,38 +212,119 @@ impl App {
             return;
         }
         self.stats.last_update = Some(now);
-        let mut speed_text = "-".to_string();
-        if let Some(bytes) = network_bytes() {
-            if let Some((at, previous)) = self.stats.last_sample {
-                let speed =
-                    bytes.saturating_sub(previous) as f64 / now.duration_since(at).as_secs_f64();
-                speed_text = bitrate_text(speed * 8.0);
-                for offset in 0..2 {
-                    self.stats.connection[(self.stats.cursor + offset) % SLOTS] = Some(speed);
-                }
-                self.stats.cursor = (self.stats.cursor + 2) % SLOTS;
-            }
-            self.stats.last_sample = Some((now, bytes));
+        let snapshot = self.player.as_ref().map(|p| (p.gen, p.statistics()));
+        let input = snapshot
+            .as_ref()
+            .and_then(|(gen, stats)| Some((*gen, stats.decoder.received_bytes?)));
+        let buffer_seconds = snapshot
+            .as_ref()
+            .map(|(_, stats)| stats.frames.buffer_seconds());
+        let speed = self.stats.record(now, input, buffer_seconds);
+
+        let stats = snapshot.as_ref().map(|(_, stats)| stats);
+        let fps = match stats.and_then(|stats| stats.decoder.source_fps) {
+            Some(fps) => format!("{fps:.2}"),
+            None => tech.fps.clone(),
+        };
+        let mut resolution = tech.quality.replace('×', "x");
+        if !fps.is_empty() {
+            resolution = if resolution.is_empty() {
+                format!("{fps} fps")
+            } else {
+                format!("{resolution}@{fps}")
+            };
         }
-        let tech = &info.tech;
-        let lines = vec![
-            line("Video Info", format!("{}:{}", info.bvid, info.cid)),
-            line("Resolution", format!("{}@{}", tech.quality, tech.fps)),
-            line(
-                "Codec",
-                format!("video/{}, audio/{}", tech.vcodec, tech.acodec),
-            ),
-            line("Video Host", tech.vhost.clone()),
-            line("Audio Host", tech.ahost.clone()),
-            line(
-                "Bitrate",
-                bitrate_text((tech.vbandwidth + tech.abandwidth) as f64),
-            ),
+        if let Some(stats) = stats {
+            if !resolution.is_empty() {
+                resolution.push_str(", ");
+            }
+            resolution.push_str(&format!(
+                "{} dropped of {}",
+                stats.frames.dropped, stats.frames.received
+            ));
+        }
+        let mut head = vec![id];
+        if !resolution.is_empty() {
+            head.push(line("Resolution", resolution));
+        }
+        let mut codecs = Vec::new();
+        if !tech.vcodec.is_empty() {
+            codecs.push(format!("video/{}", tech.vcodec));
+        }
+        if !tech.acodec.is_empty() {
+            codecs.push(format!("audio/{}", tech.acodec));
+        }
+        if !codecs.is_empty() {
+            head.push(line("Codec", codecs.join(", ")));
+        }
+        if !tech.vhost.is_empty() {
+            head.push(line(
+                if live { "Stream Host" } else { "Video Host" },
+                tech.vhost.clone(),
+            ));
+        }
+        if !live && !tech.ahost.is_empty() {
+            head.push(line("Audio Host", tech.ahost.clone()));
+        }
+        if !live && tech.vbandwidth > 0 && tech.abandwidth > 0 {
+            let bandwidth = (tech.vbandwidth + tech.abandwidth) as f64;
+            head.push(line("Bitrate", bitrate_text(bandwidth)));
+        }
+
+        let retries = self.live_recovery.attempts;
+        let debug = match (self.player.as_ref(), stats) {
+            (Some(player), Some(stats)) => {
+                let state = if player.finished {
+                    "ended"
+                } else if player.paused {
+                    "paused"
+                } else if player.stalled() {
+                    "stalled"
+                } else if stats.frames.waiting {
+                    "waiting"
+                } else {
+                    "playing"
+                };
+                format!(
+                    "{state}; errors:{}; retries:{retries}",
+                    stats.decoder.errors
+                )
+            }
+            _ => format!("loading; retries:{retries}"),
+        };
+        let tail = vec![
+            line("Debug", debug),
             line("Player", format!("CardBili/v{}", env!("CARGO_PKG_VERSION"))),
             line("Date", date_text()),
         ];
-        player.set_connection_samples(build(&self.stats.connection, self.stats.cursor));
-        player.set_connection_value(speed_text.into());
-        player.set_stat_lines(ModelRc::new(VecModel::from(lines)));
+        player.set_connection_samples(build(
+            &self.stats.connection,
+            self.stats.cursor,
+            &BANDWIDTH_THRESHOLDS,
+            &BANDWIDTH_COLORS,
+        ));
+        player.set_buffer_samples(build(
+            &self.stats.buffer,
+            self.stats.cursor,
+            &BUFFER_THRESHOLDS,
+            &BUFFER_COLORS,
+        ));
+        player.set_connection_value(
+            speed
+                .map(|speed| bitrate_text(speed * 8.0))
+                .unwrap_or_default()
+                .into(),
+        );
+        player.set_buffer_value(
+            buffer_seconds
+                .map(|seconds| format!("{seconds:.2}s"))
+                .unwrap_or_default()
+                .into(),
+        );
+        player.set_stat_head(ModelRc::new(VecModel::from(head)));
+        player.set_stat_tail(ModelRc::new(VecModel::from(tail)));
     }
 }
+
+#[cfg(test)]
+mod tests;

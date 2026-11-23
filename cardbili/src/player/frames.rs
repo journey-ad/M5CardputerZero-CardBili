@@ -5,6 +5,20 @@ use std::time::{Duration, Instant};
 // 30fps 下缓存 500ms 的解码帧
 const CAPACITY: usize = (super::FPS * 0.5) as usize;
 
+#[derive(Clone, Copy, Default)]
+pub(crate) struct Snapshot {
+    pub received: u64,
+    pub dropped: u64,
+    pub queued: usize,
+    pub waiting: bool,
+}
+
+impl Snapshot {
+    pub fn buffer_seconds(&self) -> f64 {
+        self.queued as f64 / super::FPS
+    }
+}
+
 #[derive(Default)]
 struct State {
     paused: bool,
@@ -18,6 +32,8 @@ struct State {
     latest: Option<(u64, super::VideoFrame)>,
     audio_sample: Option<(f64, Instant)>,
     position: f64,
+    received: u64,
+    dropped: u64,
 }
 
 impl State {
@@ -132,6 +148,7 @@ impl Frames {
                     && state.position(Instant::now()) <= position
                 {
                     state.pending.pop_front();
+                    state.dropped += 1;
                 }
             } else {
                 state = self.changed.wait(state).unwrap();
@@ -141,6 +158,7 @@ impl Frames {
             return false;
         }
         state.pending.push_back((index, pixels));
+        state.received += 1;
         self.changed.notify_all();
         true
     }
@@ -183,6 +201,7 @@ impl Frames {
                 }
                 if ahead < -1.0 / super::FPS && state.pending.len() > 1 {
                     state.pending.pop_front();
+                    state.dropped += 1;
                     self.changed.notify_all();
                     continue;
                 }
@@ -203,6 +222,9 @@ impl Frames {
             state.next = Some(state.next.unwrap_or_else(Instant::now) + interval);
         }
         let notify = state.latest.is_none();
+        if !notify {
+            state.dropped += 1;
+        }
         state.latest = state.pending.pop_front();
         self.changed.notify_all();
         Some(notify)
@@ -210,6 +232,24 @@ impl Frames {
 
     pub fn take(&self) -> Option<(u64, super::VideoFrame)> {
         self.state.lock().unwrap().latest.take()
+    }
+
+    pub fn discard(&self) {
+        self.state.lock().unwrap().dropped += 1;
+    }
+
+    pub fn snapshot(&self) -> Snapshot {
+        let state = self.state.lock().unwrap();
+        Snapshot {
+            received: state.received,
+            dropped: state.dropped,
+            queued: if state.stopped { 0 } else { state.pending.len() },
+            waiting: state.pending.is_empty()
+                && state.latest.is_none()
+                && !state.paused
+                && !state.video_ended
+                && !state.stopped,
+        }
     }
 }
 

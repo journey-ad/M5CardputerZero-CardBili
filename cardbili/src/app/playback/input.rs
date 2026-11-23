@@ -76,16 +76,16 @@ impl App {
             self.menu_key(k);
             return;
         }
+        if k == "m" {
+            self.toggle_menu();
+            return;
+        }
         if self.ui.global::<crate::Player>().get_live() {
             return self.live_key(k);
         }
         if k == "p" {
             self.sections.open = true;
             self.sections.dirty = true;
-            return;
-        }
-        if k == "m" {
-            self.toggle_menu();
             return;
         }
         match k {
@@ -224,9 +224,11 @@ impl App {
             }
             return;
         }
+        let len = if g_player.get_live() { 1 } else { 4 };
         match k {
-            "UP" | "k" => g_player.set_menu_index((g_player.get_menu_index() - 1).max(0)),
-            "DOWN" | "j" => g_player.set_menu_index((g_player.get_menu_index() + 1).min(3)),
+            "UP" | "k" => g_player.set_menu_index((g_player.get_menu_index() - 1 + len) % len),
+            "DOWN" | "j" => g_player.set_menu_index((g_player.get_menu_index() + 1) % len),
+            "ENTER" | "SPACE" if g_player.get_live() => self.menu_action("stats"),
             "ENTER" | "SPACE" => match g_player.get_menu_index() {
                 0 => self.menu_action("comments"),
                 1 => self.menu_action("subtitle"),

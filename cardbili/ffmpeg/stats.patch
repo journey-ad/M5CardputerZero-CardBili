@@ -1,0 +1,69 @@
+--- a/libavformat/tcp.c
++++ b/libavformat/tcp.c
+@@ -19,6 +19,8 @@
+  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+  */
+ #include "avformat.h"
++#include "cardbili_stats.h"
++#include <stdatomic.h>
+ #include "libavutil/avassert.h"
+ #include "libavutil/mem.h"
+ #include "libavutil/parseutils.h"
+@@ -31,6 +33,14 @@
+ #if HAVE_POLL_H
+ #include <poll.h>
+ #endif
++
++// 当前解码进程通过 TCP 实际接收的字节，包含 HTTP 与 TLS 协议数据
++static atomic_uint_fast64_t cardbili_rx_bytes;
++
++uint64_t ff_cardbili_rx_bytes(void)
++{
++    return atomic_load_explicit(&cardbili_rx_bytes, memory_order_relaxed);
++}
+ 
+ typedef struct TCPContext {
+     const AVClass *class;
+@@ -294,6 +304,8 @@
+             return ret;
+     }
+     ret = recv(s->fd, buf, size, 0);
++    if (ret > 0)
++        atomic_fetch_add_explicit(&cardbili_rx_bytes, ret, memory_order_relaxed);
+     if (ret == 0)
+         return AVERROR_EOF;
+     return ret < 0 ? ff_neterrno() : ret;
+--- a/fftools/ffmpeg.c
++++ b/fftools/ffmpeg.c
+@@ -24,6 +24,7 @@
+  */
+ 
+ #include "config.h"
++#include "libavformat/cardbili_stats.h"
+ 
+ #include <errno.h>
+ #include <limits.h>
+@@ -681,6 +682,15 @@
+     av_bprint_finalize(&buf, NULL);
+ 
+     if (progress_avio) {
++        av_bprintf(&buf_script, "cardbili_rx_bytes=%"PRIu64"\n", ff_cardbili_rx_bytes());
++        if (nb_input_files > 0) {
++            AVFormatContext *input = input_files[0]->ctx;
++            int video = av_find_best_stream(input, AVMEDIA_TYPE_VIDEO, -1, -1, NULL, 0);
++            if (video >= 0) {
++                AVRational rate = av_guess_frame_rate(input, input->streams[video], NULL);
++                av_bprintf(&buf_script, "cardbili_source_fps=%d/%d\n", rate.num, rate.den);
++            }
++        }
+         av_bprintf(&buf_script, "progress=%s\n",
+                    is_last_report ? "end" : "continue");
+         avio_write(progress_avio, buf_script.str,
+--- /dev/null
++++ b/libavformat/cardbili_stats.h
+@@ -0,0 +1,5 @@
++#ifndef AVFORMAT_CARDBILI_STATS_H
++#define AVFORMAT_CARDBILI_STATS_H
++#include <stdint.h>
++uint64_t ff_cardbili_rx_bytes(void);
++#endif

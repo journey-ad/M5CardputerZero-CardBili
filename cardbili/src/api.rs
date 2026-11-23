@@ -67,16 +67,18 @@ pub(crate) fn pick_streams(p: &Value, cdn: &str) -> Result<Streams, String> {
                 .as_str()
                 .and_then(|value| value.parse().ok())
         })
+        .filter(|value| value.is_finite() && *value > 0.0)
         .map(|value| format!("{value:.2}"))
-        .unwrap_or_else(|| "-".to_string());
+        .unwrap_or_default();
     Ok(Streams {
         duration: model::dur_of(&p["data"]["timelength"]) / 1000.0,
         tech: crate::model::TechStats {
-            quality: format!(
-                "{}×{}",
-                video["width"].as_u64().unwrap_or(0),
-                video["height"].as_u64().unwrap_or(0)
-            ),
+            quality: match (video["width"].as_u64(), video["height"].as_u64()) {
+                (Some(width), Some(height)) if width > 0 && height > 0 => {
+                    format!("{width}×{height}")
+                }
+                _ => String::new(),
+            },
             vcodec: video["codecs"].as_str().unwrap_or("").to_string(),
             acodec: audio["codecs"].as_str().unwrap_or("").to_string(),
             vbandwidth: video["bandwidth"].as_u64().unwrap_or(0),
