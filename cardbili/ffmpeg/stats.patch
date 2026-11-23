@@ -43,114 +43,22 @@
  
  #include <errno.h>
  #include <limits.h>
-@@ -681,6 +682,19 @@
+@@ -681,6 +682,15 @@
      av_bprint_finalize(&buf, NULL);
  
      if (progress_avio) {
 +        av_bprintf(&buf_script, "cardbili_rx_bytes=%"PRIu64"\n", ff_cardbili_rx_bytes());
-+        av_bprintf(&buf_script, "cardbili_source_bitrate=%"PRIu64"\n", cardbili_source_bitrate());
 +        if (nb_input_files > 0) {
 +            AVFormatContext *input = input_files[0]->ctx;
-+            for (unsigned i = 0; i < input->nb_streams; i++) {
-+                AVStream *stream = input->streams[i];
-+                if (stream->codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
-+                    AVRational rate = av_guess_frame_rate(input, stream, NULL);
-+                    av_bprintf(&buf_script, "cardbili_source_fps=%d/%d\n", rate.num, rate.den);
-+                    break;
-+                }
++            int video = av_find_best_stream(input, AVMEDIA_TYPE_VIDEO, -1, -1, NULL, 0);
++            if (video >= 0) {
++                AVRational rate = av_guess_frame_rate(input, input->streams[video], NULL);
++                av_bprintf(&buf_script, "cardbili_source_fps=%d/%d\n", rate.num, rate.den);
 +            }
 +        }
          av_bprintf(&buf_script, "progress=%s\n",
                     is_last_report ? "end" : "continue");
          avio_write(progress_avio, buf_script.str,
---- a/fftools/ffmpeg_demux.c
-+++ b/fftools/ffmpeg_demux.c
-@@ -18,6 +18,7 @@
- 
- #include <float.h>
- #include <stdint.h>
-+#include <stdatomic.h>
- 
- #include "ffmpeg.h"
- #include "ffmpeg_sched.h"
-@@ -95,6 +96,9 @@
-     uint64_t                 nb_packets;
-     // combined size of all the packets read
-     uint64_t                 data_size;
-+    uint64_t                 cardbili_bitrate_bytes;
-+    int64_t                  cardbili_bitrate_start;
-+    atomic_uint_fast64_t     cardbili_bitrate;
- } DemuxStream;
- 
- typedef struct Demuxer {
-@@ -148,6 +152,24 @@
- static DemuxStream *ds_from_ist(InputStream *ist)
- {
-     return (DemuxStream*)ist;
-+}
-+
-+// 汇总当前选中音视频流的压缩输入码率，单位为 bit/s
-+uint64_t cardbili_source_bitrate(void)
-+{
-+    uint64_t total = 0;
-+    for (InputStream *ist = ist_iter(NULL); ist; ist = ist_iter(ist)) {
-+        DemuxStream *ds = ds_from_ist(ist);
-+        uint64_t bitrate;
-+        if (ds->discard || (ist->par->codec_type != AVMEDIA_TYPE_VIDEO &&
-+                            ist->par->codec_type != AVMEDIA_TYPE_AUDIO))
-+            continue;
-+        bitrate = atomic_load_explicit(&ds->cardbili_bitrate, memory_order_relaxed);
-+        if (!bitrate)
-+            return 0;
-+        total += bitrate;
-+    }
-+    return total;
- }
- 
- static Demuxer *demuxer_from_ifile(InputFile *f)
-@@ -471,6 +493,23 @@
-             *send_flags |= DEMUX_SEND_STREAMCOPY_EOF;
-     }
- 
-+    // 码率按每秒媒体时间的压缩音视频包大小计算
-+    if (ist->par->codec_type == AVMEDIA_TYPE_VIDEO ||
-+        ist->par->codec_type == AVMEDIA_TYPE_AUDIO) {
-+        int64_t duration;
-+        if (!ds->cardbili_bitrate_bytes || ds->dts < ds->cardbili_bitrate_start) {
-+            ds->cardbili_bitrate_start = ds->dts;
-+            ds->cardbili_bitrate_bytes = 0;
-+        }
-+        ds->cardbili_bitrate_bytes += pkt->size;
-+        duration = ds->next_dts - ds->cardbili_bitrate_start;
-+        if (duration >= AV_TIME_BASE) {
-+            uint64_t bitrate = ds->cardbili_bitrate_bytes * 8.0 * AV_TIME_BASE / duration;
-+            atomic_store_explicit(&ds->cardbili_bitrate, bitrate, memory_order_relaxed);
-+            ds->cardbili_bitrate_bytes = 0;
-+        }
-+    }
-+
-     ds->data_size += pkt->size;
-     ds->nb_packets++;
- 
-@@ -1233,6 +1272,7 @@
-     if (!ds)
-         return NULL;
- 
-+    atomic_init(&ds->cardbili_bitrate, 0);
-     ds->sch_idx_stream = -1;
-     ds->sch_idx_dec    = -1;
- 
---- a/fftools/ffmpeg.h
-+++ b/fftools/ffmpeg.h
-@@ -899,6 +899,8 @@
-  * pass NULL to start iteration */
- InputStream *ist_iter(InputStream *prev);
- 
-+uint64_t cardbili_source_bitrate(void);
-+
- /* iterate over all output streams in all output files;
-  * pass NULL to start iteration */
- OutputStream *ost_iter(OutputStream *prev);
 --- /dev/null
 +++ b/libavformat/cardbili_stats.h
 @@ -0,0 +1,5 @@

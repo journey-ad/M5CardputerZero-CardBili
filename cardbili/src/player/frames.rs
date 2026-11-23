@@ -10,7 +10,6 @@ pub(crate) struct Snapshot {
     pub received: u64,
     pub dropped: u64,
     pub queued: usize,
-    pub capacity: usize,
     pub waiting: bool,
 }
 
@@ -245,7 +244,6 @@ impl Frames {
             received: state.received,
             dropped: state.dropped,
             queued: if state.stopped { 0 } else { state.pending.len() },
-            capacity: CAPACITY,
             waiting: state.pending.is_empty()
                 && state.latest.is_none()
                 && !state.paused

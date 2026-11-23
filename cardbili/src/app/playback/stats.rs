@@ -195,9 +195,14 @@ impl App {
             self.stats.last_update = None;
             return;
         }
-        if self.live.is_none() && self.current_play.is_none() {
+        let (id, tech, live) = if let Some(info) = &self.live {
+            (line("Room ID", info.room_id.to_string()), &info.tech, true)
+        } else if let Some(info) = &self.current_play {
+            let id = format!("{}:{}", info.bvid, info.cid);
+            (line("Video Info", id), &info.tech, false)
+        } else {
             return;
-        }
+        };
         let now = Instant::now();
         if self
             .stats
@@ -207,50 +212,26 @@ impl App {
             return;
         }
         self.stats.last_update = Some(now);
-        let snapshot = self.player.as_ref().map(|player| player.statistics());
-        let input = self
-            .player
+        let snapshot = self.player.as_ref().map(|p| (p.gen, p.statistics()));
+        let input = snapshot
             .as_ref()
-            .zip(snapshot.as_ref())
-            .and_then(|(player, stats)| {
-                stats
-                    .decoder
-                    .received_bytes
-                    .map(|bytes| (player.gen, bytes))
-            });
-        let buffer_seconds = snapshot.as_ref().map(|stats| stats.frames.buffer_seconds());
+            .and_then(|(gen, stats)| Some((*gen, stats.decoder.received_bytes?)));
+        let buffer_seconds = snapshot
+            .as_ref()
+            .map(|(_, stats)| stats.frames.buffer_seconds());
         let speed = self.stats.record(now, input, buffer_seconds);
-        let (id, tech, live) = if let Some(info) = &self.live {
-            (line("Room ID", info.room_id.to_string()), &info.tech, true)
-        } else if let Some(info) = &self.current_play {
-            (
-                line("Video Info", format!("{}:{}", info.bvid, info.cid)),
-                &info.tech,
-                false,
-            )
-        } else {
-            return;
+
+        let stats = snapshot.as_ref().map(|(_, stats)| stats);
+        let fps = match stats.and_then(|stats| stats.decoder.source_fps) {
+            Some(fps) => format!("{fps:.2}"),
+            None if tech.fps.is_empty() => "-".into(),
+            None => tech.fps.clone(),
         };
-        let fps = snapshot
-            .as_ref()
-            .and_then(|stats| stats.decoder.source_fps)
-            .map(|fps| format!("{fps:.2}"))
-            .unwrap_or_else(|| {
-                if tech.fps.is_empty() {
-                    "-".into()
-                } else {
-                    tech.fps.clone()
-                }
-            });
-        let frames = snapshot.as_ref().map_or_else(
+        let frames = stats.map_or_else(
             || "- dropped of -".into(),
-            |stats| {
-                format!(
-                    "{} dropped of {}",
-                    stats.frames.dropped, stats.frames.received
-                )
-            },
+            |stats| format!("{} dropped of {}", stats.frames.dropped, stats.frames.received),
         );
+        let bandwidth = (tech.vbandwidth + tech.abandwidth) as f64;
         let mut head = vec![
             id,
             line(
@@ -261,26 +242,18 @@ impl App {
                 "Codec",
                 format!("video/{}, audio/{}", tech.vcodec, tech.acodec),
             ),
-            line(
-                if live { "Stream Host" } else { "Video Host" },
-                tech.vhost.clone(),
-            ),
         ];
-        if !live {
-            head.push(line("Audio Host", tech.ahost.clone()));
-        }
-        let bitrate = snapshot
-            .as_ref()
-            .and_then(|stats| stats.decoder.source_bitrate)
-            .unwrap_or((tech.vbandwidth + tech.abandwidth) as f64);
-        let bitrate = if bitrate > 0.0 {
-            bitrate_text(bitrate)
+        if live {
+            head.push(line("Stream Host", tech.vhost.clone()));
         } else {
-            "-".into()
-        };
-        let debug = self.player.as_ref().zip(snapshot.as_ref()).map_or_else(
-            || format!("loading; retries:{}", self.live_recovery.attempts),
-            |(player, stats)| {
+            head.push(line("Video Host", tech.vhost.clone()));
+            head.push(line("Audio Host", tech.ahost.clone()));
+            head.push(line("Bitrate", bitrate_text(bandwidth)));
+        }
+
+        let retries = self.live_recovery.attempts;
+        let debug = match (self.player.as_ref(), stats) {
+            (Some(player), Some(stats)) => {
                 let state = if player.finished {
                     "ended"
                 } else if player.paused {
@@ -292,16 +265,12 @@ impl App {
                 } else {
                     "playing"
                 };
-                format!(
-                    "{state}; queue:{}/{}; errors:{}\nretries:{}; bitrate:{bitrate}",
-                    stats.frames.queued,
-                    stats.frames.capacity,
-                    stats.decoder.errors,
-                    self.live_recovery.attempts,
-                )
-            },
-        );
+                format!("{state}; errors:{}; retries:{retries}", stats.decoder.errors)
+            }
+            _ => format!("loading; retries:{retries}"),
+        };
         let tail = vec![
+            line("Debug", debug),
             line("Player", format!("CardBili/v{}", env!("CARGO_PKG_VERSION"))),
             line("Date", date_text()),
         ];
@@ -329,7 +298,6 @@ impl App {
         );
         player.set_stat_head(ModelRc::new(VecModel::from(head)));
         player.set_stat_tail(ModelRc::new(VecModel::from(tail)));
-        player.set_stat_mystery(line("Debug", debug));
     }
 }
 

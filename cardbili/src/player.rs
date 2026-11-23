@@ -98,8 +98,6 @@ pub struct Player {
     tx: Sender<Msg>,
     frames: Arc<frames::Frames>,
     decoder_stats: Arc<telemetry::DecoderStats>,
-    #[cfg(all(feature = "desktop", windows))]
-    audio_stats: Arc<telemetry::DecoderStats>,
 }
 
 impl Player {
@@ -147,9 +145,7 @@ impl Player {
             scale_filter,
             tx,
             frames: Arc::new(frames::Frames::new(info.live)),
-            decoder_stats: Arc::new(telemetry::DecoderStats::default()),
-            #[cfg(all(feature = "desktop", windows))]
-            audio_stats: Arc::new(telemetry::DecoderStats::default()),
+            decoder_stats: Arc::default(),
         };
         p.base = state.position.clamp(0.0, p.duration);
         p.spawn(p.base);
@@ -162,12 +158,8 @@ impl Player {
         let mut args: Vec<String> = [
             "-hide_banner",
             "-loglevel",
-            "level+error",
+            "error",
             "-nostats",
-            "-progress",
-            "pipe:2",
-            "-stats_period",
-            "1",
             "-threads",
             "4",
             "-probesize",
@@ -216,7 +208,7 @@ impl Player {
             &self.cookies,
             Stdio::piped(),
             None,
-            self.audio_stats.clone(),
+            Arc::default(),
         ) {
             if let Some(stdout) = child.stdout.take() {
                 audio_desktop::start(stdout, self.frames.clone());
@@ -238,11 +230,7 @@ impl Player {
         stop_child(&mut self.audio, crate::i18n::tr("音频"));
         self.frames.stop();
         self.frames = Arc::new(frames::Frames::new(self.live));
-        self.decoder_stats = Arc::new(telemetry::DecoderStats::default());
-        #[cfg(all(feature = "desktop", windows))]
-        {
-            self.audio_stats = Arc::new(telemetry::DecoderStats::default());
-        }
+        self.decoder_stats = Arc::default();
         self.frames.pause(self.paused);
         #[cfg(target_os = "linux")]
         let audio_pipe = match audio::start(self.frames.clone()) {
@@ -515,26 +503,9 @@ impl Player {
     }
 
     pub(crate) fn statistics(&self) -> Statistics {
-        let decoder = self.decoder_stats.snapshot();
-        #[cfg(all(feature = "desktop", windows))]
-        let decoder = {
-            let audio = self.audio_stats.snapshot();
-            telemetry::DecoderSnapshot {
-                received_bytes: decoder
-                    .received_bytes
-                    .zip(audio.received_bytes)
-                    .map(|(video, audio)| video + audio),
-                errors: decoder.errors + audio.errors,
-                source_bitrate: decoder
-                    .source_bitrate
-                    .zip(audio.source_bitrate)
-                    .map(|(video, audio)| video + audio),
-                ..decoder
-            }
-        };
         Statistics {
             frames: self.frames.snapshot(),
-            decoder,
+            decoder: self.decoder_stats.snapshot(),
         }
     }
 

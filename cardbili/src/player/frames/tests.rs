@@ -95,7 +95,6 @@ fn statistics_count_decoded_frames_and_actual_queued_duration() {
     let stats = frames.snapshot();
     assert_eq!(stats.received, 3);
     assert_eq!(stats.queued, 3);
-    assert_eq!(stats.capacity, 15);
     assert_eq!(stats.buffer_seconds(), 0.1);
     assert_eq!(stats.dropped, 0);
     assert!(!stats.waiting);

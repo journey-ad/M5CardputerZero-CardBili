@@ -280,14 +280,8 @@ fn pick_stream(data: &Value) -> Option<(String, model::TechStats)> {
             .flatten()
             .find(|item| item["qn"].as_u64() == Some(qn))
             .and_then(|item| item["desc"].as_str())
-            .map(str::to_owned)
-            .unwrap_or_else(|| {
-                if qn == u64::MAX {
-                    "-".into()
-                } else {
-                    format!("QN {qn}")
-                }
-            }),
+            .unwrap_or("-")
+            .to_owned(),
     };
     let host = crate::cdn::host(&url).to_string();
     let tech = model::TechStats {

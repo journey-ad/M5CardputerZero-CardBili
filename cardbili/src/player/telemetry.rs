@@ -4,7 +4,6 @@ use std::sync::Mutex;
 pub(crate) struct DecoderSnapshot {
     pub received_bytes: Option<u64>,
     pub source_fps: Option<f64>,
-    pub source_bitrate: Option<f64>,
     pub errors: u64,
 }
 
@@ -16,43 +15,24 @@ impl DecoderStats {
         *self.0.lock().unwrap()
     }
 
-    // FFmpeg 的进度字段与错误日志共用 stderr
+    // FFmpeg 的进度字段与错误日志共用 stderr；返回 true 表示该行是进度字段，不写入日志
     pub fn observe(&self, line: &str) -> bool {
         if let Some((key, value)) = line.split_once('=') {
-            if key == "cardbili_source_bitrate" {
-                self.0.lock().unwrap().source_bitrate = value
-                    .parse::<f64>()
-                    .ok()
-                    .filter(|bitrate| bitrate.is_finite() && *bitrate > 0.0);
-                return true;
-            }
-            if key == "cardbili_source_fps" {
-                if let Some(fps) = frame_rate(value) {
-                    self.0.lock().unwrap().source_fps = Some(fps);
+            if !key.is_empty() && key.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_') {
+                let mut stats = self.0.lock().unwrap();
+                match key {
+                    "cardbili_rx_bytes" => {
+                        if let Ok(bytes) = value.parse() {
+                            stats.received_bytes = Some(bytes);
+                        }
+                    }
+                    "cardbili_source_fps" => {
+                        if let Some(fps) = frame_rate(value) {
+                            stats.source_fps = Some(fps);
+                        }
+                    }
+                    _ => {}
                 }
-                return true;
-            }
-            if key == "cardbili_rx_bytes" {
-                if let Ok(bytes) = value.parse() {
-                    self.0.lock().unwrap().received_bytes = Some(bytes);
-                }
-                return true;
-            }
-            if matches!(
-                key,
-                "frame"
-                    | "fps"
-                    | "bitrate"
-                    | "total_size"
-                    | "out_time_us"
-                    | "out_time_ms"
-                    | "out_time"
-                    | "dup_frames"
-                    | "drop_frames"
-                    | "speed"
-                    | "progress"
-            ) || (key.starts_with("stream_") && key.ends_with("_q"))
-            {
                 return true;
             }
         }
@@ -89,7 +69,6 @@ mod tests {
             assert!(stats.observe(line));
         }
         assert!(stats.snapshot().received_bytes.is_none());
-        assert!(stats.snapshot().source_bitrate.is_none());
         assert_eq!(stats.snapshot().errors, 0);
         assert!(stats.observe("cardbili_rx_bytes=16384"));
         assert!(stats.observe("cardbili_rx_bytes=invalid"));
@@ -102,13 +81,5 @@ mod tests {
         assert_eq!(stats.snapshot().received_bytes, Some(16384));
         assert_eq!(stats.snapshot().errors, 1);
         assert!((stats.snapshot().source_fps.unwrap() - 29.97003).abs() < 0.00001);
-        assert!(stats.observe("bitrate=39168.0kbits/s"));
-        assert!(stats.snapshot().source_bitrate.is_none());
-        assert!(stats.observe("cardbili_source_bitrate=1500000"));
-        assert_eq!(stats.snapshot().source_bitrate, Some(1_500_000.0));
-        for invalid in ["0", "-1", "NaN", "inf", "N/A"] {
-            assert!(stats.observe(&format!("cardbili_source_bitrate={invalid}")));
-            assert!(stats.snapshot().source_bitrate.is_none());
-        }
     }
 }

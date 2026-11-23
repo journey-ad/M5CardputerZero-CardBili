@@ -4,7 +4,7 @@ import { TripleAnimation } from "../components/player/triple.slint";
 import { PlaybackBar } from "../components/player/controls.slint";
 import { SuperChatDialog } from "../components/live/superchat.slint";
 import { Icon, Icons } from "../components/base/icons.slint";
-import { Player, Status, Danmaku, Preferences, SuperChat, I18n, TrackMenu } from "../state.slint";
+import { Player, Status, Danmaku, Preferences, SuperChat, I18n, TrackMenu, MeterSample } from "../state.slint";
 // 更多菜单里的单行按钮
 component MenuEntry inherits Rectangle {
     in property <image> icon;
@@ -40,6 +40,47 @@ component MenuEntry inherits Rectangle {
         source: Icons.right; colorize: #7d8ea8; image-fit: contain; image-rendering: pixelated;
     }
     touch := TouchArea { clicked => { root.clicked(); } }
+}
+
+// 技术统计：左侧标签 + 右侧数值
+component StatRow inherits Rectangle {
+    in property <string> label;
+    in property <string> value;
+    height: 14px;
+    Text {
+        x: 0px; y: 0px; width: 56px; height: 14px; text: root.label; color: #ffffff;
+        font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
+        horizontal-alignment: right; vertical-alignment: center;
+    }
+    Text {
+        x: 60px; y: 0px; width: parent.width - 64px; height: 14px; text: root.value; color: #ffffff;
+        font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
+        horizontal-alignment: left; vertical-alignment: center; overflow: elide;
+    }
+}
+
+// 技术统计：标签 + 历史柱状图 + 当前值
+component StatMeter inherits Rectangle {
+    in property <string> label;
+    in property <[MeterSample]> samples;
+    in property <string> value;
+    height: 14px;
+    Text {
+        x: 0px; y: 0px; width: 56px; height: 14px; text: root.label; color: #ffffff;
+        font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
+        horizontal-alignment: right; vertical-alignment: center;
+    }
+    for meter[i] in root.samples : Rectangle {
+        x: 60px + i * 1.28px; y: 0px; width: 1.3px; height: 12px; background: meter.base;
+        if meter.fill > 0px : Rectangle {
+            x: 0px; y: 12px - meter.fill; width: 1px; height: meter.fill; background: meter.top;
+        }
+    }
+    Text {
+        x: parent.width - 66px; y: 0px; width: 64px; height: 14px; text: root.value; color: #ffffff;
+        font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
+        horizontal-alignment: right; vertical-alignment: center; overflow: elide;
+    }
 }
 
 export component PlayPage inherits Rectangle {
@@ -165,87 +206,13 @@ export component PlayPage inherits Rectangle {
     if Player.stats-on: Rectangle {
         x: 0px; y: 0px; width: parent.width; height: parent.height;
         background: #00000099;
-        // 头部指标
-        for line[i] in Player.stat-head : Rectangle {
-            x: 2px; y: 2px + i * 14px; width: parent.width - 4px; height: 14px;
-            Text {
-                x: 0px; y: 0px; width: 56px; height: 14px; text: line.label; color: #ffffff;
-                font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
-                horizontal-alignment: right; vertical-alignment: center;
-            }
-            Text {
-                x: 60px; y: 0px; width: parent.width - 64px; height: 14px; text: line.value; color: #ffffff;
-                font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
-                horizontal-alignment: left; vertical-alignment: center; overflow: elide;
-            }
-        }
-        // 连接速度图表
-        Rectangle {
-            x: 2px; y: 2px + Player.stat-head.length * 14px; width: parent.width - 4px; height: 14px;
-            Text {
-                x: 0px; y: 0px; width: 56px; height: 14px; text: "Speed"; color: #ffffff;
-                font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
-                horizontal-alignment: right; vertical-alignment: center;
-            }
-            for meter[i] in Player.connection-samples : Rectangle {
-                x: 60px + i * 1.28px; y: 0px; width: 1.3px; height: 12px; background: meter.base;
-                if meter.fill > 0px : Rectangle {
-                    x: 0px; y: 12px - meter.fill; width: 1px; height: meter.fill; background: meter.top;
-                }
-            }
-            Text {
-                x: parent.width - 66px; y: 0px; width: 64px; height: 14px; text: Player.connection-value; color: #ffffff;
-                font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
-                horizontal-alignment: right; vertical-alignment: center; overflow: elide;
-            }
-        }
-        // 待播放视频帧时长图表
-        Rectangle {
-            x: 2px; y: 2px + Player.stat-head.length * 14px + 14px; width: parent.width - 4px; height: 14px;
-            Text {
-                x: 0px; y: 0px; width: 56px; height: 14px; text: "Buffer"; color: #ffffff;
-                font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
-                horizontal-alignment: right; vertical-alignment: center;
-            }
-            for meter[i] in Player.buffer-samples : Rectangle {
-                x: 60px + i * 1.28px; y: 0px; width: 1.3px; height: 12px; background: meter.base;
-                if meter.fill > 0px : Rectangle {
-                    x: 0px; y: 12px - meter.fill; width: 1px; height: meter.fill; background: meter.top;
-                }
-            }
-            Text {
-                x: parent.width - 66px; y: 0px; width: 64px; height: 14px; text: Player.buffer-value; color: #ffffff;
-                font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
-                horizontal-alignment: right; vertical-alignment: center; overflow: elide;
-            }
-        }
-        // 调试明细
-        Rectangle {
-            x: 2px; y: 2px + Player.stat-head.length * 14px + 28px; width: parent.width - 4px; height: 28px;
-            Text {
-                x: 0px; y: 0px; width: 56px; height: 28px; text: Player.stat-mystery.label; color: #ffffff;
-                font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
-                horizontal-alignment: right; vertical-alignment: top;
-            }
-            Text {
-                x: 60px; y: 0px; width: parent.width - 64px; height: 28px; text: Player.stat-mystery.value; color: #ffffff;
-                font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
-                horizontal-alignment: left; vertical-alignment: top; wrap: word-wrap;
-            }
-        }
-        // 尾部指标
-        for line[i] in Player.stat-tail : Rectangle {
-            x: 2px; y: 2px + Player.stat-head.length * 14px + 56px + i * 14px; width: parent.width - 4px; height: 14px;
-            Text {
-                x: 0px; y: 0px; width: 56px; height: 14px; text: line.label; color: #ffffff;
-                font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
-                horizontal-alignment: right; vertical-alignment: center;
-            }
-            Text {
-                x: 60px; y: 0px; width: parent.width - 64px; height: 14px; text: line.value; color: #ffffff;
-                font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
-                horizontal-alignment: left; vertical-alignment: center; overflow: elide;
-            }
+        VerticalLayout {
+            x: 2px; y: 2px; width: parent.width - 4px; height: parent.height - 4px;
+            alignment: start;
+            for line in Player.stat-head: StatRow { label: line.label; value: line.value; }
+            StatMeter { label: "Speed"; samples: Player.connection-samples; value: Player.connection-value; }
+            StatMeter { label: "Buffer"; samples: Player.buffer-samples; value: Player.buffer-value; }
+            for line in Player.stat-tail: StatRow { label: line.label; value: line.value; }
         }
     }
     // 更多菜单浮层

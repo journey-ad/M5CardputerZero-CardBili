@@ -109,9 +109,10 @@ fn player_more_menu_opens_stats_for_live_and_video() {
         assert_eq!(player.get_buffer_samples().row_count(), 150);
         assert_eq!(player.get_buffer_value(), "-");
         assert_eq!(player.get_connection_value(), "-");
-        assert_eq!(player.get_stat_mystery().label, "Debug");
-        assert_eq!(player.get_stat_tail().row_data(0).unwrap().label, "Player");
-        assert_eq!(player.get_stat_tail().row_data(1).unwrap().label, "Date");
+        let tail = player.get_stat_tail();
+        assert_eq!(tail.row_data(0).unwrap().label, "Debug");
+        assert_eq!(tail.row_data(1).unwrap().label, "Player");
+        assert_eq!(tail.row_data(2).unwrap().label, "Date");
         if live {
             assert_eq!(lines.row_data(1).unwrap().value, "1280x720@-, - dropped of -");
             assert_eq!(
