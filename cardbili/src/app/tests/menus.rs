@@ -110,8 +110,8 @@ fn player_more_menu_opens_stats_for_live_and_video() {
         assert_eq!(first.value, if live { "42" } else { "BV-test:42" });
         assert_eq!(player.get_connection_samples().row_count(), 150);
         assert_eq!(player.get_buffer_samples().row_count(), 150);
-        assert_eq!(player.get_buffer_value(), "");
-        assert_eq!(player.get_connection_value(), "");
+        assert_eq!(player.get_buffer_value(), "0.00s");
+        assert_eq!(player.get_connection_value(), "0 Kbps");
         let tail = player.get_stat_tail();
         assert_eq!(tail.row_data(0).unwrap().label, "Debug");
         assert_eq!(tail.row_data(1).unwrap().label, "Player");

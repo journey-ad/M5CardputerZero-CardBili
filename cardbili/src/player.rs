@@ -75,6 +75,7 @@ struct Speed {
 pub(crate) struct Statistics {
     pub frames: frames::Snapshot,
     pub decoder: telemetry::DecoderSnapshot,
+    pub buffer_seconds: f64,
 }
 
 pub struct Player {
@@ -158,7 +159,8 @@ impl Player {
         let mut args: Vec<String> = [
             "-hide_banner",
             "-loglevel",
-            "level+error",
+            "level+info",
+            "-debug_ts",
             "-nostats",
             "-threads",
             "4",
@@ -187,6 +189,7 @@ impl Player {
         let url = if self.live {
             &self.video_url
         } else {
+            args.extend(["-thread_queue_size".into(), "512".into()]);
             &self.audio_url
         };
         args.extend(["-i".to_string(), url.clone()]);
@@ -279,12 +282,15 @@ impl Player {
         } else {
             vec![&self.video_url, &self.audio_url]
         };
+        #[cfg(feature = "desktop")]
+        args.extend(["-loglevel".into(), "level+info".into(), "-debug_ts".into()]);
         for url in inputs {
             if self.live {
-                // 输入线程缓存压缩包，解码帧队列维持 500ms
-                args.extend(["-thread_queue_size".into(), "128".into()]);
                 // 直播源为 720p，缩到 320×170 后去块滤波的差异低于 RGB565 量化噪声，跳过可省约 15% 解码 CPU
                 args.extend(["-skip_loop_filter".into(), "all".into()]);
+            } else {
+                // 点播预读压缩包，音视频解码输出队列沿用原有容量
+                args.extend(["-thread_queue_size".into(), "512".into()]);
             }
             args.extend([
                 "-threads".into(),
@@ -405,18 +411,22 @@ impl Player {
     }
 
     pub fn position(&self, frames_in_seg: u64) -> f64 {
+        let position = self.media_position(frames_in_seg);
+        if self.live {
+            position
+        } else {
+            position.min(self.duration)
+        }
+    }
+
+    fn media_position(&self, frames_in_seg: u64) -> f64 {
         let output = self.frames.position(frames_in_seg);
         let speed = self
             .speeds
             .iter()
             .rfind(|speed| speed.output <= output)
             .unwrap();
-        let position = speed.position + (output - speed.output) * speed.rate;
-        if self.live {
-            position
-        } else {
-            position.min(self.duration)
-        }
+        speed.position + (output - speed.output) * speed.rate
     }
 
     pub fn cycle_rate(&mut self) -> Result<(), String> {
@@ -502,10 +512,13 @@ impl Player {
         self.frames.discard();
     }
 
-    pub(crate) fn statistics(&self) -> Statistics {
+    pub(crate) fn statistics(&self, frames_in_seg: u64) -> Statistics {
         Statistics {
             frames: self.frames.snapshot(),
             decoder: self.decoder_stats.snapshot(),
+            buffer_seconds: self
+                .decoder_stats
+                .buffer_seconds(self.media_position(frames_in_seg) - self.base),
         }
     }
 

@@ -94,6 +94,26 @@ impl App {
         }
         match result {
             Ok(info) => {
+                let state = if let Some(mut previous) = self.player.take() {
+                    self.gen = self.gen.max(previous.gen);
+                    let position = previous.position(self.frames_in_seg);
+                    let state = player::PlaybackState {
+                        position: if position >= previous.duration - 1.0 {
+                            0.0
+                        } else {
+                            position
+                        },
+                        paused: false,
+                        rate: previous.rate,
+                    };
+                    previous.stop();
+                    state
+                } else {
+                    player::PlaybackState {
+                        position: std::mem::take(&mut self.play_start),
+                        ..Default::default()
+                    }
+                };
                 self.gen += 1;
                 self.frames_in_seg = 0;
                 self.player = Some(player::Player::start(
@@ -102,10 +122,7 @@ impl App {
                     self.gen,
                     self.tx.clone(),
                     &self.settings,
-                    player::PlaybackState {
-                        position: std::mem::take(&mut self.play_start),
-                        ..Default::default()
-                    },
+                    state,
                 ));
                 tasks::start_danmaku(info.cid, self.cookies.clone(), self.gen, self.tx.clone());
                 self.setup_sections(info.bvid.clone(), info.cid, info.parts.clone());

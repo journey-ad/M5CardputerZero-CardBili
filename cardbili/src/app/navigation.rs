@@ -189,7 +189,6 @@ impl App {
             self.start_login(crate::i18n::tr("正在生成二维码…"));
         }
         if let Some(room_id) = self.requested_live.take() {
-            self.stats = playback::stats::StatsState::default();
             self.live = Some(model::LiveInfo {
                 room_id,
                 ..Default::default()
@@ -238,6 +237,7 @@ impl App {
                 self.play_request,
                 self.settings.cdn.clone(),
                 self.tx.clone(),
+                false,
             );
         }
         if let Some((bvid, title)) = self.requested_detail.take() {

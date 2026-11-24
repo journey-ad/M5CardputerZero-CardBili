@@ -86,7 +86,7 @@ fn stop_releases_publisher_waiting_on_full_queue() {
 }
 
 #[test]
-fn statistics_count_decoded_frames_and_actual_queued_duration() {
+fn statistics_count_decoded_frames_and_queue_length() {
     let frames = Frames::new(false);
     frames.pause(true);
     for index in 1..=3 {
@@ -94,12 +94,11 @@ fn statistics_count_decoded_frames_and_actual_queued_duration() {
     }
     let stats = frames.snapshot();
     assert_eq!(stats.received, 3);
-    assert_eq!(stats.queued, 3);
-    assert_eq!(stats.buffer_seconds(), 0.1);
+    assert_eq!(frames.state.lock().unwrap().pending.len(), 3);
     assert_eq!(stats.dropped, 0);
     assert!(!stats.waiting);
     assert_eq!(frames.present(), Some(true));
-    assert_eq!(frames.snapshot().queued, 2);
+    assert_eq!(frames.state.lock().unwrap().pending.len(), 2);
     assert_eq!(frames.take().unwrap().0, 1);
 }
 
@@ -125,10 +124,9 @@ fn live_queue_counts_the_frame_released_for_a_stalled_audio_clock() {
         assert!(frames.publish(index as u64, pixels()));
     }
     let stats = frames.snapshot();
-    assert_eq!(stats.queued, CAPACITY);
+    assert_eq!(frames.state.lock().unwrap().pending.len(), CAPACITY);
     assert_eq!(stats.received, (CAPACITY + 1) as u64);
     assert_eq!(stats.dropped, 1);
-    assert_eq!(stats.buffer_seconds(), 0.5);
 }
 
 #[cfg(target_os = "linux")]

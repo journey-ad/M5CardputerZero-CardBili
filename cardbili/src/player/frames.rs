@@ -9,14 +9,7 @@ const CAPACITY: usize = (super::FPS * 0.5) as usize;
 pub(crate) struct Snapshot {
     pub received: u64,
     pub dropped: u64,
-    pub queued: usize,
     pub waiting: bool,
-}
-
-impl Snapshot {
-    pub fn buffer_seconds(&self) -> f64 {
-        self.queued as f64 / super::FPS
-    }
 }
 
 #[derive(Default)]
@@ -243,7 +236,6 @@ impl Frames {
         Snapshot {
             received: state.received,
             dropped: state.dropped,
-            queued: if state.stopped { 0 } else { state.pending.len() },
             waiting: state.pending.is_empty()
                 && state.latest.is_none()
                 && !state.paused

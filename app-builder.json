@@ -1,6 +1,6 @@
 {
   "package_name": "cardbili",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "app_name": "CardBili",
   "bin_name": "M5CardputerZero-CardBili",
   "description": "Bilibili client for Cardputer Zero",

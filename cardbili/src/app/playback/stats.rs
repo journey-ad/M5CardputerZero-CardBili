@@ -35,8 +35,7 @@ const BANDWIDTH_COLORS: [[u8; 3]; 11] = [
     [18, 69, 136],
     [255, 255, 255],
 ];
-// 视频队列容量为 500ms
-const BUFFER_THRESHOLDS: [f64; 6] = [0.0, 0.05, 0.1, 0.2, 0.35, 0.5];
+const BUFFER_THRESHOLDS: [f64; 6] = [0.0, 0.5, 2.0, 5.0, 10.0, 20.0];
 const BUFFER_COLORS: [[u8; 3]; 6] = [
     [0, 0, 0],
     [253, 174, 97],
@@ -46,11 +45,11 @@ const BUFFER_COLORS: [[u8; 3]; 6] = [
     [255, 255, 255],
 ];
 
-// 媒体连接速度与待播放视频帧时长的历史采样
+// 媒体连接速度与网络缓冲时长的历史采样
 pub(in crate::app) struct StatsState {
     connection: Vec<Option<f64>>,
     buffer: Vec<Option<f64>>,
-    cursor: usize,
+    cursor: Option<usize>,
     last_sample: Option<(u64, Instant, u64)>,
     last_update: Option<Instant>,
 }
@@ -60,7 +59,7 @@ impl Default for StatsState {
         Self {
             connection: vec![None; SLOTS],
             buffer: vec![None; SLOTS],
-            cursor: 0,
+            cursor: None,
             last_sample: None,
             last_update: None,
         }
@@ -81,12 +80,21 @@ impl StatsState {
                 .then(|| (bytes - previous) as f64 / elapsed)
         });
         self.last_sample = input.map(|(generation, bytes)| (generation, now, bytes));
+        if self.cursor.is_none() {
+            let speed_ready = speed.is_some()
+                || (cfg!(feature = "desktop") && input.is_none());
+            let buffer_ready = buffer_seconds.is_some_and(|value| value > 0.0);
+            if !speed_ready || !buffer_ready {
+                return speed;
+            }
+        }
+        let cursor = self.cursor.get_or_insert(0);
         for offset in 0..2 {
-            let index = (self.cursor + offset) % SLOTS;
+            let index = (*cursor + offset) % SLOTS;
             self.connection[index] = speed;
             self.buffer[index] = buffer_seconds;
         }
-        self.cursor = (self.cursor + 2) % SLOTS;
+        *cursor = (*cursor + 2) % SLOTS;
         speed
     }
 }
@@ -190,11 +198,6 @@ fn line(label: &str, value: String) -> StatLine {
 impl App {
     pub(in crate::app) fn update_net_stats(&mut self) {
         let player = self.ui.global::<crate::Player>();
-        if !player.get_stats_on() {
-            self.stats.last_sample = None;
-            self.stats.last_update = None;
-            return;
-        }
         let (id, tech, live) = if let Some(info) = &self.live {
             (line("Room ID", info.room_id.to_string()), &info.tech, true)
         } else if let Some(info) = &self.current_play {
@@ -212,14 +215,17 @@ impl App {
             return;
         }
         self.stats.last_update = Some(now);
-        let snapshot = self.player.as_ref().map(|p| (p.gen, p.statistics()));
+        let snapshot = self
+            .player
+            .as_ref()
+            .map(|p| (p.gen, p.statistics(self.frames_in_seg)));
         let input = snapshot
             .as_ref()
             .and_then(|(gen, stats)| Some((*gen, stats.decoder.received_bytes?)));
         let buffer_seconds = snapshot
             .as_ref()
-            .map(|(_, stats)| stats.frames.buffer_seconds());
-        let speed = self.stats.record(now, input, buffer_seconds);
+            .map_or(0.0, |(_, stats)| stats.buffer_seconds);
+        let speed = self.stats.record(now, input, Some(buffer_seconds));
 
         let stats = snapshot.as_ref().map(|(_, stats)| stats);
         let fps = match stats.and_then(|stats| stats.decoder.source_fps) {
@@ -299,28 +305,18 @@ impl App {
         ];
         player.set_connection_samples(build(
             &self.stats.connection,
-            self.stats.cursor,
+            self.stats.cursor.unwrap_or(0),
             &BANDWIDTH_THRESHOLDS,
             &BANDWIDTH_COLORS,
         ));
         player.set_buffer_samples(build(
             &self.stats.buffer,
-            self.stats.cursor,
+            self.stats.cursor.unwrap_or(0),
             &BUFFER_THRESHOLDS,
             &BUFFER_COLORS,
         ));
-        player.set_connection_value(
-            speed
-                .map(|speed| bitrate_text(speed * 8.0))
-                .unwrap_or_default()
-                .into(),
-        );
-        player.set_buffer_value(
-            buffer_seconds
-                .map(|seconds| format!("{seconds:.2}s"))
-                .unwrap_or_default()
-                .into(),
-        );
+        player.set_connection_value(bitrate_text(speed.unwrap_or(0.0) * 8.0).into());
+        player.set_buffer_value(format!("{buffer_seconds:.2}s").into());
         player.set_stat_head(ModelRc::new(VecModel::from(head)));
         player.set_stat_tail(ModelRc::new(VecModel::from(tail)));
     }

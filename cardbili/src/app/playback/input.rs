@@ -127,17 +127,40 @@ impl App {
             match k {
                 "SPACE" | "ENTER" => {
                     if p.finished {
-                        // 播放结束后再次触发播放，从头开始
-                        p.paused = false;
-                        self.seek_pending = Some(0.0);
-                        self.seek_deadline = Some(Instant::now());
-                        crate::diagnostics::write(format_args!("[播放] 重播 gen={}", p.gen));
+                        // 重试重新获取当前分 P 的播放地址
+                        if let Some(info) = &self.current_play {
+                            self.play_request += 1;
+                            self.seek_pending = None;
+                            self.seek_deadline = None;
+                            self.latest = None;
+                            g_player.set_has_frame(false);
+                            self.status = crate::i18n::tr("加载中…").into();
+                            self.status_detail.clear();
+                            tasks::start_play(
+                                info.bvid.clone(),
+                                Some(info.cid),
+                                self.cookies.clone(),
+                                self.play_request,
+                                self.settings.cdn.clone(),
+                                self.tx.clone(),
+                                true,
+                            );
+                        }
                     } else {
                         p.pause_toggle();
                     }
                 }
                 "LEFT" | "RIGHT" => {
-                    let step = if repeat { 2.0 } else { 10.0 };
+                    let step = if repeat {
+                        let elapsed = self
+                            .direction_hold
+                            .as_ref()
+                            .and_then(|hold| hold.repeat_started)
+                            .map_or(0.0, |started| started.elapsed().as_secs_f64());
+                        (2.0 + elapsed * 7.0).min(30.0)
+                    } else {
+                        10.0
+                    };
                     let step = if k == "LEFT" { -step } else { step };
                     let base = self
                         .seek_pending

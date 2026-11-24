@@ -24,7 +24,6 @@ impl App {
         player.set_subtitle_text("".into());
         player.set_audio_selected(0);
         self.sync_media_labels();
-        self.stats = super::stats::StatsState::default();
         let request = self.play_request;
         let bvid = info.bvid.clone();
         let cid = info.cid;

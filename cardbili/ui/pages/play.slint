@@ -70,10 +70,15 @@ component StatMeter inherits Rectangle {
         font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
         horizontal-alignment: right; vertical-alignment: center;
     }
+    Rectangle {
+        x: 60px; y: 0px; width: 192px; height: 12px; background: #000000;
+    }
     for meter[i] in root.samples : Rectangle {
-        x: 60px + i * 1.28px; y: 0px; width: 1.3px; height: 12px; background: meter.base;
+        x: 60px + round(i * 1.28) * 1px; y: 0px;
+        width: (round((i + 1) * 1.28) - round(i * 1.28)) * 1px;
+        height: 12px; background: meter.base;
         if meter.fill > 0px : Rectangle {
-            x: 0px; y: 12px - meter.fill; width: 1px; height: meter.fill; background: meter.top;
+            x: 0px; y: 12px - meter.fill; width: parent.width; height: meter.fill; background: meter.top;
         }
     }
     Text {
@@ -210,8 +215,8 @@ export component PlayPage inherits Rectangle {
             x: 2px; y: 2px; width: parent.width - 4px; height: parent.height - 4px;
             alignment: start;
             for line in Player.stat-head: StatRow { label: line.label; value: line.value; }
-            if Player.connection-value != "": StatMeter { label: "Speed"; samples: Player.connection-samples; value: Player.connection-value; }
-            if Player.buffer-value != "": StatMeter { label: "Buffer"; samples: Player.buffer-samples; value: Player.buffer-value; }
+            StatMeter { label: "Speed"; samples: Player.connection-samples; value: Player.connection-value; }
+            StatMeter { label: "Buffer"; samples: Player.buffer-samples; value: Player.buffer-value; }
             for line in Player.stat-tail: StatRow { label: line.label; value: line.value; }
         }
     }

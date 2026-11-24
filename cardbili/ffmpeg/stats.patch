@@ -67,3 +67,61 @@
 +#include <stdint.h>
 +uint64_t ff_cardbili_rx_bytes(void);
 +#endif
+--- a/fftools/ffmpeg_demux.c
++++ b/fftools/ffmpeg_demux.c
+@@ -473,0 +474,12 @@
++    // 输出已读取媒体包的时间范围，时间戳已包含起点、跳转与断流修正
++    if (progress_avio && (ist->par->codec_type == AVMEDIA_TYPE_VIDEO ||
++                          ist->par->codec_type == AVMEDIA_TYPE_AUDIO)) {
++        int64_t start = pkt->pts == AV_NOPTS_VALUE ? ds->dts :
++            av_rescale_q(pkt->pts, pkt->time_base, AV_TIME_BASE_Q);
++        int64_t duration = pkt->duration > 0 ?
++            av_rescale_q(pkt->duration, pkt->time_base, AV_TIME_BASE_Q) :
++            ds->next_dts - ds->dts;
++        fprintf(stderr, "cardbili_buffer_%s=%"PRId64",%"PRId64"\n",
++                av_get_media_type_string(ist->par->codec_type), start, duration);
++    }
++
+@@ -517,0 +530,2 @@
++    if (ds->dec_opts.thread_queue_size)
++        flags |= DEMUX_SEND_PREFETCH;
+@@ -1278,0 +1293 @@
++    ds->dec_opts.thread_queue_size = o->thread_queue_size;
+--- a/fftools/ffmpeg.h
++++ b/fftools/ffmpeg.h
+@@ -399,0 +400 @@
++    unsigned                    thread_queue_size;
+--- a/fftools/ffmpeg_dec.c
++++ b/fftools/ffmpeg_dec.c
+@@ -165 +165 @@
+-static int dec_alloc(DecoderPriv **pdec, Scheduler *sch, int send_end_ts)
++static int dec_alloc(DecoderPriv **pdec, Scheduler *sch, int send_end_ts, unsigned thread_queue_size)
+@@ -191 +191 @@
+-    ret = sch_add_dec(sch, decoder_thread, dp, send_end_ts);
++    ret = sch_add_dec(sch, decoder_thread, dp, send_end_ts, thread_queue_size);
+@@ -1665 +1665 @@
+-    ret = dec_alloc(&dp, sch, !!(o->flags & DECODER_FLAG_SEND_END_TS));
++    ret = dec_alloc(&dp, sch, !!(o->flags & DECODER_FLAG_SEND_END_TS), o->thread_queue_size);
+@@ -1695 +1695 @@
+-    ret = dec_alloc(&dp, sch, 0);
++    ret = dec_alloc(&dp, sch, 0, 0);
+--- a/fftools/ffmpeg_sched.c
++++ b/fftools/ffmpeg_sched.c
+@@ -748 +748 @@
+-int sch_add_dec(Scheduler *sch, SchThreadFunc func, void *ctx, int send_end_ts)
++int sch_add_dec(Scheduler *sch, SchThreadFunc func, void *ctx, int send_end_ts, unsigned thread_queue_size)
+@@ -772 +772 @@
+-    ret = queue_alloc(&dec->queue, 1, 0, QUEUE_PACKETS);
++    ret = queue_alloc(&dec->queue, 1, thread_queue_size, QUEUE_PACKETS);
+@@ -2062 +2062,3 @@
+-    terminate = waiter_wait(sch, &d->waiter);
++    // 显式预读由压缩包队列容量控制，默认输入沿用调度等待
++    terminate = (flags & DEMUX_SEND_PREFETCH) ?
++                atomic_load(&sch->terminate) : waiter_wait(sch, &d->waiter);
+--- a/fftools/ffmpeg_sched.h
++++ b/fftools/ffmpeg_sched.h
+@@ -184 +184 @@
+-int sch_add_dec(Scheduler *sch, SchThreadFunc func, void *ctx, int send_end_ts);
++int sch_add_dec(Scheduler *sch, SchThreadFunc func, void *ctx, int send_end_ts, unsigned thread_queue_size);
+@@ -338,0 +339 @@
++    DEMUX_SEND_PREFETCH       = (1 << 1),

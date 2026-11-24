@@ -134,11 +134,13 @@ pub fn start_play(
     request: u64,
     cdn: String,
     tx: Sender<Msg>,
+    force: bool,
 ) {
     crate::diagnostics::write(format_args!(
         "[播放] 获取播放信息 request={request} bvid={bvid} cid={cid:?}"
     ));
     thread::spawn(move || {
+        crate::cache::set_force(force);
         let result = api::play_info(&bvid, cid, cookies.as_deref(), &cdn);
         let _ = tx.send(Msg::PlayReady(request, result));
     });

@@ -4,7 +4,7 @@ use super::*;
 pub(super) struct DirectionHold {
     key: &'static str,
     repeat_at: Instant,
-    repeat_fired: bool,
+    pub(super) repeat_started: Option<Instant>,
 }
 
 impl App {
@@ -120,7 +120,7 @@ impl App {
                     && !super_chat_open
                     && matches!(released, "LEFT" | "RIGHT")
                 {
-                    if !hold.repeat_fired {
+                    if hold.repeat_started.is_none() {
                         self.dispatch_key(released, false);
                     }
                     if self.seek_pending.is_some() {
@@ -147,7 +147,7 @@ impl App {
             self.direction_hold = Some(DirectionHold {
                 key,
                 repeat_at: now + Duration::from_millis(350),
-                repeat_fired: false,
+                repeat_started: None,
             });
             // 播放页左右键长按用于快进快退，按下先不跳转，松开后再提交
             if super_chat_open || !(self.page == Page::Player && matches!(key, "LEFT" | "RIGHT")) {
@@ -181,7 +181,7 @@ impl App {
         });
         if let Some(key) = repeat {
             if let Some(hold) = self.direction_hold.as_mut() {
-                hold.repeat_fired = true;
+                hold.repeat_started.get_or_insert(now);
             }
             self.last_input = now;
             self.dispatch_key(key, true);
