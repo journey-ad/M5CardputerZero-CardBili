@@ -54,6 +54,7 @@ pub struct PlaybackState {
     pub position: f64,
     pub paused: bool,
     pub rate: f64,
+    pub finished: bool,
 }
 
 impl Default for PlaybackState {
@@ -62,6 +63,7 @@ impl Default for PlaybackState {
             position: 0.0,
             paused: false,
             rate: 1.0,
+            finished: false,
         }
     }
 }
@@ -136,7 +138,7 @@ impl Player {
             rate: state.rate,
             ready: false,
             last_frame: Instant::now(),
-            finished: false,
+            finished: state.finished,
             video_url: info.video_url.clone(),
             audio_url: info.audio_url.clone(),
             cookies,
@@ -149,7 +151,11 @@ impl Player {
             decoder_stats: Arc::default(),
         };
         p.base = state.position.clamp(0.0, p.duration);
-        p.spawn(p.base);
+        if state.finished {
+            p.speeds.push(Speed { output: 0.0, position: p.base, rate: p.rate });
+        } else {
+            p.spawn(p.base);
+        }
         p
     }
 
@@ -436,6 +442,10 @@ impl Player {
             1.5 => 2.0,
             _ => 0.5,
         };
+        if self.finished {
+            self.rate = rate;
+            return Ok(());
+        }
         // 音视频在相同媒体时间切换，已进入输出缓冲区的内容按原速播放
         let last = self.speeds.last().unwrap();
         let output = (self.frames.position(0) + 2.0).max(last.output + 1.2);

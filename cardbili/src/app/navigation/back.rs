@@ -29,6 +29,9 @@ pub(in crate::app) enum BackTarget {
         position: f64,
         paused: bool,
         rate: f64,
+        finished: bool,
+        status: String,
+        frame: Option<slint::Image>,
         engine: Option<danmaku::Engine>,
         danmaku_enabled: bool,
         sections: sections::Sections,
@@ -83,6 +86,10 @@ impl App {
                         .map(|player| player.position(self.frames_in_seg))
                         .unwrap_or(0.0),
                     paused: self.player.as_ref().is_some_and(|player| player.paused),
+                    finished: self.player.as_ref().is_some_and(|player| player.finished),
+                    status: self.status.clone(),
+                    frame: self.ui.global::<crate::Player>().get_has_frame()
+                        .then(|| self.ui.global::<crate::Player>().get_frame()),
                     rate: self
                         .player
                         .as_ref()
@@ -260,6 +267,9 @@ impl App {
                 position,
                 paused,
                 rate,
+                finished,
+                status,
+                frame,
                 engine,
                 danmaku_enabled,
                 sections,
@@ -292,6 +302,7 @@ impl App {
                         position,
                         paused,
                         rate,
+                        finished,
                     },
                 ));
                 self.danmaku = engine;
@@ -302,7 +313,16 @@ impl App {
                 self.media = media;
                 self.restore_media(subtitle_selected, audio_selected);
                 self.refresh_liked();
-                self.status = crate::i18n::tr("加载中…").into();
+                if finished {
+                    self.status = status;
+                    if let Some(frame) = frame {
+                        let player = self.ui.global::<crate::Player>();
+                        player.set_frame(frame);
+                        player.set_has_frame(true);
+                    }
+                } else {
+                    self.status = crate::i18n::tr("加载中…").into();
+                }
             }
             None => self.page = Page::Home,
         }

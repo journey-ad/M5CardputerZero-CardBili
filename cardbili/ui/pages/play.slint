@@ -127,8 +127,8 @@ export component PlayPage inherits Rectangle {
     property <length> loading-dots-width: Status.loading-dots >= 0 ? 15px : 0px;
     property <length> audience-width: Player.live && Player.live-audience != "" ? audience.preferred-width + 21px : 0px;
 
-    // 暂停时在画面中央显示继续播放按钮
-    if Player.paused && Player.triple-phase == 0 && !Player.volume-visible: Rectangle {
+    // 暂停或播放结束时在画面中央显示播放按钮
+    if (Player.paused || Player.finished) && Player.triple-phase == 0 && !Player.volume-visible: Rectangle {
         x: (root.width - self.width) / 2; y: (root.height - self.height) / 2;
         width: 32px; height: 32px; background: #00000070; border-radius: 16px;
         Icon { x: 6px; y: 4px; width: 24px; height: 24px; source: Icons.play; colorize: #ffffffee; }

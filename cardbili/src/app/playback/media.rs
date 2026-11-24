@@ -280,6 +280,7 @@ impl App {
                 position: player.position(self.frames_in_seg),
                 paused: player.paused,
                 rate: player.rate,
+                finished: player.finished,
             };
             self.gen = self.gen.max(player.gen);
             player.stop();

@@ -184,8 +184,17 @@ fn player_callback_uses_the_same_comment_action_as_physical_key() {
     h.app.page = Page::Player;
     h.app.current_play = Some(model::PlayInfo {
         aid: 42,
+        duration: 10.0,
         ..Default::default()
     });
+    h.app.player = Some(player::Player::start(
+        h.app.current_play.as_ref().unwrap(), String::new(), 1, h.app.tx.clone(),
+        &h.app.settings, player::PlaybackState { position: 10.0, finished: true, ..Default::default() },
+    ));
+    h.app.status = crate::i18n::tr("播放结束，按 ESC 返回").into();
+    let frame = slint::SharedPixelBuffer::<slint::Rgb8Pixel>::new(320, 170);
+    h.app.ui.global::<crate::Player>().set_frame(slint::Image::from_rgb8(frame));
+    h.app.ui.global::<crate::Player>().set_has_frame(true);
     h.app.ui.global::<crate::Player>().invoke_key("r".into());
     h.dispatch_callbacks();
     assert_eq!(h.app.requested_comments, Some(42));
@@ -208,6 +217,17 @@ fn player_callback_uses_the_same_comment_action_as_physical_key() {
         h.app.back_stack.last(),
         Some(BackTarget::Play { .. })
     ));
+    h.key("ESC");
+    h.app.navigate();
+    h.sync();
+    assert_eq!(h.app.page, Page::Player);
+    let player = h.app.player.as_ref().unwrap();
+    assert!(player.finished);
+    assert_eq!(player.position(h.app.frames_in_seg), 10.0);
+    assert_eq!(h.app.status, crate::i18n::tr("播放结束，按 ESC 返回"));
+    assert!(h.app.ui.global::<crate::Player>().get_has_frame());
+    let size = h.app.ui.global::<crate::Player>().get_frame().size();
+    assert_eq!((size.width, size.height), (320, 170));
 }
 
 #[test]

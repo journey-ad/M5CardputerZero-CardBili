@@ -105,6 +105,7 @@ impl App {
                         },
                         paused: false,
                         rate: previous.rate,
+                        finished: false,
                     };
                     previous.stop();
                     state
