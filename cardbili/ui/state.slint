@@ -1,4 +1,5 @@
 import { HomeTab, Page, VideoLayout, MenuPosition } from "types.slint";
+import { Icons } from "components/base/icons.slint";
 // 页面与组件共用的全局状态
 import { Cmt, DmRow, VideoRow, FavoriteRow, FollowingRow, HistoryHeader, SuperChatRow } from "common.slint";
 
@@ -104,7 +105,15 @@ export struct StatLine {
     value: string,
 }
 
-export enum TrackMenu { closed, subtitle, audio }
+export enum TrackMenu { closed, subtitle, audio, favorite }
+
+export struct PlayerMenuItem {
+    action: string,
+    label: string,
+    icon: image,
+    value: string,
+    dropdown: bool,
+}
 
 // 播放
 export global Player {
@@ -115,6 +124,9 @@ export global Player {
     in-out property <int> triple-phase: 0;
     in-out property <int> triple-charge: 0;
     in-out property <int> triple-tick: 0;
+    in-out property <bool> volume-visible: false;
+    in-out property <int> volume-percent: 0;
+    in-out property <bool> volume-muted: false;
     in-out property <string> speed-text: "1X";
     in-out property <image> frame;
     in-out property <bool> has-frame: false;
@@ -140,8 +152,28 @@ export global Player {
     in-out property <int> audio-selected: 0;
     in-out property <int> menu-index: 0;
     in-out property <int> menu-sub-index: 0;
+    in-out property <int> menu-sub-first: 0;
+    in-out property <[string]> favorite-labels: [];
+    in-out property <bool> favorite-loading: false;
+    out property <[PlayerMenuItem]> menu-items: self.live ? self.live-menu-items : self.video-menu-items;
+    private property <[PlayerMenuItem]> live-menu-items: [
+        { action: "stats", label: I18n.tr("视频统计信息"), icon: Icons.chart },
+    ];
+    private property <[PlayerMenuItem]> video-menu-items: [
+        { action: "coin", label: I18n.tr("投币"), icon: Icons.coins },
+        { action: "favorite", label: I18n.tr("收藏"), icon: Icons.bookmark },
+        { action: "comments", label: I18n.tr("查看评论"), icon: Icons.comment-text },
+        { action: "speed", label: I18n.tr("倍速"), icon: Icons.play, value: self.speed-text },
+        { action: "subtitle", label: I18n.tr("字幕"), icon: Icons.captions, value: self.subtitle-selected > 0 ? self.subtitle-labels[self.subtitle-selected] : I18n.tr("关闭"), dropdown: true },
+        { action: "audio", label: I18n.tr("音轨"), icon: Icons.music, value: self.audio-labels[self.audio-selected], dropdown: true },
+        { action: "stats", label: I18n.tr("视频统计信息"), icon: Icons.chart },
+    ];
     in-out property <TrackMenu> track-menu: closed;
-    out property <[string]> track-labels: track-menu == TrackMenu.subtitle ? subtitle-labels : audio-labels;
+    out property <[string]> track-labels: track-menu == TrackMenu.subtitle ? subtitle-labels : (track-menu == TrackMenu.audio ? audio-labels : favorite-labels);
+    out property <int> track-visible-count: min(6, track-labels.length);
+    out property <string> track-title: track-menu == TrackMenu.subtitle ? I18n.tr("字幕") : (track-menu == TrackMenu.audio ? I18n.tr("音轨") : I18n.tr("收藏到"));
+    out property <image> track-icon: track-menu == TrackMenu.subtitle ? Icons.captions : (track-menu == TrackMenu.audio ? Icons.music : Icons.bookmark);
+    out property <string> track-action: track-menu == TrackMenu.subtitle ? "sub:" : (track-menu == TrackMenu.audio ? "audio:" : "fav:");
     // 技术统计的文本行与图表
     in-out property <[StatLine]> stat-head: [];
     in-out property <[StatLine]> stat-tail: [];

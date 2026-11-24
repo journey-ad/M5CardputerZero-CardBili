@@ -4,6 +4,7 @@ use super::*;
 #[derive(Debug)]
 pub(super) enum Action {
     ClearCache,
+    Coin,
     #[cfg(all(feature = "desktop", windows))]
     FfmpegInstall,
     #[cfg(all(feature = "desktop", not(windows)))]
@@ -47,6 +48,7 @@ impl App {
         if accepted {
             match action {
                 Action::ClearCache => self.clear_cache(),
+                Action::Coin => self.react(model::VideoAction::Coin),
                 #[cfg(all(feature = "desktop", windows))]
                 Action::FfmpegInstall => {
                     crate::diagnostics::install_ffmpeg();

@@ -38,9 +38,12 @@ impl App {
             Msg::Volume(result) => {
                 if self.page == Page::Player {
                     match result {
-                        Ok(level) if level.muted => self.toast(crate::i18n::tr("已静音")),
                         Ok(level) => {
-                            self.toast(&crate::i18n::trf("系统音量 {}%", &[&level.percent]))
+                            let player = self.ui.global::<crate::Player>();
+                            player.set_volume_percent(level.percent);
+                            player.set_volume_muted(level.muted);
+                            player.set_volume_visible(true);
+                            self.controls.volume_until = Some(Instant::now() + Duration::from_millis(1200));
                         }
                         Err(_) => {
                             self.toast(crate::i18n::tr("系统音量调整失败"));

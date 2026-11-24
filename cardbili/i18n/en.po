@@ -1181,8 +1181,8 @@ msgstr "↑↓ Select  Enter Open  Esc Close"
 msgid "↑↓ 选择  Enter 确认  Esc 返回"
 msgstr "↑↓ Select  Enter OK  Esc Back"
 
-msgid "统计信息"
-msgstr "Stats"
+msgid "视频统计信息"
+msgstr "Stats for nerds"
 
 msgid "字幕解析失败"
 msgstr "Failed to parse subtitles"
@@ -1294,3 +1294,21 @@ msgstr "Send failed: {}"
 
 msgid "语音输入请在 Cardputer Zero 上使用"
 msgstr "Use Cardputer Zero for voice input"
+
+msgid "音量"
+msgstr "Volume"
+
+msgid "投币"
+msgstr "Give a coin"
+
+msgid "收藏"
+msgstr "Save"
+
+msgid "收藏到"
+msgstr "Save to"
+
+msgid "向此视频投 1 枚硬币？"
+msgstr "Give this video 1 coin?"
+
+msgid "请先在哔哩哔哩创建收藏夹"
+msgstr "Create a favorites folder on Bilibili first"

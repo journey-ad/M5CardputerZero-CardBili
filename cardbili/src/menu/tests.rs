@@ -120,7 +120,7 @@ fn player_and_detail_keep_fixed_physical_key_slots() {
                 position,
                 false
             )),
-            ["播放", "点赞", "倍速", "弹幕", "更多功能"]
+            ["播放", "点赞", "字幕", "弹幕", "更多功能"]
         );
         assert_eq!(
             labels(actions(
@@ -195,7 +195,7 @@ fn every_menu_action_has_the_expected_dispatch_key() {
         (Action::Retry, "r"),
         (Action::TogglePlay, "SPACE"),
         (Action::Like, "l"),
-        (Action::Speed, "b"),
+        (Action::Subtitle, "SUBTITLE"),
         (Action::Danmaku, "DANMAKU"),
         (Action::SuperChat, "SUPER_CHAT"),
         (Action::LiveArea, "LIVE_AREA"),

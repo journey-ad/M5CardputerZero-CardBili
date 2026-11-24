@@ -9,6 +9,7 @@ pub(in crate::app) struct Controls {
     pub busy: bool,
     pub like_hold: Option<(Instant, bool)>,
     pub triple: Option<TripleFeedback>,
+    pub volume_until: Option<Instant>,
 }
 
 impl App {
@@ -32,7 +33,9 @@ impl App {
             match result {
                 Ok(result) => {
                     self.finish_triple(result.triple_complete);
-                    self.controls.liked = Some(result.liked);
+                    if let Some(liked) = result.liked {
+                        self.controls.liked = Some(liked);
+                    }
                     self.toast(&result.message);
                 }
                 Err(error) => {
@@ -111,6 +114,19 @@ impl App {
                 self.play_request,
                 self.tx.clone(),
             );
+        }
+    }
+
+    pub(in crate::app) fn show_favorite_choices(&mut self) {
+        let player = self.ui.global::<crate::Player>();
+        player.set_favorite_loading(self.favorites.loading);
+        player.set_favorite_labels(ModelRc::new(VecModel::from(
+            self.favorites.folders.iter().map(|folder| folder.title.as_str().into()).collect::<Vec<_>>(),
+        )));
+        if !self.favorites.error.is_empty() {
+            self.toast(&self.favorites.error);
+        } else if self.favorites.loaded && self.favorites.folders.is_empty() {
+            self.toast(crate::i18n::tr("请先在哔哩哔哩创建收藏夹"));
         }
     }
 

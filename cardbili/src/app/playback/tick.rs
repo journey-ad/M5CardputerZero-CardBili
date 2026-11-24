@@ -4,6 +4,10 @@ use slint::ComponentHandle as _;
 impl App {
     pub(in crate::app) fn tick(&mut self) {
         self.tick_super_chat();
+        if self.controls.volume_until.is_some_and(|until| Instant::now() >= until) {
+            self.controls.volume_until = None;
+            self.ui.global::<crate::Player>().set_volume_visible(false);
+        }
         if let Some(player) = self.player.as_ref().filter(|player| player.stalled()) {
             if self.live.is_some() {
                 self.recover_live(crate::i18n::tr("直播画面长时间未更新"));

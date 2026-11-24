@@ -104,8 +104,10 @@ impl App {
         self.comments_request += 1;
         self.controls.like_hold = None;
         self.controls.triple = None;
+        self.controls.volume_until = None;
         let player = self.ui.global::<crate::Player>();
         player.set_triple_phase(0);
+        player.set_volume_visible(false);
         player.set_menu_open(false);
         player.set_track_menu(crate::TrackMenu::Closed);
         player.set_stats_on(false);

@@ -321,11 +321,13 @@ fn civil_from_days(days: i64) -> (i64, u32, u32) {
 pub enum VideoAction {
     Like(bool),
     Triple,
+    Coin,
+    Favorite(i64),
 }
 
 pub struct ReactionResult {
     pub triple_complete: bool,
-    pub liked: bool,
+    pub liked: Option<bool>,
     pub message: String,
 }
 

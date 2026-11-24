@@ -42,6 +42,9 @@ impl App {
             }
             Err(error) => self.favorites.error = error,
         }
+        if self.page == Page::Player {
+            self.show_favorite_choices();
+        }
     }
 
     pub(super) fn load_favorites(&mut self, force: bool) {

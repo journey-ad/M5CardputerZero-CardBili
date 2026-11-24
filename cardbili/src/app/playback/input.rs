@@ -71,6 +71,15 @@ impl App {
             }
             return;
         }
+        if let Some(raw) = k.strip_prefix("fav:") {
+            if let Ok(index) = raw.parse::<usize>() {
+                if let Some(folder) = self.favorites.folders.get(index) {
+                    self.react(model::VideoAction::Favorite(folder.id));
+                    self.ui.global::<crate::Player>().set_menu_open(false);
+                }
+            }
+            return;
+        }
         // 更多菜单打开时，方向键与回车在菜单内导航
         if self.ui.global::<crate::Player>().get_menu_open() {
             self.menu_key(k);
@@ -103,6 +112,10 @@ impl App {
             }
             "b" => {
                 self.change_speed();
+                return;
+            }
+            "SUBTITLE" => {
+                self.toggle_subtitle();
                 return;
             }
             "DANMAKU" => {
@@ -220,7 +233,11 @@ impl App {
             let kind = g_player.get_track_menu();
             let len = g_player.get_track_labels().row_count() as i32;
             if len == 0 {
-                g_player.set_track_menu(crate::TrackMenu::Closed);
+                if matches!(k, "ESC" | "BACKSPACE" | "LEFT") {
+                    g_player.set_track_menu(crate::TrackMenu::Closed);
+                } else if k == "m" {
+                    g_player.set_menu_open(false);
+                }
                 return;
             }
             match k {
@@ -235,8 +252,10 @@ impl App {
                     let index = g_player.get_menu_sub_index();
                     if kind == crate::TrackMenu::Subtitle {
                         self.apply_subtitle(index);
-                    } else {
+                    } else if kind == crate::TrackMenu::Audio {
                         self.select_audio(index);
+                    } else if let Some(folder) = self.favorites.folders.get(index as usize) {
+                        self.react(model::VideoAction::Favorite(folder.id));
                     }
                     self.ui.global::<crate::Player>().set_menu_open(false);
                     return;
@@ -245,19 +264,23 @@ impl App {
                 "m" => g_player.set_menu_open(false),
                 _ => {}
             }
+            let player = self.ui.global::<crate::Player>();
+            player.set_menu_sub_first(ensure_visible(
+                player.get_menu_sub_first() as usize,
+                player.get_menu_sub_index() as usize,
+                player.get_track_visible_count() as usize,
+            ) as i32);
             return;
         }
-        let len = if g_player.get_live() { 1 } else { 4 };
+        let items = g_player.get_menu_items();
+        let len = items.row_count() as i32;
         match k {
             "UP" | "k" => g_player.set_menu_index((g_player.get_menu_index() - 1 + len) % len),
             "DOWN" | "j" => g_player.set_menu_index((g_player.get_menu_index() + 1) % len),
-            "ENTER" | "SPACE" if g_player.get_live() => self.menu_action("stats"),
-            "ENTER" | "SPACE" => match g_player.get_menu_index() {
-                0 => self.menu_action("comments"),
-                1 => self.menu_action("subtitle"),
-                2 => self.menu_action("audio"),
-                _ => self.menu_action("stats"),
-            },
+            "ENTER" | "SPACE" => {
+                let item = items.row_data(g_player.get_menu_index() as usize).unwrap();
+                self.menu_action(&item.action);
+            }
             "ESC" | "BACKSPACE" | "m" => g_player.set_menu_open(false),
             _ => {}
         }
@@ -265,6 +288,28 @@ impl App {
 
     fn menu_action(&mut self, action: &str) {
         match action {
+            "speed" => self.change_speed(),
+            "coin" | "favorite" => {
+                if self.cookies.is_none() {
+                    self.ui.global::<crate::Player>().set_menu_open(false);
+                    self.requested_login = true;
+                    return;
+                }
+                if action == "coin" {
+                    self.ui.global::<crate::Player>().set_menu_open(false);
+                    self.confirm(super::super::confirmation::Action::Coin,
+                        crate::i18n::tr("投币"), crate::i18n::tr("向此视频投 1 枚硬币？"), crate::i18n::tr("投币"));
+                } else {
+                    let player = self.ui.global::<crate::Player>();
+                    player.set_track_menu(crate::TrackMenu::Favorite);
+                    player.set_menu_sub_index(0);
+                    player.set_menu_sub_first(0);
+                    if !self.favorites.loaded {
+                        self.load_favorites(false);
+                    }
+                    self.show_favorite_choices();
+                }
+            }
             "comments" => {
                 self.ui.global::<crate::Player>().set_menu_open(false);
                 self.play_key("r", false);
@@ -273,11 +318,13 @@ impl App {
                 let g_player = self.ui.global::<crate::Player>();
                 g_player.set_track_menu(crate::TrackMenu::Subtitle);
                 g_player.set_menu_sub_index(g_player.get_subtitle_selected());
+                g_player.set_menu_sub_first((g_player.get_subtitle_selected() - 5).max(0));
             }
             "audio" => {
                 let g_player = self.ui.global::<crate::Player>();
                 g_player.set_track_menu(crate::TrackMenu::Audio);
                 g_player.set_menu_sub_index(g_player.get_audio_selected());
+                g_player.set_menu_sub_first((g_player.get_audio_selected() - 5).max(0));
             }
             "stats" => {
                 let g_player = self.ui.global::<crate::Player>();

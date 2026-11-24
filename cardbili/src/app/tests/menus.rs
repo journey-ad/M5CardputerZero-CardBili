@@ -90,10 +90,15 @@ fn player_more_menu_opens_stats_for_live_and_video() {
             .set_controls_visible(false);
         h.key("8");
         assert!(h.app.ui.global::<crate::Player>().get_menu_open());
+        if !live {
+            let items = h.app.ui.global::<crate::Player>().get_menu_items();
+            assert_eq!(items.row_data(0).unwrap().action, "coin");
+            assert_eq!(items.row_data(1).unwrap().action, "favorite");
+        }
         h.key("UP");
         assert_eq!(
             h.app.ui.global::<crate::Player>().get_menu_index(),
-            if live { 0 } else { 3 }
+            h.app.ui.global::<crate::Player>().get_menu_items().row_count() as i32 - 1
         );
         h.key("DOWN");
         assert_eq!(h.app.ui.global::<crate::Player>().get_menu_index(), 0);

@@ -26,12 +26,17 @@ export component PlaybackBar inherits Rectangle {
             if !Player.live && event.kind == PointerEventKind.cancel { Player.key("LIKE_CANCEL"); }
         }
     }
-    if !Player.live: Text {
-        x: 135px; y: 11px; width: 54px; height: 12px; text: Player.speed-text;
-        color: #cfd8e6; font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
-        horizontal-alignment: center; vertical-alignment: center;
+    if !Player.live: Icon {
+        x: 154px; y: 12px; width: 14px; height: 10px;
+        source: @image-url("../../../assets/pixelarticons/badge-captions-wide.svg");
+        colorize: Player.subtitle-selected > 0 ? #7fb0ff : #697487;
+        opacity: Player.subtitle-labels.length > 1 ? 1 : 0.35;
     }
-    if !Player.live: TouchArea { x: 135px; y: 8px; width: 54px; height: 20px; clicked => { Player.key("b"); } }
+    if !Player.live: TouchArea {
+        x: 135px; y: 8px; width: 54px; height: 20px;
+        enabled: Player.subtitle-labels.length > 1;
+        clicked => { Player.key("SUBTITLE"); }
+    }
     if Player.live && SuperChat.available: Icon { x: (parent.width - self.width) / 2; y: 11px; width: 14px; source: Icons.super-chat; }
     if Player.live && SuperChat.available: TouchArea { x: 135px; y: 8px; width: 54px; height: 20px; clicked => { Player.key("SUPER_CHAT"); } }
     Rectangle {

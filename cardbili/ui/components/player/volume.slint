@@ -1,0 +1,35 @@
+import { Text } from "../base/text.slint";
+import { Player, I18n } from "../../state.slint";
+
+export component VolumePanel inherits Rectangle {
+    width: 144px; height: 68px;
+    background: #0b0f17ed; border-width: 1px; border-color: #536581;
+    property <int> level: Player.volume-muted ? 0 : Player.volume-percent;
+    property <int> steps: self.level == 0 ? 0 : (self.level <= 33 ? 1 : (self.level <= 66 ? 2 : 3));
+    Text {
+        x: 0px; y: 4px; width: parent.width; height: 14px;
+        text: Player.volume-muted ? I18n.tr("已静音") : I18n.tr("音量");
+        color: #e6ebf5; font-size: 12px;
+        horizontal-alignment: center; vertical-alignment: center;
+    }
+    Rectangle {
+        x: 30px; y: 25px; width: 32px; height: 24px;
+        Rectangle { x: 0px; y: 8px; width: 5px; height: 8px; background: #7fb0ff; }
+        Rectangle { x: 5px; y: 5px; width: 3px; height: 14px; background: #7fb0ff; }
+        Rectangle { x: 8px; y: 2px; width: 6px; height: 20px; background: #7fb0ff; }
+        for step in 3: Rectangle {
+            x: 18px + step * 5px; y: 8px - step * 4px;
+            width: 3px; height: 8px + step * 8px;
+            background: step < root.steps ? #7fb0ff : #25314a;
+        }
+    }
+    Text {
+        x: 74px; y: 25px; width: 55px; height: 24px;
+        text: root.level + "%"; color: #e6ebf5; font-size: 16px;
+        vertical-alignment: center;
+    }
+    for step in 16: Rectangle {
+        x: 9px + step * 8px; y: 59px; width: 6px; height: 3px;
+        background: step < Math.ceil(root.level * 16 / 100) ? #7fb0ff : #25314a;
+    }
+}

@@ -1,5 +1,6 @@
 import { Text } from "../components/base/text.slint";
 // 播放页：画面 + 顶部标题栏 + 底部进度条
+import { VolumePanel } from "../components/player/volume.slint";
 import { TripleAnimation } from "../components/player/triple.slint";
 import { PlaybackBar } from "../components/player/controls.slint";
 import { SuperChatDialog } from "../components/live/superchat.slint";
@@ -127,7 +128,7 @@ export component PlayPage inherits Rectangle {
     property <length> audience-width: Player.live && Player.live-audience != "" ? audience.preferred-width + 21px : 0px;
 
     // 暂停时在画面中央显示继续播放按钮
-    if Player.paused && Player.triple-phase == 0: Rectangle {
+    if Player.paused && Player.triple-phase == 0 && !Player.volume-visible: Rectangle {
         x: (root.width - self.width) / 2; y: (root.height - self.height) / 2;
         width: 32px; height: 32px; background: #00000070; border-radius: 16px;
         Icon { x: 6px; y: 4px; width: 24px; height: 24px; source: Icons.play; colorize: #ffffffee; }
@@ -228,7 +229,7 @@ export component PlayPage inherits Rectangle {
         Rectangle {
             x: (parent.width - self.width) / 2; y: (parent.height - self.height) / 2;
             width: 220px;
-            height: (Player.track-menu != TrackMenu.closed ? Player.track-labels.length * 18px : (Player.live ? 18px : 72px)) + 38px;
+            height: (Player.track-menu != TrackMenu.closed ? max(1, Player.track-visible-count) : Player.menu-items.length) * 18px + 38px;
             background: #1c2434; border-radius: 4px; border-width: 1px; border-color: #47566e;
             if Player.track-menu == TrackMenu.closed: VerticalLayout {
                 padding: 4px; spacing: 0px;
@@ -241,24 +242,11 @@ export component PlayPage inherits Rectangle {
                         vertical-alignment: center;
                     }
                 }
-                if !Player.live: MenuEntry { icon: Icons.comment-text; text: I18n.tr("查看评论"); cursor: Player.menu-index == 0; clicked => { Player.key("menu:comments"); } }
-                if !Player.live: MenuEntry {
-                    icon: Icons.captions;
-                    text: I18n.tr("字幕");
-                    state: Player.subtitle-selected > 0 ? Player.subtitle-labels[Player.subtitle-selected] : I18n.tr("关闭");
-                    dropdown: true;
-                    cursor: Player.menu-index == 1;
-                    clicked => { Player.key("menu:subtitle"); }
+                for item[index] in Player.menu-items: MenuEntry {
+                    icon: item.icon; text: item.label; state: item.value;
+                    dropdown: item.dropdown; cursor: Player.menu-index == index;
+                    clicked => { Player.key("menu:" + item.action); }
                 }
-                if !Player.live: MenuEntry {
-                    icon: Icons.music;
-                    text: I18n.tr("音轨");
-                    state: Player.audio-labels.length > 0 && Player.audio-selected >= 0 ? Player.audio-labels[Player.audio-selected] : "";
-                    dropdown: true;
-                    cursor: Player.menu-index == 2;
-                    clicked => { Player.key("menu:audio"); }
-                }
-                MenuEntry { icon: Icons.chart; text: I18n.tr("统计信息"); cursor: Player.menu-index == (Player.live ? 0 : 3); clicked => { Player.key("menu:stats"); } }
                 Rectangle {
                     height: 14px;
                     Text {
@@ -275,18 +263,27 @@ export component PlayPage inherits Rectangle {
                     height: 16px;
                     Text {
                         x: 6px; y: 0px; width: parent.width - 12px; height: parent.height;
-                        text: Player.track-menu == TrackMenu.subtitle ? I18n.tr("字幕") : I18n.tr("音轨");
+                        text: Player.track-title;
                         color: #7d8ea8;
                         font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
                         vertical-alignment: center;
                     }
                 }
-                for label[index] in Player.track-labels: MenuEntry {
-                    icon: Player.track-menu == TrackMenu.subtitle ? Icons.captions : Icons.music;
-                    text: label;
-                    selected: (Player.track-menu == TrackMenu.subtitle ? Player.subtitle-selected : Player.audio-selected) == index;
-                    cursor: Player.menu-sub-index == index;
-                    clicked => { Player.key((Player.track-menu == TrackMenu.subtitle ? "sub:" : "audio:") + index); }
+                Rectangle {
+                    height: max(1, Player.track-visible-count) * 18px; clip: true;
+                    for label[index] in Player.track-labels: MenuEntry {
+                        y: (index - Player.menu-sub-first) * 18px; width: parent.width;
+                        icon: Player.track-icon; text: label;
+                        selected: Player.track-menu != TrackMenu.favorite && (Player.track-menu == TrackMenu.subtitle ? Player.subtitle-selected : Player.audio-selected) == index;
+                        cursor: Player.menu-sub-index == index;
+                        clicked => { Player.key(Player.track-action + index); }
+                    }
+                    if Player.track-labels.length == 0: Text {
+                        width: parent.width; height: parent.height;
+                        text: Player.favorite-loading ? I18n.tr("加载中…") : I18n.tr("暂无收藏夹");
+                        color: #7d8ea8; font-size: 10px;
+                        horizontal-alignment: center; vertical-alignment: center;
+                    }
                 }
                 Rectangle {
                     height: 14px;
@@ -301,6 +298,9 @@ export component PlayPage inherits Rectangle {
         }
     }
     if Player.triple-phase > 0: TripleAnimation {
+        x: (root.width - self.width) / 2; y: (root.height - self.height) / 2 - 10px;
+    }
+    if Player.volume-visible: VolumePanel {
         x: (root.width - self.width) / 2; y: (root.height - self.height) / 2 - 10px;
     }
     if Player.live && SuperChat.open: SuperChatDialog {}

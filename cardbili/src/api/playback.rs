@@ -22,6 +22,8 @@ pub fn react(
         VideoAction::Like(true) => crate::i18n::tr("点赞"),
         VideoAction::Like(false) => crate::i18n::tr("取消点赞"),
         VideoAction::Triple => crate::i18n::tr("一键三连"),
+        VideoAction::Coin => crate::i18n::tr("投币"),
+        VideoAction::Favorite(_) => crate::i18n::tr("收藏"),
     };
     crate::diagnostics::write(format_args!("[互动] {name} bvid={bvid}"));
     let csrf = csrf(cookies)?;
@@ -30,7 +32,7 @@ pub fn react(
         VideoAction::Like(liked) => {
             params.push(("bvid".into(), bvid.into()));
             params.push(("like".into(), if liked { "1" } else { "2" }.into()));
-            "like"
+            "https://api.bilibili.com/x/web-interface/archive/like"
         }
         VideoAction::Triple => {
             params.extend([
@@ -42,11 +44,27 @@ pub fn react(
                 ("spmid".into(), "333.788.0.0".into()),
                 ("statistics".into(), r#"{"appId":100,"platform":5}"#.into()),
             ]);
-            "like/triple"
+            "https://api.bilibili.com/x/web-interface/archive/like/triple"
+        }
+        VideoAction::Coin => {
+            params.extend([
+                ("aid".into(), aid.to_string()),
+                ("multiply".into(), "1".into()),
+                ("select_like".into(), "0".into()),
+            ]);
+            "https://api.bilibili.com/x/web-interface/coin/add"
+        }
+        VideoAction::Favorite(folder) => {
+            params.extend([
+                ("resources".into(), format!("{aid}:2")),
+                ("add_media_ids".into(), folder.to_string()),
+                ("del_media_ids".into(), String::new()),
+            ]);
+            "https://api.bilibili.com/x/v3/fav/resource/batch-deal"
         }
     };
     let value = net::post_form_json(
-        &format!("https://api.bilibili.com/x/web-interface/archive/{endpoint}"),
+        endpoint,
         cookies,
         &format!("https://www.bilibili.com/video/{bvid}"),
         &params,
@@ -57,7 +75,7 @@ pub fn react(
     match action {
         VideoAction::Like(liked) => Ok(ReactionResult {
             triple_complete: false,
-            liked,
+            liked: Some(liked),
             message: if liked {
                 crate::i18n::tr("已点赞")
             } else {
@@ -90,11 +108,20 @@ pub fn react(
                 }
             };
             Ok(ReactionResult {
-                liked,
+                liked: Some(liked),
                 message,
                 triple_complete: liked && coined && favored,
             })
         }
+        VideoAction::Coin | VideoAction::Favorite(_) => Ok(ReactionResult {
+            triple_complete: false,
+            liked: None,
+            message: if matches!(action, VideoAction::Coin) {
+                crate::i18n::tr("已投币")
+            } else {
+                crate::i18n::tr("已收藏")
+            }.into(),
+        }),
     }
 }
 

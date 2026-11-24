@@ -6,6 +6,7 @@ use slint::{ComponentHandle as _, ModelRc, VecModel};
 pub(in crate::app) struct Media {
     subtitle_tracks: Vec<model::SubtitleTrack>,
     subtitle_cues: Vec<model::SubtitleCue>,
+    last_subtitle: i32,
     audio_tracks: Vec<model::AudioTrack>,
 }
 
@@ -117,6 +118,9 @@ impl App {
         };
         let player = self.ui.global::<crate::Player>();
         player.set_subtitle_selected(index);
+        if index > 0 {
+            self.media.last_subtitle = index;
+        }
         player.set_subtitle_text("".into());
         self.media.subtitle_cues.clear();
         let Some(url) = url else { return };
@@ -126,6 +130,14 @@ impl App {
             let result = api::subtitle::cues(&url);
             let _ = tx.send(Msg::SubtitleCues(request, index, result));
         });
+    }
+
+    pub(super) fn toggle_subtitle(&mut self) {
+        if self.media.subtitle_tracks.is_empty() {
+            return;
+        }
+        let selected = self.ui.global::<crate::Player>().get_subtitle_selected();
+        self.apply_subtitle(if selected > 0 { 0 } else { self.media.last_subtitle.max(1) });
     }
 
     pub(in crate::app) fn subtitle_cues_loaded(
