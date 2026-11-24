@@ -223,7 +223,8 @@ fn receive(
                                 text,
                                 initial: false,
                             });
-                        } else if let Some(dm) = parse_danmaku(&value) {
+                        } else if let Some(mut dm) = parse_danmaku(&value) {
+                            dm.own = uid > 0 && value["info"][2][0].as_u64() == Some(uid);
                             if !received {
                                 diagnostics::write(format_args!(
                                     "[直播弹幕] 房间={room} 首条弹幕已接收"
@@ -322,6 +323,7 @@ fn parse_danmaku(value: &Value) -> Option<Dm> {
         mode: info[0][1].as_u64().unwrap_or(1) as u8,
         color: info[0][3].as_u64().unwrap_or(0xffffff) as u32 & 0xffffff,
         text,
+        own: false,
     })
 }
 

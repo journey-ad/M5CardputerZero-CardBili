@@ -369,10 +369,16 @@ pub fn play_urls(bvid: &str, cid: i64, cookies: Option<&str>) -> Result<Value, S
 pub fn danmaku_list(cid: i64, cookies: Option<&str>) -> Result<Vec<crate::danmaku::Dm>, String> {
     let url = format!("https://api.bilibili.com/x/v1/dm/list.so?oid={}", cid);
     let xml = net::get(&url, cookies)?;
-    Ok(parse_danmaku(&xml))
+    let own_hash = cookies.and_then(|cookies| net::session::cookie(cookies, "DedeUserID"))
+        .map(|uid| {
+            let mut crc = flate2::Crc::new();
+            crc.update(uid.as_bytes());
+            format!("{:x}", crc.sum())
+        }).unwrap_or_default();
+    Ok(parse_danmaku(&xml, &own_hash))
 }
 
-fn parse_danmaku(xml: &str) -> Vec<crate::danmaku::Dm> {
+fn parse_danmaku(xml: &str, own_hash: &str) -> Vec<crate::danmaku::Dm> {
     let mut out = Vec::new();
     let mut rest = xml;
     while let Some(i) = rest.find("<d p=\"") {
@@ -393,7 +399,7 @@ fn parse_danmaku(xml: &str) -> Vec<crate::danmaku::Dm> {
             None => inner,
         };
         let text = unescape_xml(body);
-        if let Some(dm) = parse_params(params, text) {
+        if let Some(dm) = parse_params(params, text, own_hash) {
             out.push(dm);
         }
         rest = &after[close + 4..];
@@ -401,17 +407,19 @@ fn parse_danmaku(xml: &str) -> Vec<crate::danmaku::Dm> {
     out
 }
 
-fn parse_params(p: &str, text: String) -> Option<crate::danmaku::Dm> {
+fn parse_params(p: &str, text: String, own_hash: &str) -> Option<crate::danmaku::Dm> {
     let mut it = p.split(',');
     let t: f64 = it.next()?.parse().ok()?;
     let mode: u8 = it.next()?.parse().ok()?;
     let _size = it.next();
     let color: u32 = it.next().and_then(|s| s.parse().ok()).unwrap_or(16777215);
+    let own = !own_hash.is_empty() && it.nth(2) == Some(own_hash);
     Some(crate::danmaku::Dm {
         t,
         mode,
         color,
         text,
+        own,
     })
 }
 

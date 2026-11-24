@@ -26,15 +26,18 @@ fn xml_preserves_invalid_entities_and_plain_unicode() {
 
 #[test]
 fn danmaku_xml_parses_multiple_entries_and_skips_bad_parameters() {
-    let xml = r#"<i><d p="1.5,1,25,16711680,0">你好&amp;世界</d>
+    let xml = r#"<i><d p="1.5,1,25,16711680,0,0,83dcefb7">你好&amp;世界</d>
         <d p="bad,1,25,1">无效时间</d><d p="2,5,25,bad">顶部</d></i>"#;
-    let items = parse_danmaku(xml);
+    let items = parse_danmaku(xml, "83dcefb7");
     assert_eq!(items.len(), 2);
     assert_eq!(
         (items[0].t, items[0].mode, items[0].color),
         (1.5, 1, 0xff0000)
     );
     assert_eq!(items[0].text, "你好&世界");
+    assert!(items[0].own);
+    assert!(!items[1].own);
+    assert!(!parse_danmaku(xml, "")[0].own);
     assert_eq!(
         (items[1].t, items[1].mode, items[1].color),
         (2.0, 5, 0xffffff)
@@ -45,12 +48,12 @@ fn danmaku_xml_parses_multiple_entries_and_skips_bad_parameters() {
 fn danmaku_xml_keeps_complete_entries_before_truncated_input() {
     for tail in [r#"<d p="1,1"#, r#"<d p="1,1,25,1">unfinished"#] {
         let xml = format!(r#"<d p="0,1,25,1">完整</d>{tail}"#);
-        let items = parse_danmaku(&xml);
+        let items = parse_danmaku(&xml, "");
         assert_eq!(items.len(), 1);
         assert_eq!(items[0].text, "完整");
     }
-    assert!(parse_danmaku("").is_empty());
-    assert!(parse_params("1,300", "text".into()).is_none());
+    assert!(parse_danmaku("", "").is_empty());
+    assert!(parse_params("1,300", "text".into(), "").is_none());
 }
 
 #[test]

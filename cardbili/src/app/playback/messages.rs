@@ -117,6 +117,9 @@ impl App {
                 };
                 self.gen += 1;
                 self.frames_in_seg = 0;
+                if let Some(engine) = self.danmaku.as_mut() {
+                    engine.clear_echoes();
+                }
                 self.player = Some(player::Player::start(
                     &info,
                     self.cookies.clone().unwrap_or_default(),
@@ -206,9 +209,12 @@ impl App {
         }
     }
 
-    pub(in crate::app) fn danmaku_loaded(&mut self, g: u64, eng: danmaku::Engine) {
+    pub(in crate::app) fn danmaku_loaded(&mut self, g: u64, mut eng: danmaku::Engine) {
         if g != self.gen {
             return;
+        }
+        if let Some(previous) = self.danmaku.take() {
+            eng.retain_own(previous);
         }
         self.danmaku_view.clear();
         let position = self

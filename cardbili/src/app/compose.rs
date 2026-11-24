@@ -65,7 +65,11 @@ impl App {
         self.controls.like_hold = None;
         self.seek_pending = None;
         self.seek_deadline = None;
-        let resume_playback = self
+        let live = matches!(target, Target::Live { .. });
+        if live {
+            let _ = self.volume_queue.send(player::volume::Change::Duck);
+        }
+        let resume_playback = !live && self
             .player
             .as_ref()
             .is_some_and(|p| !p.paused && !p.finished);
@@ -90,6 +94,9 @@ impl App {
     pub(super) fn close_composer(&mut self) {
         if let Some(voice) = &self.voice {
             voice.cancel();
+        }
+        if matches!(self.composer.target, Some(Target::Live { .. })) {
+            let _ = self.volume_queue.send(player::volume::Change::Restore);
         }
         let resume = self.composer.resume_playback;
         self.composer = Composer {
@@ -258,6 +265,24 @@ impl App {
                     self.comment_page.items.insert(0, comment);
                     self.comment_page.loading = false;
                     self.comment_page.rebuild();
+                } else {
+                    let time = self.player.as_ref()
+                        .map_or(0.0, |player| player.position(self.frames_in_seg));
+                    let echo_time = time + self.player.as_ref().map_or(1.0, |player| player.rate) * 0.5;
+                    let text = self.composer.text.clone();
+                    self.controls.danmaku_enabled = true;
+                    match self.composer.target {
+                        Some(Target::Video { progress_ms, .. }) => {
+                            let engine = self.danmaku.get_or_insert_with(|| danmaku::Engine::new(Vec::new()));
+                            engine.push_own(text, progress_ms as f64 / 1000.0, echo_time);
+                            self.danmaku_view.update(engine, time);
+                        }
+                        Some(Target::Live { .. }) => {
+                            self.live_engine.push_own(text, time, echo_time);
+                            self.danmaku_view.update_rows(self.live_engine.rows_at(time));
+                        }
+                        _ => {}
+                    }
                 }
                 self.close_composer();
                 self.toast(crate::i18n::tr("发送成功"));

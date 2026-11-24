@@ -100,11 +100,14 @@ export component PlayPage inherits Rectangle {
         source: Player.frame; image-fit: contain;
     }
     // 正文、Mona 表情和黑色描边已合成为整条弹幕图片
-    for row in Danmaku.rows: Image {
-        x: round(row.x / 1px) * 1px; y: round(row.y / 1px) * 1px;
-        width: row.img.width * 1px; height: row.img.height * 1px;
-        source: row.img;
-        image-rendering: pixelated;
+    for row in Danmaku.rows: Rectangle {
+        x: round(row.x / 1px) * 1px - 1px; y: round(row.y / 1px) * 1px - 1px;
+        width: row.img.width * 1px + 2px; height: row.img.height * 1px + 2px;
+        border-width: row.own ? 1px : 0px; border-color: #ffffff;
+        Image {
+            x: 1px; y: 1px; width: row.img.width * 1px; height: row.img.height * 1px;
+            source: row.img; image-rendering: pixelated;
+        }
         visible: Danmaku.enabled && !Player.stats-on;
         opacity: Preferences.danmaku-opacity / 100;
     }

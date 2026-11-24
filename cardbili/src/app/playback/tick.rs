@@ -52,6 +52,9 @@ impl App {
                 if let (Some(pp), Some(t)) = (self.player.as_mut(), self.seek_pending.take()) {
                     pp.seek(t);
                     self.frames_in_seg = 0;
+                    if let Some(engine) = self.danmaku.as_mut() {
+                        engine.clear_echoes();
+                    }
                     if let Some(engine) = self
                         .danmaku
                         .as_ref()

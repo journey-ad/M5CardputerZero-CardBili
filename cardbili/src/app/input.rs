@@ -48,7 +48,9 @@ impl App {
             return;
         }
         if matches!(key.as_str(), "7_UP" | "DANMAKU_UP" | "DANMAKU_CANCEL") {
-            if self.danmaku_hold.take().is_some() && key != "DANMAKU_CANCEL" {
+            if self.danmaku_hold.take().is_some_and(|(_, toggle)| toggle)
+                && key != "DANMAKU_CANCEL"
+            {
                 self.toggle_danmaku();
             }
             return;
@@ -114,6 +116,9 @@ impl App {
                 && !self.ui.global::<crate::Player>().get_controls_visible()
             {
                 self.last_input = Instant::now();
+                if action == menu::Action::Danmaku {
+                    self.danmaku_hold.get_or_insert((self.last_input, false));
+                }
                 return;
             }
             if action == menu::Action::Back {
@@ -124,7 +129,7 @@ impl App {
             key = action.key().to_string();
         }
         if key == "DANMAKU" && self.page == Page::Player {
-            self.danmaku_hold.get_or_insert_with(Instant::now);
+            self.danmaku_hold.get_or_insert((Instant::now(), true));
             self.last_input = Instant::now();
             return;
         }
@@ -184,7 +189,7 @@ impl App {
         let now = Instant::now();
         if self
             .danmaku_hold
-            .is_some_and(|since| since.elapsed() >= Duration::from_millis(800))
+            .is_some_and(|(since, _)| since.elapsed() >= Duration::from_millis(800))
         {
             self.danmaku_hold = None;
             self.open_danmaku_input();

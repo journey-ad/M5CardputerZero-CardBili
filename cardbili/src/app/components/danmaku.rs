@@ -130,6 +130,7 @@ impl DanmakuView {
                         row.color as u8,
                     ),
                     img: image,
+                    own: row.own,
                 },
             );
         }

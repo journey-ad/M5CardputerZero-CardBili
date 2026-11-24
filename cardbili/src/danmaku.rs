@@ -25,6 +25,7 @@ pub struct Dm {
     pub mode: u8,
     pub color: u32,
     pub text: String,
+    pub own: bool,
 }
 
 pub struct Row<'a> {
@@ -33,6 +34,7 @@ pub struct Row<'a> {
     pub x: f32,
     pub y: f32,
     pub color: u32,
+    pub own: bool,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -56,10 +58,12 @@ struct Group {
     kind: Kind,
     text: String,
     t0: f64,        // 首次出现时间，入场基准
+    echo_t0: Option<f64>, // 刚发送时的本次回显时间
     last_seen: f64, // 组内最后一次出现时间，用于合并判定
     len: f64,       // 文本像素宽度
     count: u32,     // 合并次数
     color: u32,
+    own: bool,
     lane: Option<usize>, // 分配成功的轨道下标
 }
 
@@ -94,7 +98,7 @@ impl Engine {
             };
             let len = bitmap::width(&d.text);
             if let Some(g) = groups.last_mut() {
-                if g.kind == kind && g.text == d.text && d.t - g.last_seen <= MERGE_WINDOW {
+                if g.kind == kind && g.text == d.text && g.own == d.own && d.t - g.last_seen <= MERGE_WINDOW {
                     g.count += 1;
                     g.last_seen = d.t;
                     continue;
@@ -104,10 +108,12 @@ impl Engine {
                 kind,
                 text: d.text,
                 t0: d.t,
+                echo_t0: None,
                 last_seen: d.t,
                 len,
                 count: 1,
                 color: d.color,
+                own: d.own,
                 lane: None,
             });
         }
@@ -121,21 +127,63 @@ impl Engine {
 
         assign_lanes(&mut groups);
         groups.retain(|group| group.lane.is_some());
-        let mut segments: HashMap<usize, Segment> = HashMap::new();
-        for (index, group) in groups.iter().enumerate() {
-            // 每个时间片保存可见弹幕的下标，跨分段弹幕同时索引到相邻分段
-            let first = time_slice(group.t0);
-            let last = time_slice(group.t0 + group.lifetime());
-            for slice in first..=last {
-                let segment = segments
-                    .entry(slice / SLICES_PER_SEGMENT)
-                    .or_insert_with(|| Segment {
-                        slices: vec![Vec::new(); SLICES_PER_SEGMENT],
-                    });
-                segment.slices[slice % SLICES_PER_SEGMENT].push(index);
+        let mut engine = Engine { groups: Vec::new(), segments: HashMap::new() };
+        for group in groups {
+            engine.insert(group);
+        }
+        engine
+    }
+
+    fn insert(&mut self, group: Group) {
+        let index = self.groups.len();
+        let first = time_slice(group.t0);
+        self.groups.push(group);
+        self.index(index, first);
+    }
+
+    fn index(&mut self, index: usize, first: usize) {
+        let group = &self.groups[index];
+        // 每个时间片保存可见弹幕的下标，跨分段弹幕同时索引到相邻分段
+        let last = time_slice(group.echo_t0.unwrap_or(group.t0) + group.lifetime());
+        for slice in first..=last {
+            let segment = self.segments.entry(slice / SLICES_PER_SEGMENT)
+                .or_insert_with(|| Segment { slices: vec![Vec::new(); SLICES_PER_SEGMENT] });
+            segment.slices[slice % SLICES_PER_SEGMENT].push(index);
+        }
+    }
+
+    pub fn push_own(&mut self, text: String, time: f64, echo_time: f64) {
+        let rows = self.rows_at(echo_time);
+        let lane = (2..MAX_ROWS).find(|lane| {
+            !rows.iter().any(|row| row.y == (AREA_TOP + *lane as f64 * LINE_H) as f32)
+        }).unwrap_or(MAX_ROWS - 1);
+        self.insert(Group {
+            kind: Kind::Scroll, len: bitmap::width(&text), text,
+            t0: time, last_seen: time, count: 1, color: 0xffffff,
+            echo_t0: Some(echo_time),
+            own: true, lane: Some(lane),
+        });
+    }
+
+    pub fn retain_own(&mut self, previous: Self) {
+        for group in previous.groups.into_iter().filter(|group| group.own) {
+            if let Some(index) = self.groups.iter().position(|existing| existing.own && existing.text == group.text
+                && (existing.t0 - group.t0).abs() <= MERGE_WINDOW)
+            {
+                let existing = &mut self.groups[index];
+                let first = time_slice(existing.echo_t0.unwrap_or(existing.t0) + existing.lifetime()) + 1;
+                existing.echo_t0 = group.echo_t0;
+                self.index(index, first);
+            } else {
+                self.insert(group);
             }
         }
-        Engine { groups, segments }
+    }
+
+    pub fn clear_echoes(&mut self) {
+        for group in &mut self.groups {
+            group.echo_t0 = None;
+        }
     }
 
     // 按绝对播放时间查询时间片，快进和快退共用同一份索引
@@ -162,7 +210,7 @@ impl Engine {
 impl Group {
     fn row(&self, index: usize, t: f64) -> Option<Row<'_>> {
         let group = self;
-        let age = t - group.t0;
+        let age = t - group.echo_t0.unwrap_or(group.t0);
         if age < 0.0 || age > group.lifetime() {
             return None;
         }
@@ -182,6 +230,7 @@ impl Group {
             x: x as f32,
             y: y as f32,
             color: group.color,
+            own: group.own,
         })
     }
 
@@ -246,7 +295,10 @@ impl Lanes {
 fn assign_lanes(groups: &mut [Group]) {
     let mut lanes = Lanes::default();
     for group in groups {
-        lanes.assign(group, 0);
+        lanes.assign(group, if group.own && group.kind != Kind::Bottom { 2 } else { 0 });
+        if group.own && group.lane.is_none() {
+            group.lane = Some(MAX_ROWS - 1);
+        }
     }
 }
 
@@ -258,25 +310,35 @@ pub struct LiveEngine {
 }
 
 impl LiveEngine {
+    pub fn push_own(&mut self, text: String, time: f64, echo_time: f64) {
+        let dm = Dm { t: time, mode: 1, color: 0xffffff, text, own: true };
+        let _ = self.try_push(dm, time, 2);
+        let group = &mut self.groups.back_mut().unwrap().1;
+        group.echo_t0 = Some(echo_time);
+        self.lanes.up[group.lane.unwrap()] = Some((group.kind, echo_time, group.len));
+    }
+
     pub fn push(&mut self, dm: Dm, time: f64) {
         if self
             .groups
             .iter()
-            .any(|(_, group)| group.text == dm.text && time - group.t0 <= MERGE_WINDOW)
+            .any(|(_, group)| group.text == dm.text && group.own == dm.own
+                && time - group.echo_t0.unwrap_or(group.t0) <= if dm.own { LIFE } else { MERGE_WINDOW })
         {
             return;
         }
-        let _ = self.try_push(dm, time, 0);
+        let first_lane = if dm.own { 2 } else { 0 };
+        let _ = self.try_push(dm, time, first_lane);
     }
 
     // 返回尚未入场的弹幕，调用方可保留后再次尝试
     pub fn try_push(&mut self, dm: Dm, time: f64, first_lane: usize) -> Result<(), Dm> {
         self.groups
-            .retain(|(_, group)| time < group.t0 + group.lifetime());
+            .retain(|(_, group)| time < group.echo_t0.unwrap_or(group.t0) + group.lifetime());
         let Some(kind) = kind_of(dm.mode) else {
             return Ok(());
         };
-        if self.groups.len() >= MAX_LIVE {
+        if self.groups.len() >= MAX_LIVE && !dm.own {
             return Err(dm);
         }
         let mut group = Group {
@@ -284,12 +346,17 @@ impl LiveEngine {
             len: bitmap::width(&dm.text),
             text: dm.text,
             color: dm.color,
+            own: dm.own,
             t0: time,
+            echo_t0: None,
             last_seen: time,
             count: 1,
             lane: None,
         };
         self.lanes.assign(&mut group, first_lane);
+        if group.own && group.lane.is_none() {
+            group.lane = Some(MAX_ROWS - 1);
+        }
         if group.lane.is_some() {
             self.groups.push_back((self.next_id, group));
             self.next_id = self.next_id.wrapping_add(1);

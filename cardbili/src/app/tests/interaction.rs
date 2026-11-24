@@ -160,22 +160,83 @@ fn help_blocks_background_actions_until_dismissed() {
 }
 
 #[test]
-fn hidden_player_controls_consume_first_menu_press() {
-    let mut h = Harness::new();
-    h.app.page = Page::Player;
-    h.app
-        .ui
-        .global::<crate::Player>()
-        .set_controls_visible(false);
-    let enabled = h.app.controls.danmaku_enabled;
-    h.key("7");
-    assert_eq!(h.app.controls.danmaku_enabled, enabled);
-    h.key("7_UP");
-    h.sync();
-    assert!(h.app.ui.global::<crate::Player>().get_controls_visible());
-    h.key("7");
-    h.key("7_UP");
-    assert_eq!(h.app.controls.danmaku_enabled, !enabled);
+fn hidden_player_controls_allow_danmaku_hold_and_consume_first_short_press() {
+    for live in [false, true] {
+        let mut h = Harness::new();
+        h.app.page = Page::Player;
+        h.app.cookies = Some("bili_jct=test".into());
+        h.app.current_play = Some(model::PlayInfo { duration: 100.0, live, ..Default::default() });
+        let mut playback = player::Player::start(
+            h.app.current_play.as_ref().unwrap(), String::new(), 1, h.app.tx.clone(),
+            &h.app.settings, player::PlaybackState { finished: true, ..Default::default() },
+        );
+        playback.finished = false;
+        h.app.player = Some(playback);
+        h.app.live = live.then(model::LiveInfo::default);
+        let ui = h.app.ui.clone_strong();
+        let player = ui.global::<crate::Player>();
+        player.set_live(live);
+        player.set_controls_visible(false);
+        let enabled = h.app.controls.danmaku_enabled;
+        h.key("7");
+        assert_eq!(h.app.controls.danmaku_enabled, enabled);
+        h.sync();
+        assert!(player.get_controls_visible());
+        h.key("7_UP");
+        assert_eq!(h.app.controls.danmaku_enabled, enabled);
+        assert!(h.app.danmaku_hold.is_none());
+        h.key("7");
+        h.key("7_UP");
+        assert_eq!(h.app.controls.danmaku_enabled, !enabled);
+
+        for visible in [false, true] {
+            player.set_controls_visible(visible);
+            h.key("7");
+            h.app.tick_input();
+            assert!(h.app.composer.target.is_none());
+            h.app.danmaku_hold.as_mut().unwrap().0 =
+                Instant::now() - Duration::from_millis(850);
+            h.sync();
+            h.key("7");
+            h.app.tick_input();
+            assert!(h.app.ui.global::<crate::VoiceInput>().get_open());
+            assert_eq!(h.app.player.as_ref().unwrap().paused, !live);
+            if live {
+                assert_eq!(h._volume.try_recv().unwrap(), player::volume::Change::Duck);
+            } else {
+                assert!(h._volume.try_recv().is_err());
+            }
+            assert!(matches!(
+                h.app.composer.target,
+                Some(crate::api::posting::Target::Video { .. })
+                    | Some(crate::api::posting::Target::Live { .. })
+            ));
+            h.key("7_UP");
+            assert_eq!(h.app.controls.danmaku_enabled, !enabled);
+            assert!(h.app.danmaku_hold.is_none());
+            if visible {
+                h.app.composer.text = "测试弹幕".into();
+                h.app.composition_sent(h.app.composer.request, Ok(None));
+                let rows_at = |time| {
+                    if live {
+                        h.app.live_engine.rows_at(time)
+                    } else {
+                        h.app.danmaku.as_ref().unwrap().rows_at(time)
+                    }
+                };
+                assert!(rows_at(0.49).is_empty());
+                assert_eq!(rows_at(0.5)[0].x, WIDTH as f32);
+            } else {
+                h.key("ESC");
+            }
+            assert!(!h.app.player.as_ref().unwrap().paused);
+            if live {
+                assert_eq!(h._volume.try_recv().unwrap(), player::volume::Change::Restore);
+            } else {
+                assert!(h._volume.try_recv().is_err());
+            }
+        }
+    }
 }
 
 #[test]

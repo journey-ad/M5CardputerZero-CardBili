@@ -8,7 +8,7 @@ pub(super) struct App {
     pub(super) comment_page: comments::Comments,
     pub(super) composer: compose::Composer,
     pub(super) voice: Option<crate::voice::Session>,
-    pub(super) danmaku_hold: Option<Instant>,
+    pub(super) danmaku_hold: Option<(Instant, bool)>, // 按下时间、松开时是否切换弹幕
     pub(super) sections: sections::Sections,
     pub(super) requested_cid: Option<i64>,
     pub(super) play_start: f64,

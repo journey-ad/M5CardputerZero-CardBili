@@ -15,11 +15,11 @@ export global VoiceInput {
 }
 
 export component VoicePanel inherits Rectangle {
-    width: 100%; height: 100%; background: #000000b0;
+    width: 100%; height: 100%;
     TouchArea {}
     Rectangle {
         x: 8px; y: 8px; width: parent.width - 16px; height: parent.height - 36px;
-        background: #121a2a; border-width: 1px; border-color: #405472; border-radius: 4px;
+        background: #121a2acc; border-width: 1px; border-color: #405472; border-radius: 4px;
         Text {
             x: 10px; y: 8px; height: 16px; width: parent.width - 100px;
             text: VoiceInput.title; color: #e6ebf5; font-size: 12px;
