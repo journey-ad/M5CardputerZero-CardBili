@@ -21,43 +21,80 @@ export struct SettingsRow {
     disabled: bool,
 }
 
+export struct SettingsGroupData {
+    title: string,
+    rows: [SettingsRow],
+}
+
+export global SettingsChoice {
+    in-out property <bool> open: false;
+    in-out property <SettingsItem> item;
+    in-out property <string> title;
+    in-out property <[string]> options;
+    in-out property <int> current;
+    in-out property <int> selected;
+    in-out property <int> first;
+    out property <int> visible-count: min(4, self.options.length);
+    callback key(string);
+}
+
 export global SettingsPage {
-    out property <[SettingsRow]> appearance-items: [
+    out property <[SettingsGroupData]> groups: [
+        // 外观设置
         {
-            item: SettingsItem.menu-position, label: I18n.tr("首页布局"), kind: SettingsKind.choice,
-            value: Preferences.menu-position == MenuPosition.top ? I18n.tr("顶部") : (Preferences.menu-position == MenuPosition.left ? I18n.tr("左侧") : I18n.tr("右侧")),
+            title: I18n.tr("外观设置"),
+            rows: [
+                {
+                    item: SettingsItem.menu-position, label: I18n.tr("首页布局"), kind: SettingsKind.choice,
+                    value: Preferences.menu-position == MenuPosition.top ? I18n.tr("顶部") : (Preferences.menu-position == MenuPosition.left ? I18n.tr("左侧") : I18n.tr("右侧")),
+                },
+                {
+                    item: SettingsItem.list-style, label: I18n.tr("视频列表风格"), kind: SettingsKind.choice,
+                    value: Nav.view == VideoLayout.list ? I18n.tr("列表") : (Nav.view == VideoLayout.three-columns ? I18n.tr("3列") : I18n.tr("2列")),
+                },
+                { item: SettingsItem.danmaku, label: I18n.tr("弹幕默认开关"), kind: SettingsKind.toggle, checked: Preferences.danmaku-default },
+                { item: SettingsItem.danmaku-opacity, label: I18n.tr("弹幕不透明度"), kind: SettingsKind.choice, value: Preferences.danmaku-opacity + "%" },
+                { item: SettingsItem.emoji-style, label: I18n.tr("Emoji样式"), kind: SettingsKind.choice, value: "😀😆😎" },
+            ],
         },
+        // 常规设置
         {
-            item: SettingsItem.list-style, label: I18n.tr("视频列表风格"), kind: SettingsKind.choice,
-            value: Nav.view == VideoLayout.list ? I18n.tr("列表") : (Nav.view == VideoLayout.three-columns ? I18n.tr("3列") : I18n.tr("2列")),
+            title: I18n.tr("常规设置"),
+            rows: [
+                { item: SettingsItem.language, label: "语言 / Language", kind: SettingsKind.choice, value: I18n.lang == 0 ? "简体中文" : "English" },
+                { item: SettingsItem.title-translate, label: I18n.tr("标题翻译"), kind: SettingsKind.choice, value: Preferences.translate-provider-name },
+                { item: SettingsItem.record-history, label: I18n.tr("记录播放历史"), kind: SettingsKind.toggle, checked: Preferences.record-history },
+                { item: SettingsItem.cache, label: I18n.tr("缓存占用"), kind: SettingsKind.action, value: Preferences.cache-size },
+                { item: SettingsItem.about, label: I18n.tr("关于"), kind: SettingsKind.action, value: Meta.version },
+            ],
         },
-        { item: SettingsItem.danmaku, label: I18n.tr("弹幕默认开关"), kind: SettingsKind.toggle, checked: Preferences.danmaku-default },
-        { item: SettingsItem.danmaku-opacity, label: I18n.tr("弹幕不透明度"), kind: SettingsKind.choice, value: Preferences.danmaku-opacity + "%" },
-        { item: SettingsItem.emoji-style, label: I18n.tr("Emoji样式"), kind: SettingsKind.choice, value: "😀😆😎" },
-    ];
-    out property <[SettingsRow]> general-items: [
-        { item: SettingsItem.language, label: "语言 / Language", kind: SettingsKind.choice, value: I18n.lang == 0 ? "简体中文" : "English" },
-        { item: SettingsItem.title-translate, label: I18n.tr("标题翻译"), kind: SettingsKind.choice, value: Preferences.translate-provider-name },
-        { item: SettingsItem.record-history, label: I18n.tr("记录播放历史"), kind: SettingsKind.toggle, checked: Preferences.record-history },
-        { item: SettingsItem.cache, label: I18n.tr("缓存占用"), kind: SettingsKind.action, value: Preferences.cache-size },
-        { item: SettingsItem.about, label: I18n.tr("关于"), kind: SettingsKind.action, value: Meta.version },
-    ];
-    out property <[SettingsRow]> voice-items: [
-        { item: SettingsItem.voice-backend, label: I18n.tr("识别引擎"), kind: SettingsKind.choice, value: Preferences.voice-backend-name },
-        { item: SettingsItem.voice-punctuation, label: I18n.tr("标点设置"), kind: SettingsKind.choice, value: Preferences.voice-punctuation-name },
-        { item: SettingsItem.voice-add-spaces, label: I18n.tr("中英文之间添加空格"), kind: SettingsKind.toggle, checked: Preferences.voice-add-spaces },
-    ];
-    out property <[SettingsRow]> advanced-items: [
-        { item: SettingsItem.debug-log, label: I18n.tr("调试日志"), kind: SettingsKind.toggle, checked: Preferences.debug-log },
-        { item: SettingsItem.cdn, label: I18n.tr("CDN 设置"), kind: SettingsKind.action, value: Preferences.cdn-name },
-        { item: SettingsItem.pixel-optimize, label: I18n.tr("像素优化"), kind: SettingsKind.toggle, checked: Preferences.pixel-optimize },
+        // 语音输入
         {
-            item: SettingsItem.scale-algorithm, label: I18n.tr("采样算法"), kind: SettingsKind.choice,
-            value: Preferences.pixel-optimize ? I18n.tr("随像素优化") : Preferences.scale-algorithm-name,
-            disabled: Preferences.pixel-optimize,
+            title: I18n.tr("语音输入"),
+            rows: [
+                { item: SettingsItem.voice-backend, label: I18n.tr("识别引擎"), kind: SettingsKind.choice, value: Preferences.voice-backend-name },
+                { item: SettingsItem.voice-punctuation, label: I18n.tr("标点设置"), kind: SettingsKind.choice, value: Preferences.voice-punctuation-name },
+                { item: SettingsItem.voice-add-spaces, label: I18n.tr("中英文之间添加空格"), kind: SettingsKind.toggle, checked: Preferences.voice-add-spaces },
+            ],
+        },
+        // 进阶设置
+        {
+            title: I18n.tr("进阶设置"),
+            rows: [
+                { item: SettingsItem.debug-log, label: I18n.tr("调试日志"), kind: SettingsKind.toggle, checked: Preferences.debug-log },
+                { item: SettingsItem.cdn, label: I18n.tr("CDN 设置"), kind: SettingsKind.action, value: Preferences.cdn-name },
+                { item: SettingsItem.pixel-optimize, label: I18n.tr("像素优化"), kind: SettingsKind.toggle, checked: Preferences.pixel-optimize },
+                {
+                    item: SettingsItem.scale-algorithm, label: I18n.tr("采样算法"), kind: SettingsKind.choice,
+                    value: Preferences.pixel-optimize ? I18n.tr("随像素优化") : Preferences.scale-algorithm-name,
+                    disabled: Preferences.pixel-optimize,
+                },
+            ],
         },
     ];
     in-out property <int> first-line: 0;
+    in-out property <int> selected-group: 0;
+    in-out property <int> selected-row: 0;
 }
 
 // 单个设置项，各分组共用
@@ -128,7 +165,7 @@ component SettingsRowItem inherits Rectangle {
 component SettingsGroup inherits Rectangle {
     in property <string> title;
     in property <[SettingsRow]> rows;
-    in property <int> first-index;
+    in property <int> selected-index: -1;
     width: 100%;
     height: (rows.length + 1) * 24px;
 
@@ -145,7 +182,7 @@ component SettingsGroup inherits Rectangle {
     }
     for row[i] in root.rows: SettingsRowItem {
         entry: row;
-        selected: root.first-index + i == Nav.sel;
+        selected: root.selected-index == i;
         x: 6px;
         y: (i + 1) * 24px;
         width: parent.width - 12px;
@@ -155,33 +192,14 @@ component SettingsGroup inherits Rectangle {
 
 export component SettingsPanel inherits Rectangle {
     clip: true;
-
-    // 外观设置标题和选项
-    appearance := SettingsGroup {
-        title: I18n.tr("外观设置");
-        rows: SettingsPage.appearance-items;
-        first-index: 0;
+    VerticalLayout {
         y: 4px - SettingsPage.first-line * 24px;
-    }
-    // 常规设置标题和选项
-    general := SettingsGroup {
-        title: I18n.tr("常规设置");
-        rows: SettingsPage.general-items;
-        first-index: appearance.rows.length;
-        y: appearance.y + appearance.height;
-    }
-    // 语音输入标题和选项
-    voice := SettingsGroup {
-        title: I18n.tr("语音输入");
-        rows: SettingsPage.voice-items;
-        first-index: general.first-index + general.rows.length;
-        y: general.y + general.height;
-    }
-    // 进阶设置标题和选项
-    SettingsGroup {
-        title: I18n.tr("进阶设置");
-        rows: SettingsPage.advanced-items;
-        first-index: voice.first-index + voice.rows.length;
-        y: voice.y + voice.height;
+        width: parent.width; height: self.preferred-height;
+        padding: 0px; spacing: 0px;
+        for group[index] in SettingsPage.groups: SettingsGroup {
+            title: group.title;
+            rows: group.rows;
+            selected-index: index == SettingsPage.selected-group ? SettingsPage.selected-row : -1;
+        }
     }
 }

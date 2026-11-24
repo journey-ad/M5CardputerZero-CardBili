@@ -115,12 +115,7 @@ fn settings_scroll_keeps_selected_group_header_visible() {
     let mut h = Harness::new();
     h.app.tab = HomeTab::Settings;
     let page = h.app.ui.global::<crate::SettingsPage>();
-    let lengths = [
-        page.get_appearance_items().row_count(),
-        page.get_general_items().row_count(),
-        page.get_voice_items().row_count(),
-        page.get_advanced_items().row_count(),
-    ];
+    let lengths: Vec<_> = page.get_groups().iter().map(|group| group.rows.row_count()).collect();
     let mut start = 0;
     for (group, length) in lengths.into_iter().enumerate() {
         h.app.sel = start as i32;

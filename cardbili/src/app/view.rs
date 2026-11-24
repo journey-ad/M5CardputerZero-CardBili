@@ -129,6 +129,9 @@ impl App {
 
 impl App {
     pub(super) fn menu_actions(&self) -> [Option<menu::Action>; 5] {
+        if self.ui.global::<crate::SettingsChoice>().get_open() {
+            return [None, None, None, Some(menu::Action::Select), Some(menu::Action::Cancel)];
+        }
         if self.composer.target.is_some() {
             return [
                 None,

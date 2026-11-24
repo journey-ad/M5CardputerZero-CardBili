@@ -315,12 +315,10 @@ fn sections_choose_part_or_seek_to_chapter() {
 fn select_setting(h: &mut Harness, item: crate::SettingsItem) {
     h.app.tab = HomeTab::Settings;
     let page = h.app.ui.global::<crate::SettingsPage>();
-    h.app.sel = page
-        .get_appearance_items()
+    let groups: Vec<_> = page.get_groups().iter().collect();
+    h.app.sel = groups
         .iter()
-        .chain(page.get_general_items().iter())
-        .chain(page.get_voice_items().iter())
-        .chain(page.get_advanced_items().iter())
+        .flat_map(|group| group.rows.iter())
         .position(|row| row.item == item)
         .unwrap() as i32;
 }
@@ -349,6 +347,11 @@ fn settings_switches_and_opacity_limits_update_state() {
     h.key("LEFT");
     assert_eq!(h.app.settings.voice_punctuation, crate::voice::Punctuation::Full);
     h.key("ENTER");
+    assert!(h.app.ui.global::<crate::SettingsChoice>().get_open());
+    assert_eq!(h.app.settings.voice_punctuation, crate::voice::Punctuation::Full);
+    h.key("DOWN");
+    h.key("SPACE");
+    assert!(!h.app.ui.global::<crate::SettingsChoice>().get_open());
     assert_eq!(h.app.settings.voice_punctuation, crate::voice::Punctuation::OmitTrailing);
     select_setting(&mut h, crate::SettingsItem::VoiceAddSpaces);
     h.key("SPACE");
@@ -365,6 +368,8 @@ fn pixel_optimization_disables_algorithm_changes() {
     let algorithm = h.app.settings.scale_algorithm;
     h.key("RIGHT");
     assert_eq!(h.app.settings.scale_algorithm, algorithm);
+    h.key("ENTER");
+    assert!(!h.app.ui.global::<crate::SettingsChoice>().get_open());
     h.app.settings.pixel_optimize = false;
     h.key("RIGHT");
     assert_eq!(h.app.settings.scale_algorithm, algorithm.cycle(1));
@@ -374,9 +379,21 @@ fn pixel_optimization_disables_algorithm_changes() {
 fn settings_navigation_wraps_and_about_requests_navigation() {
     let mut h = Harness::new();
     h.app.tab = HomeTab::Settings;
-    h.key("UP");
-    assert!(h.app.sel > 0);
+    let page = h.app.ui.global::<crate::SettingsPage>();
+    let count = page.get_groups().iter().map(|group| group.rows.row_count()).sum::<usize>() as i32;
+    for expected in 1..count {
+        h.key("DOWN");
+        h.sync();
+        assert_eq!(h.app.sel, expected);
+    }
     h.key("DOWN");
+    h.sync();
+    assert_eq!(h.app.sel, 0);
+    h.key("UP");
+    h.sync();
+    assert_eq!(h.app.sel, count - 1);
+    h.key("DOWN");
+    h.sync();
     assert_eq!(h.app.sel, 0);
     select_setting(&mut h, crate::SettingsItem::About);
     h.key("ENTER");

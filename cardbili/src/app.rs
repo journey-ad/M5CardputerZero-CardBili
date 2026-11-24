@@ -157,6 +157,10 @@ fn connect_ui(ui: &AppWindow, tx: mpsc::Sender<Msg>, ktx: mpsc::Sender<String>) 
     ui.global::<crate::VoiceInput>().on_key(move |key| {
         let _ = voice_keys.send(key.to_string());
     });
+    let settings_keys = ktx.clone();
+    ui.global::<crate::SettingsChoice>().on_key(move |key| {
+        let _ = settings_keys.send(key.to_string());
+    });
     ui.global::<crate::Player>().on_key(move |key| {
         let _ = ktx.send(key.to_string());
     });

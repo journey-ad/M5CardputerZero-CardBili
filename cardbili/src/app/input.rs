@@ -43,6 +43,10 @@ impl App {
             self.composer_key(&key);
             return;
         }
+        if self.ui.global::<crate::SettingsChoice>().get_open() {
+            self.settings_choice_key(&key);
+            return;
+        }
         if matches!(key.as_str(), "7_UP" | "DANMAKU_UP" | "DANMAKU_CANCEL") {
             if self.danmaku_hold.take().is_some() && key != "DANMAKU_CANCEL" {
                 self.toggle_danmaku();

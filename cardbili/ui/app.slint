@@ -1,6 +1,8 @@
 import "../fonts/fusion12.ttf";
 export { HomeTab, Page, VideoLayout, MenuPosition } from "types.slint";
-export { SettingsPage, SettingsItem } from "components/panels/settings.slint";
+export { SettingsPage, SettingsItem, SettingsKind, SettingsChoice } from "components/panels/settings.slint";
+import { SettingsChoice } from "components/panels/settings.slint";
+import { SettingsChoicePanel } from "components/panels/settings-choice.slint";
 export { MinePage, MineEntry } from "components/panels/mine.slint";
 export { VideoRow, HistoryHeader, SuperChatRow } from "common.slint";
 export { Comments, CommentRow } from "components/video/comments.slint";
@@ -38,5 +40,6 @@ export component AppWindow inherits Window {
         y: parent.height - (Nav.page == Page.player ? 50px : 46px);
     }
     if VoiceInput.open: VoicePanel {}
+    if SettingsChoice.open: SettingsChoicePanel {}
     if Confirm.open: ConfirmDialog {}
 }

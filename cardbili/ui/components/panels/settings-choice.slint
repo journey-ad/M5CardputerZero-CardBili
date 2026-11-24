@@ -1,0 +1,56 @@
+import { SettingsChoice, SettingsItem } from "settings.slint";
+import { Text } from "../base/text.slint";
+import { BottomBar } from "../navigation/bottom.slint";
+import { I18n, Preferences } from "../../state.slint";
+
+export component SettingsChoicePanel inherits Rectangle {
+    width: 100%; height: 100%; background: #000000b0;
+    TouchArea {}
+    Rectangle {
+        x: 24px; y: (parent.height - 20px - self.height) / 2;
+        width: parent.width - 48px;
+        height: 38px + SettingsChoice.visible-count * 24px;
+        background: #121a2a; border-radius: 4px; border-width: 1px; border-color: #405472;
+        Text {
+            x: 12px; y: 8px; width: parent.width - 24px; height: 16px;
+            text: SettingsChoice.title; color: #e6ebf5; font-size: 12px;
+        }
+        Rectangle {
+            x: 8px; y: 30px; width: parent.width - 16px;
+            height: SettingsChoice.visible-count * 24px; clip: true;
+            for option[index] in SettingsChoice.options: Rectangle {
+                x: 0px; y: (index - SettingsChoice.first) * 24px;
+                width: parent.width; height: 22px;
+                background: index == SettingsChoice.selected ? #1f2b45 : #0f1623;
+                border-width: 1px; border-radius: 3px;
+                border-color: index == SettingsChoice.selected ? #7fb0ff : #28354a;
+                Text {
+                    x: 8px; width: parent.width - 56px; height: parent.height;
+                    text: option; color: #e6ebf5; font-size: 12px;
+                    color-emoji: SettingsChoice.item == SettingsItem.emoji-style ? index == 0 : Preferences.color-emoji;
+                    vertical-alignment: center;
+                }
+                Text {
+                    x: parent.width - 44px; width: 36px; height: parent.height;
+                    text: index == SettingsChoice.current ? I18n.tr("已选") : "";
+                    color: #7fb0ff; font-size: 10px; horizontal-alignment: right;
+                    vertical-alignment: center;
+                }
+                TouchArea {
+                    scroll-event(event) => {
+                        if event.delta-y < 0px { SettingsChoice.key("DOWN"); }
+                        if event.delta-y > 0px { SettingsChoice.key("UP"); }
+                        accept
+                    }
+                    clicked => {
+                        SettingsChoice.selected = index;
+                        SettingsChoice.key("ENTER");
+                    }
+                }
+            }
+        }
+    }
+    BottomBar { y: parent.height - self.height; width: parent.width; }
+    TouchArea { x: 190px; y: parent.height - 20px; width: 54px; height: 20px; clicked => { SettingsChoice.key("7"); } }
+    TouchArea { x: 248px; y: parent.height - 20px; width: 54px; height: 20px; clicked => { SettingsChoice.key("8"); } }
+}

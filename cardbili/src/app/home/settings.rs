@@ -3,23 +3,17 @@ use crate::SettingsItem;
 use slint::ComponentHandle as _;
 use slint::Model;
 
+mod choice;
+
 impl App {
     pub(in crate::app) fn settings_key(&mut self, key: &str) {
         let preferences = self.ui.global::<crate::Preferences>();
         let settings_page = self.ui.global::<crate::SettingsPage>();
-        let appearance = settings_page.get_appearance_items();
-        let general = settings_page.get_general_items();
-        let voice = settings_page.get_voice_items();
-        let advanced = settings_page.get_advanced_items();
-        let total = (appearance.row_count()
-            + general.row_count()
-            + voice.row_count()
-            + advanced.row_count()) as i32;
-        let row = appearance
+        let groups: Vec<_> = settings_page.get_groups().iter().collect();
+        let total = groups.iter().map(|group| group.rows.row_count()).sum::<usize>() as i32;
+        let row = groups
             .iter()
-            .chain(general.iter())
-            .chain(voice.iter())
-            .chain(advanced.iter())
+            .flat_map(|group| group.rows.iter())
             .nth(self.sel as usize);
         let Some(row) = row else {
             return;
@@ -44,59 +38,38 @@ impl App {
             "ENTER" | "SPACE" => 0,
             _ => return,
         };
+        if row.kind == crate::SettingsKind::Choice {
+            if row.item == SettingsItem::ScaleAlgorithm && self.settings.pixel_optimize {
+                return;
+            }
+            let (options, current) = self.settings_choices(row.item);
+            if step == 0 {
+                let panel = self.ui.global::<crate::SettingsChoice>();
+                panel.set_item(row.item);
+                panel.set_title(row.label);
+                panel.set_options(ModelRc::new(VecModel::from(options)));
+                panel.set_current(current);
+                panel.set_selected(current);
+                panel.set_first((current - panel.get_visible_count() + 1).max(0));
+                panel.set_open(true);
+                self.direction_hold = None;
+                self.return_hold = None;
+            } else {
+                let count = options.len() as i32;
+                let selected = if row.item == SettingsItem::DanmakuOpacity {
+                    (current + step).clamp(0, count - 1)
+                } else {
+                    (current + step).rem_euclid(count)
+                };
+                if selected != current {
+                    self.apply_settings_choice(row.item, selected);
+                }
+            }
+            return;
+        }
         match row.item {
-            SettingsItem::ListStyle if step != 0 => {
-                self.view = self.view.cycle(step);
-                self.settings_changed = true;
-            }
-            SettingsItem::DanmakuOpacity if step != 0 => {
-                let opacity = (self.settings.danmaku_opacity + step * 10).clamp(0, 100);
-                self.settings_changed |= opacity != self.settings.danmaku_opacity;
-                self.settings.danmaku_opacity = opacity;
-            }
-            SettingsItem::Language => {
-                let language = self.settings.language.cycle(if step == 0 { 1 } else { step });
-                self.settings.language = language;
-                crate::app::set_language(&self.ui, language);
-                // 底栏文案按动作缓存，切换语言后需重新生成
-                self.menu_view = None;
-                self.home_dirty = true;
-                self.collection_dirty = true;
-                self.settings_changed = true;
-            }
-            SettingsItem::VoiceBackend => {
-                self.settings.voice_backend = self
-                    .settings
-                    .voice_backend
-                    .cycle(if step == 0 { 1 } else { step });
-                self.settings_changed = true;
-            }
-            SettingsItem::VoicePunctuation => {
-                self.settings.voice_punctuation = self
-                    .settings
-                    .voice_punctuation
-                    .cycle(if step == 0 { 1 } else { step });
-                self.settings_changed = true;
-            }
             SettingsItem::VoiceAddSpaces => {
                 self.settings.voice_add_spaces = !self.settings.voice_add_spaces;
-                self.settings_changed = true;
-            }
-            SettingsItem::TitleTranslate if step != 0 => {
-                self.settings.translate_provider = if self.settings.translate_provider == 1 {
-                    0
-                } else {
-                    1
-                };
-                crate::title_i18n::set_provider(self.settings.translate_provider);
-                self.settings_changed = true;
-            }
-            SettingsItem::MenuPosition if step != 0 => {
-                self.settings.menu_position = self.settings.menu_position.cycle(step);
-                self.settings_changed = true;
-            }
-            SettingsItem::ScaleAlgorithm if step != 0 && !self.settings.pixel_optimize => {
-                self.settings.scale_algorithm = self.settings.scale_algorithm.cycle(step);
                 self.settings_changed = true;
             }
             SettingsItem::Danmaku => {
@@ -105,7 +78,6 @@ impl App {
             }
             SettingsItem::RecordHistory => self.toggle_record_history(),
             SettingsItem::DebugLog => self.toggle_debug_log(),
-            SettingsItem::EmojiStyle => self.toggle_color_emoji(),
             SettingsItem::PixelOptimize => {
                 self.settings.pixel_optimize = !self.settings.pixel_optimize;
                 self.settings_changed = true;
@@ -129,36 +101,26 @@ impl App {
     // 选中行超出视口时滚动，分组首项同时显示标题
     pub(in crate::app) fn sync_settings_scroll(&self) {
         let settings_page = self.ui.global::<crate::SettingsPage>();
-        let appearance_len = settings_page.get_appearance_items().row_count() as i32;
-        let general_len = settings_page.get_general_items().row_count() as i32;
-        let voice_len = settings_page.get_voice_items().row_count() as i32;
-        let sel = self.sel;
-        // 各分组标题占一行
-        let group_starts = [
-            0,
-            appearance_len,
-            appearance_len + general_len,
-            appearance_len + general_len + voice_len,
-        ];
-        let line = sel + group_starts.iter().filter(|&&start| sel >= start).count() as i32;
         let video_h = self.ui.global::<crate::Layout>().get_video_height();
         let visible = visible_rows(video_h, 4.0, 24.0);
-        // 选中某组第一项时，把该组标题一并留在视口内
-        let mut first = ensure_visible(
-            settings_page.get_first_line() as usize,
-            line as usize,
-            visible,
-        );
-        if group_starts.contains(&sel) {
-            first = first.min((line - 1) as usize);
+        let mut start = 0;
+        for (index, group) in settings_page.get_groups().iter().enumerate() {
+            let end = start + group.rows.row_count() as i32;
+            if self.sel < end {
+                settings_page.set_selected_group(index as i32);
+                settings_page.set_selected_row(self.sel - start);
+                // 各分组标题占一行
+                let line = self.sel as usize + index + 1;
+                let mut first = ensure_visible(settings_page.get_first_line() as usize, line, visible);
+                // 选中某组第一项时，把该组标题一并留在视口内
+                if self.sel == start {
+                    first = first.min(line - 1);
+                }
+                settings_page.set_first_line(first as i32);
+                break;
+            }
+            start = end;
         }
-        settings_page.set_first_line(first as i32);
-    }
-
-    fn toggle_color_emoji(&mut self) {
-        self.settings.color_emoji = !self.settings.color_emoji;
-        self.danmaku_view.set_color_emoji(self.settings.color_emoji);
-        self.settings_changed = true;
     }
 
     fn toggle_record_history(&mut self) {

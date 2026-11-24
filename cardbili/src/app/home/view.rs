@@ -17,10 +17,9 @@ impl App {
         // 选中项保持在当前页面范围内
         if self.page == Page::Home {
             let len = if self.tab == HomeTab::Settings {
-                let appearance = settings_page.get_appearance_items().row_count() as i32;
-                let general = settings_page.get_general_items().row_count() as i32;
-                let advanced = settings_page.get_advanced_items().row_count() as i32;
-                appearance + general + advanced
+                settings_page.get_groups().iter()
+                    .map(|group| group.rows.row_count())
+                    .sum::<usize>() as i32
             } else if self.tab == HomeTab::Mine && self.mine_detail < 0 {
                 self.ui
                     .global::<crate::MinePage>()
