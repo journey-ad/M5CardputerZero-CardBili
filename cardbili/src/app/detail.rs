@@ -120,6 +120,7 @@ impl App {
             return;
         }
         match k {
+            "COMPOSE" => self.open_comment_input(),
             "ENTER" | "SPACE" => {
                 if !self.detail_bvid.is_empty() {
                     self.status = crate::i18n::tr("正在加载视频…").into();

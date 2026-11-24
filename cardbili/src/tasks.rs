@@ -428,3 +428,16 @@ pub fn load_favorite_covers(
         }
     });
 }
+
+pub fn send_composition(
+    target: crate::api::posting::Target,
+    text: String,
+    cookies: String,
+    request: u64,
+    tx: Sender<Msg>,
+) {
+    thread::spawn(move || {
+        let result = api::posting::send(&target, &text, &cookies);
+        let _ = tx.send(Msg::CompositionSent(request, result));
+    });
+}

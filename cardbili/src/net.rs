@@ -198,6 +198,44 @@ pub fn post_form_json_timeout(
         .map_err(|error| crate::i18n::trf("数据解析失败\n{}", &[&error]))
 }
 
+pub fn post_multipart_json(
+    url: &str,
+    cookies: &str,
+    referer: &str,
+    fields: &[(String, String)],
+) -> Result<serde_json::Value, String> {
+    let boundary = format!(
+        "----{:x}",
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos()
+    );
+    let mut body = String::new();
+    for (name, value) in fields {
+        body.push_str(&format!(
+            "--{boundary}\r\nContent-Disposition: form-data; name=\"{name}\"\r\n\r\n{value}\r\n"
+        ));
+    }
+    body.push_str(&format!("--{boundary}--\r\n"));
+    let headers = RequestHeaders {
+        user_agent: WEB_UA,
+        referer,
+        origin: "https://live.bilibili.com",
+    };
+    let content_type = format!("multipart/form-data; boundary={boundary}");
+    let response = request(
+        agent(),
+        url,
+        Some(cookies),
+        &headers,
+        Some((&body, &content_type)),
+        25,
+    )?;
+    parse_json(url, &String::from_utf8_lossy(&response))
+        .map_err(|error| crate::i18n::trf("数据解析失败\n{}", &[&error]))
+}
+
 pub fn get(url: &str, cookies: Option<&str>) -> Result<String, String> {
     get_with_headers(url, cookies, &DEFAULT_HEADERS)
 }

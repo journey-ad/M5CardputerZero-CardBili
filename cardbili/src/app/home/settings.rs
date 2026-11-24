@@ -9,17 +9,18 @@ impl App {
         let settings_page = self.ui.global::<crate::SettingsPage>();
         let appearance = settings_page.get_appearance_items();
         let general = settings_page.get_general_items();
+        let voice = settings_page.get_voice_items();
         let advanced = settings_page.get_advanced_items();
-        let appearance_len = appearance.row_count() as i32;
-        let general_len = general.row_count() as i32;
-        let total = appearance_len + general_len + advanced.row_count() as i32;
-        let row = if self.sel < appearance_len {
-            appearance.row_data(self.sel as usize)
-        } else if self.sel < appearance_len + general_len {
-            general.row_data((self.sel - appearance_len) as usize)
-        } else {
-            advanced.row_data((self.sel - appearance_len - general_len) as usize)
-        };
+        let total = (appearance.row_count()
+            + general.row_count()
+            + voice.row_count()
+            + advanced.row_count()) as i32;
+        let row = appearance
+            .iter()
+            .chain(general.iter())
+            .chain(voice.iter())
+            .chain(advanced.iter())
+            .nth(self.sel as usize);
         let Some(row) = row else {
             return;
         };
@@ -61,6 +62,24 @@ impl App {
                 self.menu_view = None;
                 self.home_dirty = true;
                 self.collection_dirty = true;
+                self.settings_changed = true;
+            }
+            SettingsItem::VoiceBackend => {
+                self.settings.voice_backend = self
+                    .settings
+                    .voice_backend
+                    .cycle(if step == 0 { 1 } else { step });
+                self.settings_changed = true;
+            }
+            SettingsItem::VoicePunctuation => {
+                self.settings.voice_punctuation = self
+                    .settings
+                    .voice_punctuation
+                    .cycle(if step == 0 { 1 } else { step });
+                self.settings_changed = true;
+            }
+            SettingsItem::VoiceAddSpaces => {
+                self.settings.voice_add_spaces = !self.settings.voice_add_spaces;
                 self.settings_changed = true;
             }
             SettingsItem::TitleTranslate if step != 0 => {
@@ -112,16 +131,16 @@ impl App {
         let settings_page = self.ui.global::<crate::SettingsPage>();
         let appearance_len = settings_page.get_appearance_items().row_count() as i32;
         let general_len = settings_page.get_general_items().row_count() as i32;
+        let voice_len = settings_page.get_voice_items().row_count() as i32;
         let sel = self.sel;
-        // 该行在设置列表里的绝对行号，外观/常规/进阶各占一个标题行
-        let line = sel
-            + 1
-            + if sel >= appearance_len { 1 } else { 0 }
-            + if sel >= appearance_len + general_len {
-                1
-            } else {
-                0
-            };
+        // 各分组标题占一行
+        let group_starts = [
+            0,
+            appearance_len,
+            appearance_len + general_len,
+            appearance_len + general_len + voice_len,
+        ];
+        let line = sel + group_starts.iter().filter(|&&start| sel >= start).count() as i32;
         let video_h = self.ui.global::<crate::Layout>().get_video_height();
         let visible = visible_rows(video_h, 4.0, 24.0);
         // 选中某组第一项时，把该组标题一并留在视口内
@@ -130,7 +149,7 @@ impl App {
             line as usize,
             visible,
         );
-        if sel == 0 || sel == appearance_len || sel == appearance_len + general_len {
+        if group_starts.contains(&sel) {
             first = first.min((line - 1) as usize);
         }
         settings_page.set_first_line(first as i32);

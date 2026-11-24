@@ -23,6 +23,10 @@ pub enum Action {
     SuperChat,
     LiveArea,
     More,
+    Compose,
+    Recognize,
+    Send,
+    Cancel,
 }
 
 impl Action {
@@ -49,6 +53,10 @@ impl Action {
             Self::SuperChat => crate::i18n::tr("醒目留言"),
             Self::LiveArea => crate::i18n::tr("分区"),
             Self::More => crate::i18n::tr("更多功能"),
+            Self::Compose => crate::i18n::tr("发评论"),
+            Self::Recognize => crate::i18n::tr("识别"),
+            Self::Send => crate::i18n::tr("发送"),
+            Self::Cancel => crate::i18n::tr("取消"),
         }
     }
 
@@ -72,6 +80,10 @@ impl Action {
             Self::SuperChat => "SUPER_CHAT",
             Self::LiveArea => "LIVE_AREA",
             Self::More => "m",
+            Self::Compose => "COMPOSE",
+            Self::Recognize => "6",
+            Self::Send => "7",
+            Self::Cancel => "8",
         }
     }
 }
@@ -140,6 +152,7 @@ pub fn actions(
             slots[last] = Some(Back);
         }
         Page::Comments => {
+            slots[3] = Some(Compose);
             if retry {
                 slots[first] = Some(Retry);
             }

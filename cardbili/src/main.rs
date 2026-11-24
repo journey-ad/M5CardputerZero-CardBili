@@ -21,10 +21,13 @@ mod player;
 mod settings;
 mod tasks;
 mod util;
+mod voice;
 
 slint::include_modules!();
 
 pub enum Msg {
+    Voice(u64, voice::Event),
+    CompositionSent(u64, Result<Option<model::Comment>, String>),
     Confirmed(bool),
     CacheUsage(Result<u64, String>),
     CacheCleared(Result<(), String>),

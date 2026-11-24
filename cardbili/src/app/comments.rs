@@ -19,6 +19,15 @@ pub(super) struct Comments {
     list_offset: f32,
 }
 
+impl Comments {
+    pub(super) fn rebuild(&mut self) {
+        self.rows.clear();
+        self.visible = 0..0;
+        self.dirty = true;
+        self.scroll = 0.0;
+    }
+}
+
 impl App {
     pub(super) fn open_comments(&mut self, aid: i64) {
         self.page = Page::Comments;
@@ -92,6 +101,7 @@ impl App {
         }
         match key {
             "r" => self.load_comments(),
+            "COMPOSE" => self.open_comment_input(),
             "ESC" | "BACKSPACE" => self.go_back = true,
             _ => {}
         }

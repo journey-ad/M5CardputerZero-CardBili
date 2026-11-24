@@ -345,6 +345,7 @@ dependencies = [
  "tiny-skia",
  "ttf-parser 0.21.1",
  "tungstenite",
+ "unicode-properties",
  "ureq",
 ]
 

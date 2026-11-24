@@ -7,6 +7,7 @@ import { Text } from "../base/text.slint";
 export enum SettingsItem {
     list-style, danmaku, danmaku-opacity, menu-position, record-history,
     debug-log, cdn, cache, about, emoji-style, pixel-optimize, scale-algorithm, language, title-translate,
+    voice-backend, voice-punctuation, voice-add-spaces,
 }
 
 export enum SettingsKind { choice, toggle, action }
@@ -41,6 +42,11 @@ export global SettingsPage {
         { item: SettingsItem.cache, label: I18n.tr("缓存占用"), kind: SettingsKind.action, value: Preferences.cache-size },
         { item: SettingsItem.about, label: I18n.tr("关于"), kind: SettingsKind.action, value: Meta.version },
     ];
+    out property <[SettingsRow]> voice-items: [
+        { item: SettingsItem.voice-backend, label: I18n.tr("识别引擎"), kind: SettingsKind.choice, value: Preferences.voice-backend-name },
+        { item: SettingsItem.voice-punctuation, label: I18n.tr("标点设置"), kind: SettingsKind.choice, value: Preferences.voice-punctuation-name },
+        { item: SettingsItem.voice-add-spaces, label: I18n.tr("中英文之间添加空格"), kind: SettingsKind.toggle, checked: Preferences.voice-add-spaces },
+    ];
     out property <[SettingsRow]> advanced-items: [
         { item: SettingsItem.debug-log, label: I18n.tr("调试日志"), kind: SettingsKind.toggle, checked: Preferences.debug-log },
         { item: SettingsItem.cdn, label: I18n.tr("CDN 设置"), kind: SettingsKind.action, value: Preferences.cdn-name },
@@ -54,7 +60,7 @@ export global SettingsPage {
     in-out property <int> first-line: 0;
 }
 
-// 单个设置项，外观/常规/进阶三个列表共用
+// 单个设置项，各分组共用
 component SettingsRowItem inherits Rectangle {
     in property <SettingsRow> entry;
     in property <bool> selected: false;
@@ -164,11 +170,18 @@ export component SettingsPanel inherits Rectangle {
         first-index: appearance.rows.length;
         y: appearance.y + appearance.height;
     }
+    // 语音输入标题和选项
+    voice := SettingsGroup {
+        title: I18n.tr("语音输入");
+        rows: SettingsPage.voice-items;
+        first-index: general.first-index + general.rows.length;
+        y: general.y + general.height;
+    }
     // 进阶设置标题和选项
     SettingsGroup {
         title: I18n.tr("进阶设置");
         rows: SettingsPage.advanced-items;
-        first-index: general.first-index + general.rows.length;
-        y: general.y + general.height;
+        first-index: voice.first-index + voice.rows.length;
+        y: voice.y + voice.height;
     }
 }

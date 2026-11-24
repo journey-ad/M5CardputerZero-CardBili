@@ -1,21 +1,20 @@
 # Rust 与 Slint 设备构建
 
-CardBili 目标为 `aarch64-unknown-linux-musl`，使用 Slint 1.8 软件渲染器，输出静态 ELF
+CardBili 目标为 `aarch64-unknown-linux-gnu`，使用 Slint 1.8 软件渲染器，输出动态链接的 ELF
 
 ## CardBili 构建入口
 
 在 CardBili 仓库根执行：
 
 ```sh
-rustup target add aarch64-unknown-linux-musl
 bash scripts/build-device.sh
 python3 scripts/package-release.py
 python3 scripts/check-release.py --deb dist/cardbili_0.2.0_arm64.deb
 ```
 
-依赖 Rust、LLVM、Docker、Python 3.11 或更新版本及 Pillow；Rust 许可证由 `rust-docs` 组件提供。macOS 使用 Homebrew LLVM，Linux 使用系统 clang / llvm-ar；脚本根据 `rustc --print sysroot` 与宿主三元组定位 rust-lld。交叉编译 C 依赖时使用支持目标平台的 LLVM
+依赖 Rust、Docker、Python 3.11 或更新版本及 Pillow；Rust 许可证由 `rust-docs` 组件提供。设备程序在 Debian Trixie ARM64 容器中编译，语音 SDK 使用 `cardbili/lib/libvoice_asr.so` 中的发布文件，通过 Rust C ABI 封装直接调用
 
-musl 将 dl 符号放在 libc 中，脚本使用 llvm-ar 生成空的 libdl.a 满足依赖链接参数。构建产物位于 `cardbili/target/` 与 `dist/`，这些目录由 Git 忽略
+`libvoice_asr.so` 随主程序安装到 APPLaunch 的 `bin/`，通过 `$ORIGIN` 查找。glibc、OpenSSL、Opus 和 ALSA 工具由 Debian 包依赖提供。构建产物位于 `cardbili/target/` 与 `dist/`
 
 打包输出 `.deb`、对应源码包和 SHA-256 校验文件。`dpkg-deb` 可在本机或 Docker 中运行；商店元数据维护在根目录 `app-builder.json`
 
@@ -27,7 +26,6 @@ macOS 安装 LLVM、Python 和 FFmpeg，并启动 Docker：
 brew install llvm python ffmpeg
 python3 -m venv .secrets/venv
 .secrets/venv/bin/pip install Pillow
-rustup target add aarch64-unknown-linux-musl
 rustup component add rust-docs
 ```
 
@@ -38,11 +36,10 @@ Ubuntu 24.04：
 ```sh
 sudo apt-get update
 sudo apt-get install -y clang llvm python3-pil dpkg pkg-config libxkbcommon-dev libwayland-dev libx11-dev libxcursor-dev libxrandr-dev libxi-dev
-rustup target add aarch64-unknown-linux-musl
 rustup component add rust-docs
 ```
 
-x86_64 主机运行 ARM64 FFmpeg 构建容器时需要 Docker ARM64 模拟支持，CI 使用 ARM64 runner
+x86_64 主机运行 ARM64 构建容器时需要 Docker ARM64 模拟支持，CI 使用 ARM64 runner
 
 ## 当前字体与图标方案
 

@@ -20,13 +20,13 @@ From the repo root:
 
 ```sh
 bash scripts/check.sh                 # shellcheck, py_compile, actionlint + gitleaks (Docker), check-release.py
-bash scripts/build-device.sh          # cross-compile aarch64-unknown-linux-musl (clang/llvm-ar/rust-lld); SKIP_FFMPEG=1 skips the Docker FFmpeg build
+bash scripts/build-device.sh          # build aarch64-unknown-linux-gnu in a Debian Trixie ARM64 container; SKIP_FFMPEG=1 skips the Docker FFmpeg build
 python3 scripts/package-release.py    # builds dist/*.deb, source tarball, SHA256SUMS
 python3 scripts/check-release.py --deb dist/cardbili_*_arm64.deb
 bash scripts/install-device.sh [--skip-build] [--with-ffmpeg] [--host=IP]   # build+package+install on the real device
 ```
 
-Device builds need `rustup target add aarch64-unknown-linux-musl` and `rustup component add rust-docs`. Device connection settings come from `.secrets/device.env` (copy `.secrets/device.env.example`).
+Device builds need Docker and `rustup component add rust-docs` for package licenses. Device connection settings come from `.secrets/device.env` (copy `.secrets/device.env.example`).
 
 Useful env vars at runtime: `CARDBILI_LANG=en|zh` (override UI language), `CARDBILI_DEBUG=1` (force debug log, mirrored to stderr).
 
@@ -41,6 +41,8 @@ Useful env vars at runtime: `CARDBILI_LANG=en|zh` (override UI language), `CARDB
 **Platform layer (`src/app/platform.rs`).** Implements a Slint `Platform` around `MinimalSoftwareWindow` with the software renderer to an RGB565 buffer. Device build: mmaps the framebuffer and reads keys from evdev. `desktop` feature: renders into a `minifb` window and maps keys (`desktop_key`) to the same strings evdev produces, so the input code is shared. Desktop-only behavior is gated with `#[cfg(feature = "desktop")]`; Windows audio uses `cpal` (`player/audio_desktop.rs`).
 
 **Playback (`src/player.rs`, `src/player/`).** Video/audio are decoded by an external `ffmpeg` child process (device: a static musl FFmpeg built by `cardbili/ffmpeg/Dockerfile` and shipped in the .deb; desktop: system FFmpeg). The filter graph scales/pads to 320×170 @ 30fps and applies playback speed via `setpts`; raw frames are consumed by `player/frames.rs`, audio is piped to a separate output process on Linux. Pause/resume uses signals to the child.
+
+**Voice input (`src/voice.rs`).** Calls the published `lib/libvoice_asr.so` through its Rust C ABI binding on a worker thread. The SDK owns microphone capture and backend connections. `app/compose.rs` provides the shared danmaku/comment panel. The device executable uses GNU dynamic linking and packages the SDK beside the binary.
 
 **Bilibili API (`src/api.rs`, `src/api/`).** Blocking `ureq` HTTP. `api/wbi.rs` implements WBI request signing; `net/session/` handles QR login, cookies and encrypted on-disk session storage (`chacha20poly1305`). `src/cache.rs` provides a disk cache; `tasks::cached_then_refresh` publishes cached data first, then fresh data. Live danmaku uses a websocket (`live_danmaku.rs`, `tungstenite`).
 

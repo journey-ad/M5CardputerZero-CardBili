@@ -20,6 +20,9 @@ pub struct Settings {
     pub language: crate::i18n::Language,
     /// 标题自动翻译服务，0 Google 1 Bing
     pub translate_provider: i32,
+    pub voice_backend: crate::voice::Backend,
+    pub voice_punctuation: crate::voice::Punctuation,
+    pub voice_add_spaces: bool,
 }
 
 impl Default for Settings {
@@ -37,6 +40,9 @@ impl Default for Settings {
             scale_algorithm: ScaleAlgorithm::Area,
             language: crate::i18n::Language::Zh,
             translate_provider: 0,
+            voice_backend: crate::voice::Backend::default(),
+            voice_punctuation: crate::voice::Punctuation::default(),
+            voice_add_spaces: false,
         }
     }
 }

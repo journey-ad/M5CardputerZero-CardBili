@@ -39,6 +39,16 @@ impl App {
     }
 
     pub(super) fn handle_key(&mut self, mut key: String) {
+        if self.composer.target.is_some() {
+            self.composer_key(&key);
+            return;
+        }
+        if matches!(key.as_str(), "7_UP" | "DANMAKU_UP" | "DANMAKU_CANCEL") {
+            if self.danmaku_hold.take().is_some() && key != "DANMAKU_CANCEL" {
+                self.toggle_danmaku();
+            }
+            return;
+        }
         if self.confirmation.is_some() {
             self.confirmation_key(&key);
             return;
@@ -109,6 +119,11 @@ impl App {
             }
             key = action.key().to_string();
         }
+        if key == "DANMAKU" && self.page == Page::Player {
+            self.danmaku_hold.get_or_insert_with(Instant::now);
+            self.last_input = Instant::now();
+            return;
+        }
         if let Some(released) = key.strip_suffix("_UP") {
             if self
                 .direction_hold
@@ -163,6 +178,13 @@ impl App {
 
     pub(super) fn tick_input(&mut self) {
         let now = Instant::now();
+        if self
+            .danmaku_hold
+            .is_some_and(|since| since.elapsed() >= Duration::from_millis(800))
+        {
+            self.danmaku_hold = None;
+            self.open_danmaku_input();
+        }
         if self
             .return_hold
             .is_some_and(|(_, since)| now.duration_since(since) >= Duration::from_millis(800))

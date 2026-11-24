@@ -11,7 +11,8 @@ CardBili 原创代码、文档、脚本与 skill 使用根目录的 MIT 许可�
 | Mona Emoji | SIL OFL-1.1，[2026.10.09 发布包](https://github.com/MonadABXY/mona-font/releases/tag/2026.10.09) | 使用官方原版 Mona12Emoji 与 Mona12ColorEmoji，构建时生成 12px 字形，保留 `cardbili/fonts/OFL-mona-font.txt` |
 | Pixelarticons | MIT，[上游](https://github.com/halfmage/pixelarticons) | 保留 `cardbili/assets/pixelarticons/LICENSE` |
 | Rust 依赖 | 各 crate 的许可证 | 源码包包含 `Cargo.lock`、vendored 源码与许可证，设备包包含许可证副本 |
-| Rust 标准库、musl 与 GCC 运行库 | 各组件许可证，GCC 使用 Runtime Library Exception | 设备包保留 Rust 工具链版权、musl COPYRIGHT 与 GCC 运行库例外条款 |
+| Rust 标准库与 GCC 运行库 | 各组件许可证，GCC 使用 Runtime Library Exception | 设备包保留 Rust 工具链版权与运行库例外条款 |
+| voice-asr SDK 0.2.0 | [发布包与源码](https://github.com/journey-ad/M5CardputerZero-VoiceIme/releases/tag/v0.2.0) | 原样分发发布包中的 ARM64 `libvoice_asr.so`，通过 Rust C ABI 调用；系统 glibc、OpenSSL、Opus 由包依赖提供 |
 
 ## MIT 源码与设备二进制
 

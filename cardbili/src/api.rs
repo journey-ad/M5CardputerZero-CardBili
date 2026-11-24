@@ -4,6 +4,7 @@ pub mod live;
 pub use live::room as live_room;
 pub mod audio;
 pub mod playback;
+pub mod posting;
 pub mod sections;
 pub mod subtitle;
 pub mod translate;

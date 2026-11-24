@@ -8,6 +8,16 @@ mod font_cache;
 mod ui_fonts;
 
 fn main() {
+    if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("linux")
+        && std::env::var("CARGO_CFG_TARGET_ARCH").as_deref() == Ok("aarch64")
+    {
+        let sdk = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("lib");
+        println!("cargo:rustc-link-search=native={}", sdk.display());
+        println!("cargo:rustc-link-arg=-Wl,-rpath,$ORIGIN");
+        if std::env::var("PROFILE").as_deref() != Ok("release") {
+            println!("cargo:rustc-link-arg=-Wl,-rpath,{}", sdk.display());
+        }
+    }
     font_cache::generate(
         "emoji",
         &[

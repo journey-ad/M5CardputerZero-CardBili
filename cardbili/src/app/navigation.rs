@@ -94,6 +94,8 @@ impl App {
     }
 
     fn leave_page(&mut self) {
+        self.close_composer();
+        self.danmaku_hold = None;
         if let Some(mut previous) = self.player.take() {
             self.gen = self.gen.max(previous.gen);
             previous.stop();

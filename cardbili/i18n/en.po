@@ -1213,3 +1213,84 @@ msgstr "Translation result count mismatch"
 
 msgid "翻译解析失败"
 msgstr "Failed to parse translation"
+
+msgid "发评论"
+msgstr "Post comment"
+
+msgid "发弹幕"
+msgstr "Send danmaku"
+
+msgid "发送"
+msgstr "Send"
+
+msgid "语音输入"
+msgstr "Voice input"
+
+msgid "识别引擎"
+msgstr "Speech engine"
+
+msgid "标点设置"
+msgstr "Punctuation"
+
+msgid "中英文之间添加空格"
+msgstr "Space CJK and Latin"
+
+msgid "添加完整标点"
+msgstr "Keep all"
+
+msgid "省略句末标点"
+msgstr "Omit ending"
+
+msgid "空格代替标点"
+msgstr "Use spaces"
+
+msgid "千问"
+msgstr "Qwen"
+
+msgid "豆包"
+msgstr "Doubao"
+
+msgid "微信"
+msgstr "WeChat"
+
+msgid "请先登录后再发送"
+msgstr "Sign in before sending"
+
+msgid "正在开启麦克风…"
+msgstr "Opening microphone\u2026"
+
+msgid "长按识别进行语音输入"
+msgstr "Hold Recognize to speak"
+
+msgid "识别"
+msgstr "Recognize"
+
+msgid "正在聆听…"
+msgstr "Listening…"
+
+msgid "正在完成识别…"
+msgstr "Finishing recognition\u2026"
+
+msgid "语音输入失败：{}"
+msgstr "Voice input failed: {}"
+
+msgid "语音输入已中断，请重新识别"
+msgstr "Voice input interrupted, try again"
+
+msgid "未识别到文字，请重新识别"
+msgstr "No speech recognized, try again"
+
+msgid "识别完成"
+msgstr "Recognition complete"
+
+msgid "正在发送…"
+msgstr "Sending\u2026"
+
+msgid "发送成功"
+msgstr "Sent"
+
+msgid "发送失败：{}"
+msgstr "Send failed: {}"
+
+msgid "语音输入请在 Cardputer Zero 上使用"
+msgstr "Use Cardputer Zero for voice input"

@@ -155,6 +155,9 @@ fn secondary_page_actions_leave_left_sidebar_slot_free() {
                 if page == Page::Collection {
                     expected[first + 1] = "详情";
                 }
+                if page == Page::Comments {
+                    expected[3] = "发评论";
+                }
                 assert_eq!(
                     labels(actions(
                         page,
@@ -197,6 +200,10 @@ fn every_menu_action_has_the_expected_dispatch_key() {
         (Action::SuperChat, "SUPER_CHAT"),
         (Action::LiveArea, "LIVE_AREA"),
         (Action::More, "m"),
+        (Action::Compose, "COMPOSE"),
+        (Action::Recognize, "6"),
+        (Action::Send, "7"),
+        (Action::Cancel, "8"),
     ] {
         assert_eq!(action.key(), expected, "action={}", action.label());
     }

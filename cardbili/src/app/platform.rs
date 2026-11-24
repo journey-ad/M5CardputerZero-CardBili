@@ -237,8 +237,9 @@ impl Display {
             }
             let down = self.win.get_mouse_down(minifb::MouseButton::Left);
             if down != self.pointer_down {
-                let emulate_bottom_bar = _ui.global::<crate::Nav>().get_page() != Page::Player
-                    || _ui.global::<crate::Sections>().get_open();
+                let emulate_bottom_bar = !_ui.global::<crate::VoiceInput>().get_open()
+                    && (_ui.global::<crate::Nav>().get_page() != Page::Player
+                        || _ui.global::<crate::Sections>().get_open());
                 if down && emulate_bottom_bar {
                     if let Some(key) = crate::desktop_shim::bottom_bar_key(x, y, HEIGHT as f32) {
                         self.mouse_slot = Some(key);

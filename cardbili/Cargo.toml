@@ -33,6 +33,7 @@ chacha20poly1305 = "0.10"
 getrandom = "0.2"
 tungstenite = { version = "0.28", default-features = false, features = ["handshake", "rustls-tls-webpki-roots"] }
 brotli = "8"
+unicode-properties = { version = "0.1", default-features = false, features = ["general-category"] }
 
 [profile.dev]
 debug = "line-tables-only"

@@ -98,10 +98,14 @@ pub fn react(
     }
 }
 
-pub fn comments(aid: i64, page: u32, cookies: Option<&str>) -> Result<CommentPage, String> {
-    let url = format!(
+pub(super) fn comments_url(aid: i64, page: u32) -> String {
+    format!(
         "https://api.bilibili.com/x/v2/reply?type=1&oid={aid}&pn={page}&ps=20&sort=2&nohot=1"
-    );
+    )
+}
+
+pub fn comments(aid: i64, page: u32, cookies: Option<&str>) -> Result<CommentPage, String> {
+    let url = comments_url(aid, page);
     let value = cache::api_json(&url, cookies, cache::TTL_REPLY)?;
     if value["code"].as_i64() != Some(0) {
         return Err(api_err(crate::i18n::tr("评论"), &value));
@@ -149,7 +153,7 @@ pub fn comments(aid: i64, page: u32, cookies: Option<&str>) -> Result<CommentPag
     Ok(CommentPage { items, has_more })
 }
 
-fn csrf(cookies: &str) -> Result<String, String> {
+pub(super) fn csrf(cookies: &str) -> Result<String, String> {
     net::session::cookie(cookies, "bili_jct")
         .filter(|value| !value.is_empty())
         .ok_or_else(|| crate::i18n::tr("登录信息已失效，请重新登录").into())

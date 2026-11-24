@@ -4,6 +4,7 @@ mod cache;
 mod cdn;
 mod collection;
 mod comments;
+mod compose;
 mod components;
 mod confirmation;
 mod detail;
@@ -151,6 +152,10 @@ fn connect_ui(ui: &AppWindow, tx: mpsc::Sender<Msg>, ktx: mpsc::Sender<String>) 
     let area_keys = ktx.clone();
     ui.global::<crate::LiveAreas>().on_key(move |key| {
         let _ = area_keys.send(key.to_string());
+    });
+    let voice_keys = ktx.clone();
+    ui.global::<crate::VoiceInput>().on_key(move |key| {
+        let _ = voice_keys.send(key.to_string());
     });
     ui.global::<crate::Player>().on_key(move |key| {
         let _ = ktx.send(key.to_string());

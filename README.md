@@ -95,7 +95,7 @@ Settings → General → 语言 Language switches the interface between Simplifi
 
 使用 Rust 与 Slint
 
-开发环境需要稳定版 Rust、LLVM、Docker、Python 3.11+ 和 Pillow。桌面播放还需要 FFmpeg
+开发环境需要稳定版 Rust、Docker、Python 3.11+ 和 Pillow。桌面播放还需要 FFmpeg
 
 桌面运行：
 
@@ -107,7 +107,6 @@ cargo run --locked --features desktop
 从仓库根目录构建设备安装包：
 
 ```sh
-rustup target add aarch64-unknown-linux-musl
 rustup component add rust-docs
 bash scripts/build-device.sh
 python3 scripts/package-release.py

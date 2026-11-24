@@ -114,17 +114,23 @@ fn cards_without_statistics_and_dated_list_rows_use_correct_heights() {
 fn settings_scroll_keeps_selected_group_header_visible() {
     let mut h = Harness::new();
     h.app.tab = HomeTab::Settings;
-    let appearance = h
-        .app
-        .ui
-        .global::<crate::SettingsPage>()
-        .get_appearance_items()
-        .row_count();
-    h.app.sel = appearance as i32;
-    h.sync();
-    let first = h.app.ui.global::<crate::SettingsPage>().get_first_line();
-    assert!(first <= appearance as i32 + 1);
-    assert!(first + 5 > appearance as i32 + 2);
+    let page = h.app.ui.global::<crate::SettingsPage>();
+    let lengths = [
+        page.get_appearance_items().row_count(),
+        page.get_general_items().row_count(),
+        page.get_voice_items().row_count(),
+        page.get_advanced_items().row_count(),
+    ];
+    let mut start = 0;
+    for (group, length) in lengths.into_iter().enumerate() {
+        h.app.sel = start as i32;
+        h.sync();
+        let first = h.app.ui.global::<crate::SettingsPage>().get_first_line();
+        let header = (start + group) as i32;
+        assert!(first <= header);
+        assert!(first + 5 > header + 1);
+        start += length;
+    }
 }
 
 #[test]

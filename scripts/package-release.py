@@ -43,9 +43,10 @@ def main():
     if tag and tag != f"v{version}":
         raise SystemExit(f"标签 {tag} 与 Cargo 版本 {version} 不一致")
 
-    binary = ROOT / "cardbili/target/aarch64-unknown-linux-musl/release/cardbili"
+    binary = ROOT / "cardbili/target/aarch64-unknown-linux-gnu/release/cardbili"
+    voice = ROOT / "cardbili/lib/libvoice_asr.so"
     ffmpeg = DIST / "ffmpeg"
-    for required in (binary, ffmpeg / "cardbili-ffmpeg", ffmpeg / "ffmpeg-source.tar.xz"):
+    for required in (binary, voice, ffmpeg / "cardbili-ffmpeg", ffmpeg / "ffmpeg-source.tar.xz"):
         if not required.is_file():
             raise SystemExit(f"缺少构建产物：{required}")
 
@@ -59,6 +60,7 @@ def main():
     app = package / "usr/share/APPLaunch"
     documentation = package / "usr/share/doc/cardbili"
     copy(binary, app / "bin" / manifest["bin_name"])
+    copy(voice, app / "bin/libvoice_asr.so")
     copy(ffmpeg / "cardbili-ffmpeg", app / "bin/cardbili-ffmpeg")
     copy(ROOT / "docs/cardbili.desktop", app / "applications/cardbili.desktop")
     copy(ROOT / "THIRD_PARTY_NOTICES.md", documentation / "THIRD_PARTY_NOTICES.md")
@@ -92,6 +94,7 @@ def main():
     )
     vendor_config = vendor_config.replace(str(source / "vendor"), "../vendor")
     config = source / "cardbili/.cargo/config.toml"
+    config.parent.mkdir(parents=True, exist_ok=True)
     with config.open("a") as output:
         output.write("\n" + vendor_config + "\n")
 
@@ -142,7 +145,7 @@ def main():
         "Maintainer: journey-ad <journey-ad@users.noreply.github.com>\n"
         "Section: video\n"
         "Priority: optional\n"
-        "Depends: ca-certificates, pulseaudio-utils\n"
+        "Depends: ca-certificates, pulseaudio-utils, alsa-utils, libc6 (>= 2.41), libgcc-s1, libopus0, libssl3t64\n"
         "Recommends: pipewire-pulse | pulseaudio\n"
         f"Installed-Size: {installed_size}\n"
         f"Homepage: {repository}\n"

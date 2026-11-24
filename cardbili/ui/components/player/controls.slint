@@ -44,7 +44,14 @@ export component PlaybackBar inherits Rectangle {
             horizontal-alignment: center; vertical-alignment: center;
         }
     }
-    TouchArea { x: 190px; y: 8px; width: 54px; height: 20px; clicked => { Player.key("DANMAKU"); } }
+    TouchArea {
+        x: 190px; y: 8px; width: 54px; height: 20px;
+        pointer-event(event) => {
+            if event.button == PointerEventButton.left && event.kind == PointerEventKind.down { Player.key("DANMAKU"); }
+            if event.button == PointerEventButton.left && event.kind == PointerEventKind.up { Player.key("DANMAKU_UP"); }
+            if event.kind == PointerEventKind.cancel { Player.key("DANMAKU_CANCEL"); }
+        }
+    }
     Icon { x: 269px; y: 11px; source: Icons.more-vertical; }
     TouchArea { x: 248px; y: 8px; width: 54px; height: 20px; clicked => { Player.key("m"); } }
 }

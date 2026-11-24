@@ -87,7 +87,7 @@ def check_package(deb, manifest, metadata_rules):
     require(fields.get("Maintainer"), "缺少 Debian Maintainer")
     require(not metadata_rules["check_maintainer"](fields["Maintainer"]), "Debian Maintainer 未通过官方检查")
     dependencies = {item.strip() for item in fields.get("Depends", "").split(",")}
-    require({"ca-certificates", "pulseaudio-utils"} <= dependencies, "缺少证书或音频工具依赖")
+    require({"ca-certificates", "pulseaudio-utils", "alsa-utils", "libopus0", "libssl3t64"} <= dependencies, "缺少证书、音频或语音 SDK 依赖")
     path_rules = policy("install_path_policy.py")
     with tarfile.open(fileobj=io.BytesIO(dpkg_deb("--fsys-tarfile", deb, text=False))) as payload:
         files = {}
@@ -122,6 +122,8 @@ def check_package(deb, manifest, metadata_rules):
             data = content(path)
             require(data[:6] == b"\x7fELF\x02\x01" and struct.unpack("<H", data[18:20])[0] == 183, f"程序应为 AArch64 ELF：{name}")
             require(files[path].mode == 0o755, f"程序权限应为 0755：{name}")
+        voice = content(app_root + "bin/libvoice_asr.so")
+        require(voice[:6] == b"\x7fELF\x02\x01" and struct.unpack("<H", voice[18:20])[0] == 183, "语音 SDK 应为 AArch64 ELF")
         content("usr/share/doc/cardbili/THIRD_PARTY_NOTICES.md")
         content("usr/share/doc/cardbili/SOURCE.txt")
     print("Debian 架构、依赖、安装路径、权限和 APPLaunch 入口校验通过")

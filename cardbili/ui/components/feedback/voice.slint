@@ -1,0 +1,70 @@
+import { Preferences, I18n, Layout } from "../../state.slint";
+import { Text, EmojiFont, RichLayout } from "../base/text.slint";
+import { RichText } from "../base/rich-text.slint";
+import { BottomBar } from "../navigation/bottom.slint";
+
+export global VoiceInput {
+    in-out property <bool> open: false;
+    in-out property <string> title;
+    in-out property <string> text;
+    in-out property <string> hint;
+    in-out property <length> scroll: 0px;
+    out property <RichLayout> text-layout: EmojiFont.rich-layout(self.text, Layout.window-width - 40px, "Fusion Pixel 12px Prop zh-Hans", 12px, EmojiFont.layout-revision);
+    out property <length> max-scroll: max(0px, self.text-layout.height - 64px);
+    callback key(string);
+}
+
+export component VoicePanel inherits Rectangle {
+    width: 100%; height: 100%; background: #000000b0;
+    TouchArea {}
+    Rectangle {
+        x: 8px; y: 8px; width: parent.width - 16px; height: parent.height - 36px;
+        background: #121a2a; border-width: 1px; border-color: #405472; border-radius: 4px;
+        Text {
+            x: 10px; y: 8px; height: 16px; width: parent.width - 100px;
+            text: VoiceInput.title; color: #e6ebf5; font-size: 12px;
+        }
+        Text {
+            x: parent.width - 88px; y: 8px; width: 78px; height: 16px;
+            text: Preferences.voice-backend-name; color: #9aa6ba; font-size: 12px;
+            horizontal-alignment: right;
+        }
+        if VoiceInput.text == "": Image {
+            x: (parent.width - self.width) / 2; y: 34px; width: 32px; height: 40px;
+            source: @image-url("../../../assets/microphone.svg");
+            colorize: #7fb0ff; image-fit: contain;
+        }
+        if VoiceInput.text == "": Text {
+            x: 10px; y: 80px; width: parent.width - 20px; height: 16px;
+            text: I18n.tr("长按识别进行语音输入"); color: #cfd8e6; font-size: 12px;
+            horizontal-alignment: center;
+        }
+        if VoiceInput.text != "": Rectangle {
+            x: 12px; y: 34px; width: parent.width - 24px; height: 64px; clip: true;
+            RichText {
+                y: max(0px, (parent.height - self.height) / 2) - VoiceInput.scroll;
+                width: parent.width; height: VoiceInput.text-layout.height;
+                text: VoiceInput.text; color: #e6ebf5; font-size: 12px;
+                font-family: "Fusion Pixel 12px Prop zh-Hans";
+                layout: VoiceInput.text-layout;
+            }
+        }
+        Text {
+            x: 10px; y: parent.height - 30px; width: parent.width - 20px; height: 26px;
+            text: VoiceInput.hint; color: #9aa6ba;
+            font-family: "Fusion Pixel 10px Prop zh-Hans"; font-size: 10px;
+            wrap: word-wrap; overflow: elide; horizontal-alignment: center; vertical-alignment: center;
+        }
+    }
+    BottomBar { y: parent.height - self.height; width: parent.width; }
+    TouchArea {
+        x: 135px; y: parent.height - 20px; width: 54px; height: 20px;
+        pointer-event(event) => {
+            if event.button == PointerEventButton.left && event.kind == PointerEventKind.down { VoiceInput.key("6"); }
+            if event.button == PointerEventButton.left && event.kind == PointerEventKind.up { VoiceInput.key("6_UP"); }
+            if event.kind == PointerEventKind.cancel { VoiceInput.key("6_UP"); }
+        }
+    }
+    TouchArea { x: 190px; y: parent.height - 20px; width: 54px; height: 20px; clicked => { VoiceInput.key("7"); } }
+    TouchArea { x: 248px; y: parent.height - 20px; width: 54px; height: 20px; clicked => { VoiceInput.key("8"); } }
+}

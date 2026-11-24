@@ -55,7 +55,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y clang llvm python3-pil dpkg
-          rustup toolchain install stable --profile minimal --target aarch64-unknown-linux-musl
+          rustup toolchain install stable --profile minimal
           rustup override set stable
           rustup component add rust-docs
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2

@@ -23,6 +23,8 @@ fn key_release_normalizes_direction_and_hold_aliases() {
         (&["d"][..], "D_UP"),
         (&["DOWN", "x", "s"][..], "DOWN_UP"),
         (&["l", "5"][..], "LIKE_UP"),
+        (&["6"][..], "6_UP"),
+        (&["SPACE"][..], "SPACE_UP"),
         (&["7"][..], "7_UP"),
         (&["8"][..], "8_UP"),
     ] {

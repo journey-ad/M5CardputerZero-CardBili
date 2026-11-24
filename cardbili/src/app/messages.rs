@@ -5,6 +5,8 @@ impl App {
     pub(super) fn handle_message(&mut self, m: Msg) {
         let detail = self.ui.global::<crate::Detail>();
         match m {
+            Msg::Voice(request, event) => self.voice_event(request, event),
+            Msg::CompositionSent(request, result) => self.composition_sent(request, result),
             Msg::Confirmed(accepted) => self.finish_confirmation(accepted),
             Msg::CacheUsage(result) => self.cache_usage(result),
             Msg::CacheCleared(result) => self.cache_cleared(result),

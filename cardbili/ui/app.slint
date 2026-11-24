@@ -12,6 +12,8 @@ import { StatusBar } from "components/feedback/status.slint";
 import { BottomBar } from "components/navigation/bottom.slint";
 import { Router } from "router.slint";
 import { PanelHost } from "components/panels/host.slint";
+export { VoiceInput } from "components/feedback/voice.slint";
+import { VoicePanel, VoiceInput } from "components/feedback/voice.slint";
 import { ConfirmDialog } from "components/feedback/confirm.slint";
 
 export component AppWindow inherits Window {
@@ -35,5 +37,6 @@ export component AppWindow inherits Window {
         x: (parent.width - self.width) / 2;
         y: parent.height - (Nav.page == Page.player ? 50px : 46px);
     }
+    if VoiceInput.open: VoicePanel {}
     if Confirm.open: ConfirmDialog {}
 }

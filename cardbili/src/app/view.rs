@@ -31,6 +31,7 @@ impl App {
                     p.paused
                         || p.finished
                         || self.controls.like_hold.is_some()
+                        || self.danmaku_hold.is_some()
                         || self.direction_hold.is_some()
                         || self.last_input.elapsed() < Duration::from_millis(3000)
                 })
@@ -86,6 +87,9 @@ impl App {
         preferences.set_color_emoji(self.settings.color_emoji);
         preferences.set_pixel_optimize(self.settings.pixel_optimize);
         preferences.set_scale_algorithm_name(self.settings.scale_algorithm.label().into());
+        preferences.set_voice_backend_name(self.settings.voice_backend.label().into());
+        preferences.set_voice_punctuation_name(self.settings.voice_punctuation.label().into());
+        preferences.set_voice_add_spaces(self.settings.voice_add_spaces);
         preferences.set_translate_provider_name(if self.settings.translate_provider == 1 {
             "Bing".into()
         } else {
@@ -125,6 +129,15 @@ impl App {
 
 impl App {
     pub(super) fn menu_actions(&self) -> [Option<menu::Action>; 5] {
+        if self.composer.target.is_some() {
+            return [
+                None,
+                None,
+                Some(menu::Action::Recognize),
+                Some(menu::Action::Send),
+                Some(menu::Action::Cancel),
+            ];
+        }
         if self.ui.global::<crate::LiveAreas>().get_open() {
             return [
                 Some(menu::Action::Refresh),
@@ -189,6 +202,13 @@ impl App {
         }
         if self.page == Page::Detail && self.sections.available() {
             actions[0] = Some(menu::Action::Sections);
+        }
+        if self.page == Page::Detail && self.comment_page.aid > 0 {
+            let comments = self.ui.global::<crate::Comments>();
+            let viewport = self.ui.global::<crate::Detail>().get_viewport_h();
+            if self.detail_scroll as f32 + viewport > comments.get_list_offset() + 24.0 {
+                actions[3] = Some(menu::Action::Compose);
+            }
         }
         actions
     }

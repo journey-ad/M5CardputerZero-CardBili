@@ -170,9 +170,11 @@ fn hidden_player_controls_consume_first_menu_press() {
     let enabled = h.app.controls.danmaku_enabled;
     h.key("7");
     assert_eq!(h.app.controls.danmaku_enabled, enabled);
+    h.key("7_UP");
     h.sync();
     assert!(h.app.ui.global::<crate::Player>().get_controls_visible());
     h.key("7");
+    h.key("7_UP");
     assert_eq!(h.app.controls.danmaku_enabled, !enabled);
 }
 
@@ -317,6 +319,7 @@ fn select_setting(h: &mut Harness, item: crate::SettingsItem) {
         .get_appearance_items()
         .iter()
         .chain(page.get_general_items().iter())
+        .chain(page.get_voice_items().iter())
         .chain(page.get_advanced_items().iter())
         .position(|row| row.item == item)
         .unwrap() as i32;
@@ -339,6 +342,17 @@ fn settings_switches_and_opacity_limits_update_state() {
     h.app.settings.danmaku_opacity = 0;
     h.key("LEFT");
     assert_eq!(h.app.settings.danmaku_opacity, 0);
+    select_setting(&mut h, crate::SettingsItem::VoiceBackend);
+    h.key("RIGHT");
+    assert_eq!(h.app.settings.voice_backend, crate::voice::Backend::Wechat);
+    select_setting(&mut h, crate::SettingsItem::VoicePunctuation);
+    h.key("LEFT");
+    assert_eq!(h.app.settings.voice_punctuation, crate::voice::Punctuation::Full);
+    h.key("ENTER");
+    assert_eq!(h.app.settings.voice_punctuation, crate::voice::Punctuation::OmitTrailing);
+    select_setting(&mut h, crate::SettingsItem::VoiceAddSpaces);
+    h.key("SPACE");
+    assert!(h.app.settings.voice_add_spaces);
 }
 
 #[test]

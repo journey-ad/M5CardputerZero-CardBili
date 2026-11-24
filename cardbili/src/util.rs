@@ -12,6 +12,8 @@ use slint::Rgb8Pixel;
 pub fn key_release(name: &str) -> Option<&'static str> {
     match name {
         "l" | "5" => Some("LIKE_UP"),
+        "6" => Some("6_UP"),
+        "SPACE" => Some("SPACE_UP"),
         "7" => Some("7_UP"),
         "8" => Some("8_UP"),
         "LEFT" | "z" => Some("LEFT_UP"),
@@ -100,7 +102,7 @@ pub fn spawn_keys(path: String, tx: mpsc::Sender<String>) {
                     }
                 }
             } else if value == 0 {
-                // 方向键松开事件，供长按连续调整进度使用
+                // 松开事件用于结束长按操作
                 if let Some(release) = code_name(code).and_then(key_release) {
                     if tx.send(release.to_string()).is_err() {
                         break;
