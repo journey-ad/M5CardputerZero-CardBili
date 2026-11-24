@@ -47,6 +47,7 @@ const BUFFER_COLORS: [[u8; 3]; 6] = [
 
 // 媒体连接速度与网络缓冲时长的历史采样
 pub(in crate::app) struct StatsState {
+    media_id: String,
     connection: Vec<Option<f64>>,
     buffer: Vec<Option<f64>>,
     cursor: Option<usize>,
@@ -57,6 +58,7 @@ pub(in crate::app) struct StatsState {
 impl Default for StatsState {
     fn default() -> Self {
         Self {
+            media_id: String::new(),
             connection: vec![None; SLOTS],
             buffer: vec![None; SLOTS],
             cursor: None,
@@ -206,6 +208,12 @@ impl App {
         } else {
             return;
         };
+        if self.stats.media_id != id.value.as_str() {
+            self.stats = StatsState {
+                media_id: id.value.to_string(),
+                ..Default::default()
+            };
+        }
         let now = Instant::now();
         if self
             .stats

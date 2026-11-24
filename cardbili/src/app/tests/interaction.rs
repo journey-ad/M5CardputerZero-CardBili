@@ -59,6 +59,35 @@ fn grid_navigation_uses_columns_and_stays_within_items() {
 }
 
 #[test]
+fn list_refresh_resets_position_while_background_updates_keep_it() {
+    let mut h = Harness::new();
+    for source in [0, 1, 2, 3, 5] {
+        h.app.tab = HomeTab::from_index(source);
+        h.app.mine_detail = if source == 3 { 3 } else { -1 };
+        for loaded in [true, false] {
+            h.app.loaded[source] = loaded;
+            h.app.sel = 18;
+            h.app.list_scroll = 150.0;
+            h.app.grid_scroll = 200.0;
+            h.app.list_loaded(
+                source,
+                (0..30).map(|i| item(&format!("BV{i}"))).collect(),
+            );
+            assert_eq!(h.app.sel, if loaded { 18 } else { 0 });
+            assert_eq!(h.app.list_scroll, if loaded { 150.0 } else { 0.0 });
+            assert_eq!(h.app.grid_scroll, if loaded { 200.0 } else { 0.0 });
+        }
+        h.app.sel = 18;
+        h.app.list_scroll = 150.0;
+        h.app.grid_scroll = 200.0;
+        h.app.list_more(source, vec![item("BV-more")]);
+        assert_eq!(h.app.sel, 18);
+        assert_eq!(h.app.list_scroll, 150.0);
+        assert_eq!(h.app.grid_scroll, 200.0);
+    }
+}
+
+#[test]
 fn keyboard_aliases_and_release_events_share_navigation_state() {
     let mut h = Harness::new();
     h.videos(9);

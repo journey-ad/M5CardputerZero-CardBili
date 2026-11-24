@@ -78,6 +78,7 @@ impl App {
 
     pub(in crate::app) fn list_loaded(&mut self, source: usize, items: Vec<model::Item>) {
         self.home_dirty = true;
+        let reset_position = !self.loaded[source];
         let selection = refresh_first_page(
             &mut self.lists[source],
             &mut self.covers[source],
@@ -104,7 +105,13 @@ impl App {
             self.loading = false;
         }
         if self.page == Page::Home && list_source(self.tab, self.mine_detail) == Some(source) {
-            self.sel = selection;
+            if reset_position {
+                self.sel = 0;
+                self.list_scroll = 0.0;
+                self.grid_scroll = 0.0;
+            } else {
+                self.sel = selection;
+            }
             self.status = if len == 0 {
                 if source == crate::HomeTab::Live.index() { crate::i18n::tr("暂无直播").into() } else { crate::i18n::tr("暂无内容").into() }
             } else if source == crate::HomeTab::Live.index() {

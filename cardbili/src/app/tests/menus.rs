@@ -103,7 +103,8 @@ fn player_more_menu_opens_stats_for_live_and_video() {
         assert!(!h.app.ui.global::<crate::Player>().get_menu_open());
         assert!(h.app.requested_live.is_none());
         h.sync();
-        let player = h.app.ui.global::<crate::Player>();
+        let ui = h.app.ui.clone_strong();
+        let player = ui.global::<crate::Player>();
         let lines = player.get_stat_head();
         let first = lines.row_data(0).unwrap();
         assert_eq!(first.label, if live { "Room ID" } else { "Video Info" });
@@ -146,6 +147,21 @@ fn player_more_menu_opens_stats_for_live_and_video() {
         h.key("ESC");
         assert!(!h.app.ui.global::<crate::Player>().get_stats_on());
         assert!(!h.app.go_back);
+        player.set_connection_value("retained".into());
+        h.app.update_net_stats();
+        assert_eq!(player.get_connection_value(), "retained");
+        if live {
+            h.app.live.as_mut().unwrap().room_id = 43;
+        } else {
+            h.app.current_play.as_mut().unwrap().cid = 43;
+        }
+        h.app.update_net_stats();
+        assert_eq!(player.get_connection_value(), "0 Kbps");
+        assert_eq!(player.get_buffer_value(), "0.00s");
+        assert_eq!(
+            player.get_stat_head().row_data(0).unwrap().value,
+            if live { "43" } else { "BV-test:43" }
+        );
     }
 }
 
