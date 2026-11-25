@@ -87,7 +87,7 @@ def check_package(deb, manifest, metadata_rules):
     require(fields.get("Maintainer"), "缺少 Debian Maintainer")
     require(not metadata_rules["check_maintainer"](fields["Maintainer"]), "Debian Maintainer 未通过官方检查")
     dependencies = {item.strip() for item in fields.get("Depends", "").split(",")}
-    require({"ca-certificates", "pulseaudio-utils", "alsa-utils", "libopus0", "libssl3t64"} <= dependencies, "缺少证书、音频或语音 SDK 依赖")
+    require({"ca-certificates", "pulseaudio-utils", "alsa-utils", "libcurl4t64", "libopus0", "libssl3t64"} <= dependencies, "缺少证书、音频或语音 SDK 依赖")
     path_rules = policy("install_path_policy.py")
     with tarfile.open(fileobj=io.BytesIO(dpkg_deb("--fsys-tarfile", deb, text=False))) as payload:
         files = {}

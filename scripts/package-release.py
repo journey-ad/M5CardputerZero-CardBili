@@ -145,7 +145,7 @@ def main():
         "Maintainer: journey-ad <journey-ad@users.noreply.github.com>\n"
         "Section: video\n"
         "Priority: optional\n"
-        "Depends: ca-certificates, pulseaudio-utils, alsa-utils, libc6 (>= 2.41), libgcc-s1, libopus0, libssl3t64\n"
+        "Depends: ca-certificates, pulseaudio-utils, alsa-utils, libc6 (>= 2.41), libgcc-s1, libcurl4t64, libopus0, libssl3t64\n"
         "Recommends: pipewire-pulse | pulseaudio\n"
         f"Installed-Size: {installed_size}\n"
         f"Homepage: {repository}\n"

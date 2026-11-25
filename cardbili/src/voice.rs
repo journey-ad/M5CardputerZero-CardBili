@@ -100,13 +100,14 @@ fn recognize(
     tx: &mpsc::Sender<crate::Msg>,
     commands: &mpsc::Receiver<Command>,
 ) -> Result<Option<Command>, String> {
-    let mut recognizer =
-        voice_asr::Recognizer::new(r#"{"audio":{"mixer":{"adc":232,"pga":12,"alc":0}}}"#)?;
+    let recognizer = voice_asr::Recognizer::new("{}").map_err(|error| error.to_string())?;
     let options = serde_json::json!({
         "backend": backend.id(),
         "input": "microphone",
     });
-    recognizer.start(&options.to_string())?;
+    recognizer
+        .start(&options.to_string())
+        .map_err(|error| error.to_string())?;
     loop {
         match commands.try_recv() {
             Ok(command @ Command::Start(..)) => return Ok(Some(command)),
@@ -115,14 +116,14 @@ fn recognize(
             }
             Ok(Command::Stop) => {
                 if let Err(error) = recognizer.stop() {
-                    if !error.starts_with("1003:") {
-                        return Err(error);
+                    if error.code != voice_asr::NOT_ACTIVE {
+                        return Err(error.to_string());
                     }
                 }
             }
             Err(mpsc::TryRecvError::Empty) => {}
         }
-        if let Some(json) = recognizer.poll_event(20)? {
+        if let Some(json) = recognizer.poll_event(20).map_err(|error| error.to_string())? {
             let event: Event = serde_json::from_str(&json).map_err(|error| error.to_string())?;
             let ended = matches!(event, Event::Ended { .. });
             if tx.send(crate::Msg::Voice(request, event)).is_err() || ended {

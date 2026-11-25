@@ -1,6 +1,6 @@
 {
   "package_name": "cardbili",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "app_name": "CardBili",
   "bin_name": "M5CardputerZero-CardBili",
   "description": "Bilibili client for Cardputer Zero",
@@ -26,7 +26,7 @@
     "share_code": "BILI",
     "permissions": {
       "camera": false,
-      "microphone": false,
+      "microphone": true,
       "imu": false,
       "network": true,
       "additional_hardware": false,
