@@ -75,21 +75,17 @@ Settings → General → 语言 Language switches the interface between Simplifi
 | --- | --- | --- |
 | ![首页](docs/screenshots/home.png) | ![热门](docs/screenshots/popular.png) | ![动态](docs/screenshots/dynamic.png) |
 
-| 我的 | 设置 | 关于 |
-| --- | --- | --- |
-| ![我的](docs/screenshots/mine.png) | ![设置](docs/screenshots/settings.png) | ![关于](docs/screenshots/about.png) |
-
 | 视频详情 | 播放 | 评论 |
 | --- | --- | --- |
 | ![视频详情](docs/screenshots/detail.png) | ![播放](docs/screenshots/player.png) | ![评论](docs/screenshots/comments.png) |
 
-| 直播列表 | 分区选择 | 直播播放 |
+| 语音输入 | 直播列表 | 分区选择 |
 | --- | --- | --- |
-| ![直播列表](docs/screenshots/live.png) | ![分区选择](docs/screenshots/live-areas.png) | ![直播播放](docs/screenshots/live-player.png) |
+| ![语音输入](docs/screenshots/voice.png) | ![直播列表](docs/screenshots/live.png) | ![分区选择](docs/screenshots/live-areas.png) |
 
-| 作者作品 | 选集 |
-| --- | --- |
-| ![作者作品](docs/screenshots/author.png) | ![选集](docs/screenshots/episodes.png) |
+| 直播播放 | 我的 | 设置 |
+| --- | --- | --- |
+| ![直播播放](docs/screenshots/live-player.png) | ![我的](docs/screenshots/mine.png) | ![设置](docs/screenshots/settings.png) |
 
 ## 开发
 
